@@ -859,7 +859,7 @@ tbody tr:hover{
 #consolidatedBody td,#closingForecastBody td{text-align:right}
 #expensePlanBody input[type=number]{width:130px}
 </style>
-</head>
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.closing-cell{background:#e7edff!important;font-weight:700}.consolidated-matrix .pyg-benefit{border-top:12px solid white}.consolidated-matrix .pyg-toggle{border:0;background:transparent;color:inherit;font-weight:inherit;text-align:left}.table-wrap input{max-width:190px;padding:7px;border:1px solid #d7dee9;border-radius:6px}</style></head>
 
 <body>
 
@@ -1358,27 +1358,27 @@ tbody tr:hover{
 
 
 <div id="tab-consolidado" class="tab-content hidden">
- <h3>P&G consolidado Energycontrol</h3>
+ <h3>P&G consolidado · Cierre 2026</h3>
+ <div class="filters-row"><label>Reporte <select id="consolidatedMode" onchange="renderConsolidated()"><option value="cierre">Real + Forecast + Cierre 2026</option><option value="real">Real Odoo por mes / anual</option></select></label><button class="btn" onclick="resetForecast()">Restaurar escenario</button></div>
  <p class="report-note" id="consolidatedPeriod"></p>
- <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real Odoo</th></tr></thead><tbody id="consolidatedBody"></tbody></table></div>
- <p id="consolidatedAllocation" class="report-note"></p><p class="report-note">Incluye todas las analíticas y movimientos sin analítica, contando cada línea contable una sola vez. El filtro de mes de la cabecera aplica a este reporte; el filtro de proyecto no restringe el consolidado. Las cuentas 501 incluyen las depreciaciones de producción. Los gastos 502 se incluyen una sola vez.</p>
+ <div class="table-wrap consolidated-matrix"><table><thead id="consolidatedHead"></thead><tbody id="consolidatedBody"></tbody></table></div>
+ <p id="consolidatedAllocation" class="report-note"></p>
+ <p class="report-note">Toda Energycontrol, incluidas las líneas sin analítica. Cada movimiento contable se cuenta una sola vez. Despliega ingresos y cuentas de gastos con ▸. El reporte de cierre mantiene el corte septiembre; el selector mensual de la cabecera aplica al reporte Real Odoo. El forecast no incluye asientos reales de octubre a diciembre.</p>
 </div>
 <div id="tab-fijos" class="tab-content hidden">
- <h3>Gastos fijos y presupuesto de gastos</h3>
- <p class="report-note">Todas las cuentas 502 de ventas, administración y finanzas. Marca cuáles son fijas y ajusta su presupuesto mensual para los meses restantes. La propuesta inicial es el promedio de los tres meses hasta el corte, incluyendo meses sin gasto; no significa que todas sean fijas.</p>
- <label>Corte de proyección <input id="forecastCutoff" class="filter-input" type="month" value="2026-09" min="2026-01" max="2026-12" onchange="renderExpensePlan();renderClosingForecast()"></label>
- <div class="table-wrap"><table><thead><tr><th>Fijo</th><th>Cuenta</th><th>Área</th><th>Real acumulado al corte</th><th>Promedio últimos 3 meses</th><th>Presupuesto por mes restante</th><th>Gasto restante proyectado</th></tr></thead><tbody id="expensePlanBody"></tbody></table></div>
+ <h3>Presupuesto Excel · Octubre, noviembre y diciembre</h3>
+ <p class="report-note">Importado de “Presupuesto versus ejecución energy 2026 para directorio v2.xlsx”, hoja “Proyeccion Mensual ”, columnas AS, AT y AU. Se excluyen las filas de totales y resúmenes. Una celda vacía significa sin presupuesto, no un gasto confirmado de cero. Sueldos, vehículos y otros rubros combinados se distribuyen usando el real enero–agosto del Excel; son estimaciones, no distribuciones confirmadas. Cambiar una cuenta asigna todo el rubro a ese grupo en los tres meses.</p>
+ <div class="table-wrap"><table><thead><tr><th>Rubro del Excel</th><th>Cuenta / grupo propuesto</th><th>Octubre</th><th>Noviembre</th><th>Diciembre</th></tr></thead><tbody id="expensePlanBody"></tbody></table></div>
  <p id="expensePlanSummary" class="report-note"></p>
- <p class="report-note">Los ajustes son un escenario en pantalla. No cambian la contabilidad. “Restante” comprende los meses completos posteriores al corte hasta diciembre de 2026.</p>
+ <p class="report-note">Los ajustes afectan el P&G consolidado y la proyección en pantalla. No cambian el Excel ni la contabilidad. Depreciación, devolución de impuestos, EO Ecuador y gastos de obligaciones tienen clasificación propuesta: revisa su cuenta. Arriendo se conserva en el grupo 5020209.</p>
 </div>
 <div id="tab-proyeccion" class="tab-content hidden">
- <h3>Proyección de cierre 2026</h3>
- <p id="forecastPeriod" class="report-note"></p>
- <div class="filters-row"><label>Ingreso adicional a reconocer hasta diciembre <input id="forecastRevenue" type="number" min="0" step="0.01" class="filter-input" placeholder="Ingresar estimación" oninput="renderClosingForecast()"></label>
- <label>Costo 501 adicional hasta diciembre <input id="forecastCost" type="number" min="0" step="0.01" class="filter-input" placeholder="Ingresar estimación" oninput="renderClosingForecast()"></label></div>
- <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real acumulado al corte</th><th>Pendiente proyectado</th><th>Estimado al 31/12/2026</th></tr></thead><tbody id="closingForecastBody"></tbody></table></div>
+ <h3>Proyección de cierre 2026</h3><p id="forecastPeriod" class="report-note"></p>
+ <div class="filters-row"><label>Otros ingresos pendientes en diciembre <input id="forecastRevenue" type="number" min="0" step="0.01" class="filter-input" placeholder="Estimar, incluso cero" oninput="renderConsolidated();renderClosingForecast()"></label><label>Otros costos pendientes en diciembre <input id="forecastCost" type="number" min="0" step="0.01" class="filter-input" placeholder="Sin duplicar OC ni Excel" oninput="renderConsolidated();renderClosingForecast()"></label><button class="btn" onclick="abrirSimulador()">Simular proyecto / OC</button></div>
+ <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real enero–septiembre</th><th>Forecast octubre–diciembre</th><th>Cierre 2026</th></tr></thead><tbody id="closingForecastBody"></tbody></table></div>
  <p id="closingForecastStatus" class="report-note"></p>
- <p class="report-note">El ingreso pendiente es ingreso a reconocer contablemente, no saldo por cobrar. El costo pendiente debe incluir compromisos aún no reconocidos y faltantes sin OC, evitando duplicados. La conexión de órdenes de compra aún no está implementada: estas dos estimaciones se ingresan manualmente. Ajusta el resto de gastos en la pestaña Gastos fijos.</p>
+ <h4>Proyectos aplicados al escenario</h4><div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Mes forecast</th><th>Ingreso adicional</th><th>Costo pendiente OC / obra</th><th>Cambio en utilidad</th></tr></thead><tbody id="scenarioList"></tbody></table></div>
+ <p class="report-note">En Simular, el ingreso final objetivo menos el ingreso reconocido hasta septiembre es el ingreso adicional. Los costos pendientes se añaden una vez al mes elegido, diciembre por defecto. Reaplicar un proyecto reemplaza su escenario anterior. Ingreso reconocido no equivale a facturación ni cobro. Las OC se ingresan manualmente; todavía no se importan desde Odoo. Usa solo saldos de OC aún no reconocidos como costo y faltantes sin OC; excluye los sueldos y otros gastos ya presupuestados en el Excel. Los proyectos sin simulación no tienen pendiente estimado y hacen que el cierre sea parcial.</p>
 </div>
 
             <!-- PROJECTS -->
@@ -1722,11 +1722,12 @@ tbody tr:hover{
     <div class="sim-field">
 
         <label>
-            Costo pendiente adicional
+            Costo 501 pendiente (OC + faltantes, sin duplicar Excel)
         </label>
 
         <input
             id="simCostoPendiente"
+            min="0"
             type="number"
             step="100"
             value="0"
@@ -1735,6 +1736,9 @@ tbody tr:hover{
     </div>
 
 
+<div class="sim-field"><label>Mes de forecast</label><select id="simForecastMonth" onchange="actualizarSimulacion()"><option value="2026-10-01">Octubre</option><option value="2026-11-01">Noviembre</option><option value="2026-12-01" selected>Diciembre</option></select></div>
+ <div class="sim-field"><label>Faltantes sin OC (si usas el detalle de OC)</label><input id="simUncommitted" type="number" min="0" step="0.01" value="0" oninput="recalculateManualPOs()"></div>
+ <div style="grid-column:1/-1"><h4>Órdenes de compra · escenario manual</h4><p class="report-note">Ingresa solo el saldo pendiente por reconocer como costo. Con OC detalladas, el costo pendiente será la suma de sus saldos más los faltantes sin OC; reemplaza el estimado agregado de SharePoint. Excluye nómina y otros gastos del Excel.</p><button class="btn" onclick="addManualPO()">Añadir OC</button><div class="table-wrap"><table><thead><tr><th>Referencia OC</th><th>Saldo pendiente</th><th></th></tr></thead><tbody id="simPOBody"></tbody></table></div></div>
     <div class="sim-field">
 
         <label>
@@ -1781,7 +1785,7 @@ tbody tr:hover{
         </div>
 
         <div class="sim-row">
-            <span>Costo pendiente adicional</span>
+            <span>Costo 501 pendiente (OC + faltantes, sin duplicar Excel)</span>
             <strong id="simCostoAdicional">$0</strong>
         </div>
 
@@ -1817,7 +1821,7 @@ tbody tr:hover{
             class="btn-primary"
             onclick="aplicarSimulacionPantalla()">
 
-            Aplicar en pantalla
+            Aplicar al cierre 2026
 
         </button>
 
@@ -1833,6 +1837,7 @@ tbody tr:hover{
 
 
 <script>
+
 
 /* =========================================================
    SUPABASE
@@ -1858,7 +1863,7 @@ const sb =
 
 const STATE = {
 
-    expensePlan: {},
+    expensePlan: {}, fixedBudget: [], budgetLoaded: false, budgetError: null,
     pygExpanded: new Set(),
     pygDrill: null,
     analytic: [],
@@ -2147,6 +2152,7 @@ async function loadData(){
           readAll("forecast_pyg_analitico",["id"])
         ]);
         STATE.analytic=analyticRes.data;
+        try {const budget=await readAll("forecast_fixed_budget",["source_row","period"]);if(budget.error)throw budget.error;STATE.fixedBudget=(budget.data||[]).filter(r=>r.budget_key==="directorio-v2-2026");STATE.budgetLoaded=true;STATE.budgetError=null;}catch(e){STATE.fixedBudget=[];STATE.budgetLoaded=false;STATE.budgetError=e.message||"No se pudo cargar el presupuesto";}
         const years=[...new Set(STATE.analytic.map(r=>String(r.fecha).slice(0,4)))].sort();
         const yearSelector=document.getElementById("pygYear"), oldYear=yearSelector.value;
         yearSelector.replaceChildren(...(years.length?years:["2026"]).map(y=>new Option(y,y)));
@@ -3370,54 +3376,104 @@ function consolidatedRows(){
  const month=selectedMonth();
  return STATE.analytic.filter(r=>String(r.fecha).startsWith("2026-")&&(month==="ALL"||String(r.fecha).slice(5,7)===month));
 }
-function renderConsolidated(){
- const source=consolidatedRows(),t=accountingTotals(source);
- const allocatedProfit=-source.reduce((s,r)=>s+number(r.saldo_analitico),0);
- const allocationDifference=allocatedProfit-t.profit;
- document.getElementById("consolidatedAllocation").textContent=Math.abs(allocationDifference)<0.005?"Asignaciones analíticas conciliadas con el resultado contable del periodo.":"Diferencia entre resultado asignado a analíticas y resultado contable: "+money(allocationDifference)+". El consolidado usa la línea original; revisa las distribuciones analíticas en Odoo.";
- document.getElementById("consolidatedPeriod").textContent=selectedMonth()==="ALL"?"Acumulado 2026 · Toda Energycontrol":monthName("2026-"+selectedMonth()+"-01")+" 2026 · Toda Energycontrol";
- const rows=[["Total Ingresos",t.income],["501 Costo de ingresos / producción",t.cost],["Ganancia Bruta",t.gross],["Margen Bruto",t.income?percent(t.gross/t.income):"—"],["50201 Gastos de venta",t.sales],["50202 Gastos administrativos",t.admin],["50203 Gastos financieros",t.finance],["Otros gastos",t.other],["Total Gastos",t.expenses],["Total Egresos (costos + gastos)",t.cost+t.expenses],["Beneficio Total",t.profit],["Margen Neto",t.income?percent(t.profit/t.income):"—"]];
- document.getElementById("consolidatedBody").innerHTML=rows.map(([label,value])=>'<tr><th scope="row">'+label+'</th><td>'+ (typeof value==="string"?value:money(value))+'</td></tr>').join("");
+const FORECAST_MONTHS=['2026-10-01','2026-11-01','2026-12-01'];
+const FORECAST_AREAS={income:'Total Ingresos',cost:'501 COSTO DE VENTAS Y PRODUCCIÓN',sales:'50201 GASTOS DE VENTA',admin:'50202 GASTOS ADMINISTRATIVOS',finance:'50203 GASTOS FINANCIEROS',other:'Otros gastos / clasificación pendiente'};
+function budgetEntry(r){
+ const key=r.source_row+':'+r.period,o=STATE.expensePlan[key]||{};
+ return {...r,amount:Object.hasOwn(o,'amount')?o.amount:r.amount,allocations:o.code?[{code:o.code,weight:1}]:r.allocations};
 }
-function expenseBudget(){
- const cutoff=document.getElementById("forecastCutoff").value;
- if(!/^2026-(0[1-9]|1[0-2])$/.test(cutoff))return {accounts:[],remaining:0,cutoff,invalid:true};
- const month=Number(cutoff.slice(5,7)),start=Math.max(1,month-2),months=month-start+1;
- const accounts=new Map();
- for(const r of ledgerLines(STATE.analytic)){
-  const date=String(r.fecha);
-  if(!date.startsWith("2026-")||date.slice(0,7)>cutoff||String(r.cuenta_codigo||"").startsWith("501")||accountingBucket(r)==="income"||accountingBucket(r)==="cost")continue;
-  const code=String(r.cuenta_codigo||"SIN_CUENTA");
-  if(!accounts.has(code))accounts.set(code,{code,name:r.cuenta_nombre||"Sin cuenta",area:accountingBucket(r),actual:0,recent:0});
-  const a=accounts.get(code);a.actual+=number(r.saldo_analitico);
-  if(Number(date.slice(5,7))>=start)a.recent+=number(r.saldo_analitico);
+function projectRealAtCutoff(code){
+ const rows=STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
+ const cols=analyticMatrix(rows,'ALL','ALL','',code);
+ return {income:cols.total.income,cost:rows.filter(r=>accountingBucket(r)==='cost').reduce((sum,r)=>{
+  const m=analyticMatrix([r],'ALL','ALL','',code);return sum+m.total.expense;
+ },0)};
+}
+function forecastModel(){
+ const real=ledgerLines(STATE.analytic).filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
+ const months=Array.from({length:12},(_,i)=>'2026-'+String(i+1).padStart(2,'0')+'-01');
+ const details=new Map(),totals=months.map(()=>({income:0,cost:0,sales:0,admin:0,finance:0,other:0}));
+ function add(month,code,name,area,amount,source){
+  const i=months.indexOf(month);if(i<0)return;
+  const key=area+':'+code;if(!details.has(key))details.set(key,{key,code,name,area,values:Array(12).fill(0),source});
+  details.get(key).values[i]+=amount;totals[i][area]+=amount;
  }
- return {accounts:[...accounts.values()].sort((a,b)=>a.code.localeCompare(b.code)).map(a=>({...a,average:a.recent/months,monthly:STATE.expensePlan[a.code]?.monthly??a.recent/months,fixed:STATE.expensePlan[a.code]?.fixed||false})),remaining:12-month,cutoff,invalid:false};
+ for(const r of real){const area=accountingBucket(r);add(String(r.fecha).slice(0,7)+'-01',r.cuenta_codigo,r.cuenta_nombre,area,(area==='income'?-1:1)*number(r.saldo_analitico),'Odoo');}
+ for(const original of STATE.fixedBudget||[]){const r=budgetEntry(original);if(r.amount===null)continue;
+  for(const a of r.allocations){const area=accountingBucket({cuenta_codigo:a.code});add(r.period,a.code,'Presupuesto: '+r.description,area,number(r.amount)*number(a.weight),'Excel');}
+ }
+ const scenarios=[];
+ for(const [code,s] of Object.entries(STATE.simulatedProjects)){
+  const at=projectRealAtCutoff(code),month=s.month||'2026-12-01';
+  const income=number(s.ingreso)-at.income,cost=number(s.cost_pending);
+  add(month,'PROYECTO:'+code,'Ingreso pendiente '+code,'income',income,'Simulación');
+  add(month,'OC:'+code,'OC y costos pendientes '+code,'cost',cost,'Simulación');
+  scenarios.push({code,month,income,cost});
+ }
+ const manualIncome=document.getElementById('forecastRevenue').value,manualCost=document.getElementById('forecastCost').value;
+ const valid=v=>v!==''&&Number.isFinite(Number(v))&&Number(v)>=0;
+ if(valid(manualIncome))add('2026-12-01','OTROS_INGRESOS','Otros ingresos pendientes','income',Number(manualIncome),'Manual');
+ if(valid(manualCost))add('2026-12-01','OTROS_COSTOS','Otros costos pendientes sin duplicar OC','cost',Number(manualCost),'Manual');
+ for(const t of totals){t.expenses=t.sales+t.admin+t.finance+t.other;t.gross=t.income-t.cost;t.out=t.cost+t.expenses;t.profit=t.income-t.out;}
+ const total=Object.fromEntries(Object.keys(totals[0]).map(k=>[k,totals.reduce((sum,t)=>sum+t[k],0)]));
+ return {months,details:[...details.values()],totals,total,scenarios,ready:STATE.budgetLoaded===true&&STATE.fixedBudget.length>0,manualValid:valid(manualIncome)&&valid(manualCost)};
 }
+function renderConsolidated(){
+ const f=forecastModel(),realMode=document.getElementById('consolidatedMode').value==='real';
+ const selected=selectedMonth(),indices=realMode?f.months.map((_,i)=>i).filter(i=>selected==='ALL'||String(i+1).padStart(2,'0')===selected):f.months.map((_,i)=>i);
+ const cells=(values,margin=false)=>indices.map(i=>'<td class="'+(!realMode&&i>=9?'forecast-cell':'')+'">'+(!realMode&&i>=9&&!f.ready?'No disponible':margin?percent(values[i]):money(values[i]))+'</td>').join('')+(realMode?'':'<td class="closing-cell">'+(!f.ready?'No disponible':margin?percent(f.total[values.key]/f.total.income||0):money(values.reduce((a,b)=>a+b,0)))+'</td>');
+ const totals=realMode?f.months.map(m=>accountingTotals(STATE.analytic.filter(r=>String(r.fecha).slice(0,7)===m.slice(0,7)))):f.totals;
+ const get=k=>totals.map(t=>t[k]);
+ const line=(label,key,cls='pyg-total',area=null)=>{
+  let html='<tr class="'+cls+'"><th>'+(area?'<button class="pyg-toggle" onclick="toggleClosingGroup(\''+area+'\')">'+(STATE.closingExpanded?.has(area)?'▾ ':'▸ ')+label+'</button>':label)+'</th>'+cells(get(key))+'</tr>';
+  if(area&&STATE.closingExpanded?.has(area)){
+   const details=realMode?ledgerLines(STATE.analytic).filter(r=>accountingBucket(r)===area&&String(r.fecha).startsWith('2026-')).reduce((a,r)=>{let d=a.find(x=>x.code===r.cuenta_codigo);if(!d){d={code:r.cuenta_codigo,name:r.cuenta_nombre,values:Array(12).fill(0)};a.push(d);}d.values[Number(String(r.fecha).slice(5,7))-1]+=(area==='income'?-1:1)*number(r.saldo_analitico);return a;},[]):f.details.filter(d=>d.area===area);
+   html+=details.sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(d=>'<tr><th style="padding-left:28px">'+escapeHtml(d.code+' '+d.name)+'</th>'+cells(d.values)+'</tr>').join('');
+  }return html;
+ };
+ document.getElementById('consolidatedHead').innerHTML='<tr><th>Concepto / cuenta</th>'+indices.map(i=>'<th>'+monthName(f.months[i])+'<br>'+ (realMode?'Real Odoo':i<9?'Real Odoo':'Forecast')+'</th>').join('')+(realMode?'':'<th>Cierre 2026</th>')+'</tr>';
+ let html=line('Total Ingresos','income','pyg-total','income')+line('Costo de Ingresos','cost','', 'cost')+line('Ganancia Bruta','gross');
+ const gross=totals.map(t=>t.income?t.gross/t.income:0);gross.key='gross';html+='<tr><th>Margen Bruto</th>'+cells(gross,true)+'</tr>';
+ html+=line('Total Egresos','out')+line('502 GASTOS','expenses');
+ for(const area of ['sales','admin','finance','other'])html+=line(FORECAST_AREAS[area],area,'',area);
+ html+=line('Beneficio Total','profit','pyg-benefit');const net=totals.map(t=>t.income?t.profit/t.income:0);net.key='profit';html+='<tr><th>Margen Neto</th>'+cells(net,true)+'</tr>';
+ document.getElementById('consolidatedBody').innerHTML=html;
+ document.getElementById('consolidatedPeriod').textContent=realMode?'Real Odoo · usa el mes de la cabecera · Toda Energycontrol':'Enero–septiembre: real Odoo · Octubre–diciembre: presupuesto Excel + escenarios aplicados · Toda Energycontrol';
+ document.getElementById('consolidatedAllocation').textContent=forecastStatus(f);
+}
+function forecastStatus(f){return !f.ready?'Presupuesto no disponible: '+(STATE.budgetError||'inicia sesión con acceso de gerencia')+'. El cierre no debe interpretarse como completo.':'Presupuesto Excel cargado. '+f.scenarios.length+' proyectos simulados. '+(!f.manualValid?'Completa otros ingresos/costos, incluso con cero. ':'')+'Los proyectos sin simulación aún no aportan ingresos ni costos pendientes. El cierre es un escenario parcial hasta revisar todos los proyectos. Las cuentas propuestas y los repartos del Excel requieren revisión.';}
+function toggleClosingGroup(area){STATE.closingExpanded??=new Set();STATE.closingExpanded.has(area)?STATE.closingExpanded.delete(area):STATE.closingExpanded.add(area);renderConsolidated();}
 function renderExpensePlan(){
- const plan=expenseBudget(),areas={sales:"Ventas",admin:"Administración",finance:"Finanzas",other:"Otros"};
- document.getElementById("expensePlanBody").innerHTML=plan.accounts.map(a=>'<tr><td><input type="checkbox" aria-label="Gasto fijo '+escapeHtml(a.code)+'" data-fixed="'+escapeHtml(a.code)+'" '+(a.fixed?'checked':'')+'></td><td>'+escapeHtml(a.code+" "+a.name)+'</td><td>'+areas[a.area]+'</td><td>'+money(a.actual)+'</td><td>'+money(a.average)+'</td><td><input type="number" step="0.01" aria-label="Presupuesto mensual '+escapeHtml(a.code)+'" data-budget="'+escapeHtml(a.code)+'" value="'+a.monthly.toFixed(2)+'"></td><td>'+money(a.monthly*plan.remaining)+'</td></tr>').join("");
- document.querySelectorAll("[data-budget]").forEach(el=>el.onchange=()=>{const code=el.dataset.budget;STATE.expensePlan[code]={...STATE.expensePlan[code],monthly:number(el.value)};renderExpensePlan();renderClosingForecast();});
- document.querySelectorAll("[data-fixed]").forEach(el=>el.onchange=()=>{const code=el.dataset.fixed;STATE.expensePlan[code]={...STATE.expensePlan[code],fixed:el.checked};renderExpensePlan();renderClosingForecast();});
- document.getElementById("expensePlanSummary").textContent=plan.invalid?"Selecciona un corte de 2026.":plan.accounts.length+" cuentas · "+plan.remaining+" meses restantes · Gastos fijos pendientes "+money(plan.accounts.filter(a=>a.fixed).reduce((s,a)=>s+a.monthly*plan.remaining,0))+" · Otros gastos pendientes "+money(plan.accounts.filter(a=>!a.fixed).reduce((s,a)=>s+a.monthly*plan.remaining,0));
-}
-function closingForecast(){
- const plan=expenseBudget(),actual=accountingTotals(STATE.analytic.filter(r=>String(r.fecha).startsWith("2026-")&&String(r.fecha).slice(0,7)<=plan.cutoff));
- const revenueInput=document.getElementById("forecastRevenue").value,costInput=document.getElementById("forecastCost").value;
- const complete=!plan.invalid && revenueInput!=="" && costInput!=="" && Number.isFinite(Number(revenueInput)) && Number.isFinite(Number(costInput)) && Number(revenueInput)>=0 && Number(costInput)>=0;
- const pending={income:complete?Number(revenueInput):null,cost:complete?Number(costInput):null,sales:0,admin:0,finance:0,other:0};
- for(const a of plan.accounts)pending[a.area]+=a.monthly*plan.remaining;
- pending.expenses=pending.sales+pending.admin+pending.finance+pending.other;
- pending.profit=complete?pending.income-pending.cost-pending.expenses:null;
- return {plan,actual,pending,complete};
+ const grouped=new Map();for(const r of STATE.fixedBudget||[]){if(!grouped.has(r.source_row))grouped.set(r.source_row,[]);grouped.get(r.source_row).push(r);}
+ document.getElementById('expensePlanBody').innerHTML=[...grouped.values()].map(rows=>{
+  const r=rows[0],codes=budgetEntry(r).allocations.map(a=>a.code+' ('+(a.weight*100).toFixed(1)+'%)').join(' / ');
+  return '<tr><th>'+escapeHtml(r.description)+'</th><td>'+escapeHtml(codes)+'<br><small>'+escapeHtml(r.mapping_note)+'</small><br><input aria-label="Cambiar cuenta para '+escapeHtml(r.description)+'" placeholder="Cuenta o grupo (opcional)" data-map="'+r.source_row+'" value="'+escapeHtml(STATE.expensePlan[r.source_row+':'+r.period]?.code||'')+'"></td>'+FORECAST_MONTHS.map(month=>{
+   const source=rows.find(x=>x.period===month),b=budgetEntry(source),key=r.source_row+':'+month;
+   return '<td><input type="number" min="0" step="0.01" data-budget="'+key+'" aria-label="'+escapeHtml(r.description+' '+month)+'" value="'+(b.amount===null?'':number(b.amount).toFixed(2))+'" placeholder="Sin presupuesto"><br><small>'+escapeHtml(source.source_sheet+'!'+source.source_cell)+'</small></td>';
+  }).join('')+'</tr>';
+ }).join('');
+ document.querySelectorAll('[data-budget]').forEach(el=>el.onchange=()=>{if(el.value!==''&&(!Number.isFinite(Number(el.value))||Number(el.value)<0)){toast('Ingresa un importe válido, mayor o igual a cero.');renderExpensePlan();return;}STATE.expensePlan[el.dataset.budget]={...STATE.expensePlan[el.dataset.budget],amount:el.value===''?null:Number(el.value)};renderForecastReports();});
+ document.querySelectorAll('[data-map]').forEach(el=>el.onchange=()=>{const code=el.value.trim();if(code&&!/^50[12]\d*$/.test(code)){toast('Usa un código 501 o 502 válido.');return;}for(const month of FORECAST_MONTHS){const key=el.dataset.map+':'+month;STATE.expensePlan[key]={...STATE.expensePlan[key],code};}renderForecastReports();});
+ const f=forecastModel();document.getElementById('expensePlanSummary').textContent=!f.ready?forecastStatus(f):FORECAST_MONTHS.map(m=>monthName(m)+': '+money((STATE.fixedBudget||[]).filter(r=>r.period===m).reduce((sum,r)=>sum+number(budgetEntry(r).amount),0))).join(' · ');
 }
 function renderClosingForecast(){
- const f=closingForecast();
- document.getElementById("forecastPeriod").textContent="Real acumulado enero a "+f.plan.cutoff+" · Proyección de los "+f.plan.remaining+" meses restantes · Toda Energycontrol";
- const rows=[["Ingresos","income"],["Costos 501","cost"],["Gastos de venta","sales"],["Gastos administrativos","admin"],["Gastos financieros","finance"],["Otros gastos","other"],["Total Gastos","expenses"],["Beneficio Total","profit"]];
- document.getElementById("closingForecastBody").innerHTML=rows.map(([label,key])=>'<tr><th scope="row">'+label+'</th><td>'+money(f.actual[key])+'</td><td>'+(f.pending[key]===null?'Pendiente de estimar':money(f.pending[key]))+'</td><td>'+(f.pending[key]===null?'—':money(f.actual[key]+f.pending[key]))+'</td></tr>').join("");
- document.getElementById("closingForecastStatus").textContent=f.complete?"Escenario calculado con tus estimaciones y el presupuesto de gastos.":"Proyección incompleta: ingresa ingresos y costos adicionales, incluso si son cero, y revisa el presupuesto de gastos.";
+ const f=forecastModel(),actual=accountingTotals(STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09'));
+ document.getElementById('forecastPeriod').textContent='Real enero–septiembre + forecast octubre–diciembre = cierre al 31/12/2026';
+ document.getElementById('closingForecastBody').innerHTML=['income','cost','sales','admin','finance','other','expenses','profit'].map(key=>'<tr><th>'+escapeHtml(FORECAST_AREAS[key]||({expenses:'Total Gastos',profit:'Beneficio Total'})[key])+'</th><td>'+money(actual[key])+'</td><td>'+(!f.ready?'No disponible':money(f.total[key]-actual[key]))+'</td><td>'+(!f.ready?'No disponible':money(f.total[key]))+'</td></tr>').join('');
+ document.getElementById('closingForecastStatus').textContent=forecastStatus(f);
+ document.getElementById('scenarioList').innerHTML=f.scenarios.length?f.scenarios.map(s=>'<tr><td>'+escapeHtml(s.code)+'</td><td>'+monthName(s.month)+'</td><td>'+money(s.income)+'</td><td>'+money(s.cost)+'</td><td>'+money(s.income-s.cost)+'</td></tr>').join(''):'<tr><td colspan="5">Aplica un proyecto desde Simular para incorporar sus ingresos y costos pendientes.</td></tr>';
 }
+function renderForecastReports(){renderConsolidated();renderExpensePlan();renderClosingForecast();}
+function resetForecast(){STATE.expensePlan={};STATE.simulatedProjects={};renderForecastReports();renderProjects();toast('Se restauró el Excel y se quitaron los escenarios en pantalla.');}
+function addManualPO(){STATE.manualPOs??={};const p=currentSimProject();if(!p)return;const code=p.proyecto_codigo;STATE.manualPOs[code]??=[];STATE.manualPOs[code].push({name:'OC '+(STATE.manualPOs[code].length+1),amount:0});renderManualPOs();}
+function renderManualPOs(){
+ const p=currentSimProject();if(!p)return;const rows=STATE.manualPOs?.[p.proyecto_codigo]||[];
+ document.getElementById('simPOBody').innerHTML=rows.map((r,i)=>'<tr><td><input data-po-name="'+i+'" aria-label="Referencia OC" value="'+escapeHtml(r.name)+'"></td><td><input type="number" min="0" step="0.01" data-po-amount="'+i+'" aria-label="Saldo pendiente OC" value="'+r.amount+'"></td><td><button onclick="deleteManualPO('+i+')">Quitar</button></td></tr>').join('');
+ document.querySelectorAll('[data-po-name]').forEach(el=>el.onchange=()=>{rows[Number(el.dataset.poName)].name=el.value;});
+ document.querySelectorAll('[data-po-amount]').forEach(el=>el.oninput=()=>{if(el.value===''||!Number.isFinite(Number(el.value))||Number(el.value)<0)return;rows[Number(el.dataset.poAmount)].amount=Number(el.value);recalculateManualPOs();});
+}
+function recalculateManualPOs(){const p=currentSimProject(),rows=STATE.manualPOs?.[p?.proyecto_codigo]||[];if(!rows.length)return;document.getElementById('simCostoPendiente').value=(rows.reduce((s,r)=>s+number(r.amount),0)+number(document.getElementById('simUncommitted').value)).toFixed(2);actualizarSimulacion();}
+function deleteManualPO(i){const p=currentSimProject();STATE.manualPOs[p.proyecto_codigo].splice(i,1);renderManualPOs();if(!STATE.manualPOs[p.proyecto_codigo].length){document.getElementById('simCostoPendiente').value=number(document.getElementById('simUncommitted').value).toFixed(2);actualizarSimulacion();}else recalculateManualPOs();}
 
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
@@ -4110,6 +4166,10 @@ function cargarProyectoSimulador(){
         false
     );
 
+    document.getElementById('simForecastMonth').value=STATE.simulatedProjects[p.proyecto_codigo]?.month||'2026-12-01';
+    document.getElementById('simCostoPendiente').value=STATE.simulatedProjects[p.proyecto_codigo]?.cost_pending??document.getElementById('simCostoPendiente').value;
+    document.getElementById('simUncommitted').value=STATE.simulatedProjects[p.proyecto_codigo]?.uncommitted||0;
+    renderManualPOs();recalculateManualPOs();actualizarSimulacion();
 }
 
 
@@ -4306,22 +4366,13 @@ function actualizarSimulacion(){
         );
 
 
-    const currentIncome =
-        number(
-            p.ingresos_odoo
-        );
+    const currentIncome = projectRealAtCutoff(p.proyecto_codigo).income;
 
 
-    const directCost =
-        number(
-            p.costo_directo_odoo
-        );
+    const directCost = projectRealAtCutoff(p.proyecto_codigo).cost;
 
 
-    const expenses =
-        number(
-            p.gastos_odoo
-        );
+    const expenses=analyticMatrix(STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09'&&accountingBucket(r)!=='cost'&&accountingBucket(r)!=='income'),'ALL','ALL','',p.proyecto_codigo).total.expense;
 
 
     const projectedIncome =
@@ -4381,6 +4432,7 @@ function actualizarSimulacion(){
         reconocimiento:
             recognition,
 
+        cost_pending: extraCost, month: document.getElementById("simForecastMonth").value,
         costo_total:
             totalProjectedCost
 
@@ -4491,6 +4543,10 @@ function actualizarSimulacion(){
 
 
 function aplicarSimulacionPantalla(){
+    const pending=Number(document.getElementById('simCostoPendiente').value),recognition=Number(document.getElementById('simReconocimiento').value);
+    if(document.getElementById('simCostoPendiente').value===''||!Number.isFinite(pending)||pending<0||!Number.isFinite(recognition)||recognition<0||recognition>100){toast('Revisa el costo pendiente y el porcentaje de reconocimiento antes de aplicar.');return;}
+    if(STATE.simulation)STATE.simulation.uncommitted=number(document.getElementById('simUncommitted').value);
+
 
     if(!STATE.simulation)
         return;
@@ -4506,6 +4562,7 @@ function aplicarSimulacionPantalla(){
 
 
     renderProjects();
+    renderForecastReports();
 
 
     toast(
@@ -4523,6 +4580,8 @@ function aplicarSimulacionPantalla(){
 ========================================================= */
 
 boot();
+
+
 
 </script>
 
