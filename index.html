@@ -841,6 +841,16 @@ tbody tr:hover{
 .pyg-matrix .benefit th,.pyg-matrix .benefit td{background:#d8dade;font-weight:800;border-top:2px solid #a9c7ed}
 .report-note{color:var(--muted);font-size:12px;margin:12px 0}
 .sync-report{margin:12px 0;padding:12px;background:#f7f9fc;border-radius:10px}
+
+.pyg-toggle,.pyg-cell{border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:0;text-align:inherit}
+.pyg-cell{text-decoration:underline;text-decoration-color:#b4c2d2;text-underline-offset:3px}
+.pyg-cell:focus-visible,.pyg-toggle:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.pyg-matrix .account-row th,.pyg-matrix .account-row td{background:white;font-weight:400}
+.pyg-matrix .group-row th,.pyg-matrix .group-row td{background:#f1f3f6}
+.pyg-matrix .account-row th{white-space:normal;max-width:340px;min-width:290px}
+.movements-dialog{width:min(1400px,96vw);max-height:92vh;border:1px solid var(--line);border-radius:16px;padding:20px}
+.movements-dialog::backdrop{background:rgba(5,18,34,.5)}
+.movements-dialog .table-wrap{margin-top:14px;max-height:55vh}
 </style>
 </head>
 
@@ -1413,12 +1423,18 @@ tbody tr:hover{
                 <div class="filters-row">
                     <input id="buscarPyg" class="filter-input search" placeholder="Buscar analítica..." oninput="renderPygTable()">
                     <label>Año <select id="pygYear" onchange="renderPygTable()"><option>2026</option></select></label>
-                    <label>Periodo <select id="pygMonth" onchange="renderPygTable()"><option value="ALL">Anual</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label>
+                    <label>Periodo <select id="pygMonth" onchange="renderPygTable()"><option value="ALL">Anual</option><option value="CUSTOM">Rango de fechas</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label>
                     <label>Analíticas <select id="pygScope" onchange="renderPygTable()"><option value="ALL">Todas las analíticas</option><option value="PROJECT">Del proyecto seleccionado</option></select></label>
+                </div>
+                <div class="filters-row">
+                  <label>Desde <input type="date" id="pygFrom" class="filter-input" onchange="usarRangoPyg()"></label>
+                  <label>Hasta <input type="date" id="pygTo" class="filter-input" onchange="usarRangoPyg()"></label>
+                  <button class="btn-secondary" onclick="expandirPyg()">Desplegar cuentas</button>
+                  <button class="btn-secondary" onclick="STATE.pygExpanded.clear();renderPygTable()">Contraer cuentas</button>
                 </div>
                 <div class="table-wrap"><table class="pyg-matrix"><thead id="pygHead"></thead><tbody id="pygBody"></tbody></table></div>
                 <p id="pygNote" class="report-note"></p>
-                <p class="report-note">Importes de Odoo contabilizados. Un movimiento puede pertenecer a analíticas de distintos planes y aparecer en varias columnas. El total de selección cuenta cada distribución una vez; no es la suma de columnas de distintos planes. El filtro de proyecto de la cabecera solo aplica aquí al elegir “Del proyecto seleccionado”.</p>
+                <p class="report-note">Importes de Odoo contabilizados. Las cuentas y los movimientos permiten revisar la ejecución financiera; el avance físico de la obra se consulta por separado en los datos operativos. Un movimiento puede pertenecer a analíticas de distintos planes y aparecer en varias columnas. El total de selección cuenta cada distribución una vez; no es la suma de columnas de distintos planes. El filtro de proyecto de la cabecera solo aplica aquí al elegir “Del proyecto seleccionado”.</p>
             </div>
 
             <!-- COSTS -->
@@ -1527,6 +1543,15 @@ tbody tr:hover{
 
 </div>
 
+
+<dialog id="pygMovimientos" class="movements-dialog" aria-labelledby="movementsTitle">
+ <div class="card-title"><h3 id="movementsTitle">Movimientos contables</h3><button class="close-btn" onclick="document.getElementById('pygMovimientos').close()" aria-label="Cerrar movimientos">✕</button></div>
+ <p id="movementsContext" class="report-note"></p>
+ <label>Buscar movimiento <input id="buscarMovimiento" class="filter-input search" placeholder="Asiento, cuenta, tercero o referencia..." oninput="STATE.pygDrill.page=0;renderMovimientos()"></label>
+ <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Asiento / documento</th><th>Cuenta contable</th><th>Tercero</th><th>Referencia</th><th>Analítica</th><th>Debe de la línea</th><th>Haber de la línea</th><th>% asignado</th><th>Importe analítico</th></tr></thead><tbody id="movementsBody"></tbody></table></div>
+ <div class="card-title"><p id="movementsSummary" class="report-note"></p><div><button id="movementsPrev" class="btn-secondary" onclick="STATE.pygDrill.page--;renderMovimientos()">Anterior</button> <button id="movementsNext" class="btn-secondary" onclick="STATE.pygDrill.page++;renderMovimientos()">Siguiente</button></div></div>
+ <p class="report-note">Debe y haber corresponden a la línea completa de Odoo. El importe analítico incorpora el porcentaje asignado. Los ingresos se presentan con signo positivo; las devoluciones mantienen su signo.</p>
+</dialog>
 
 <!-- SIMULATOR -->
 
@@ -1802,6 +1827,8 @@ const sb =
 
 const STATE = {
 
+    pygExpanded: new Set(),
+    pygDrill: null,
     analytic: [],
     syncResults: [],
     projects: [],
@@ -3212,7 +3239,7 @@ function renderProjects(){
 function analyticMatrix(rows,year,month,search,project){
  const groups=new Map(),total={income:0,expense:0};
  for(const r of rows){
-  if(String(r.fecha).slice(0,4)!==year || (month!=="ALL" && String(r.fecha).slice(5,7)!==month)) continue;
+  if((year!=="ALL" && String(r.fecha).slice(0,4)!==year) || (month!=="ALL" && String(r.fecha).slice(5,7)!==month)) continue;
   const names=(r.analitica_nombre || "Sin analítica").split(" | ");
   const ids=String(r.analitica_clave || "SIN_ANALITICA").split(",");
   const selected=ids.map((id,i)=>({id,name:names[i] || names[0]})).filter(a=>{
@@ -3225,7 +3252,7 @@ function analyticMatrix(rows,year,month,search,project){
   const expense=["expense","expense_direct_cost","expense_depreciation"].includes(r.tipo_cuenta)?balance:0;
   total.income+=income;total.expense+=expense;
   for(const analytic of selected){
-   if(!groups.has(analytic.id)) groups.set(analytic.id,{name:analytic.name,income:0,expense:0});
+   if(!groups.has(analytic.id)) groups.set(analytic.id,{id:analytic.id,name:analytic.name,income:0,expense:0});
    const g=groups.get(analytic.id);g.income+=income;g.expense+=expense;
   }
  }
@@ -3233,22 +3260,121 @@ function analyticMatrix(rows,year,month,search,project){
  cols.total=total;
  return cols;
 }
+function usarRangoPyg(){
+ document.getElementById("pygMonth").value="CUSTOM";
+ renderPygTable();
+}
+function pygPeriod(){
+ const year=document.getElementById("pygYear").value,month=document.getElementById("pygMonth").value;
+ if(month==="CUSTOM"){
+  const from=document.getElementById("pygFrom").value,to=document.getElementById("pygTo").value;
+  return {from,to,invalid:!from||!to||from>to,label:from+" — "+to};
+ }
+ const from=year+"-"+(month==="ALL"?"01":month)+"-01";
+ const last=month==="ALL"?year+"-12-31":year+"-"+month+"-"+String(new Date(Number(year),Number(month),0).getDate()).padStart(2,"0");
+ document.getElementById("pygFrom").value=from;document.getElementById("pygTo").value=last;
+ return {from,to:last,invalid:false,label:month==="ALL"?"Año "+year:monthName(from)+" "+year};
+}
+function pygRows(){
+ const period=pygPeriod();
+ return period.invalid?[]:STATE.analytic.filter(r=>String(r.fecha)>=period.from && String(r.fecha)<=period.to);
+}
+function pygType(r){
+ return ["income","income_other"].includes(r.tipo_cuenta)?"income":["expense","expense_direct_cost","expense_depreciation"].includes(r.tipo_cuenta)?"expense":"other";
+}
+function pygGroup(r){return String(r.cuenta_codigo || "").slice(0,3)||"SIN_GRUPO";}
+function pygAccount(r){return String(r.cuenta_id || r.cuenta_codigo || "SIN_CUENTA");}
+function togglePyg(key){
+ if(STATE.pygExpanded.has(key))STATE.pygExpanded.delete(key);else STATE.pygExpanded.add(key);
+ renderPygTable();
+}
+function expandirPyg(){
+ for(const type of ["income","expense"]){
+  STATE.pygExpanded.add(type);
+  for(const row of pygRows().filter(r=>pygType(r)===type))STATE.pygExpanded.add(type+":"+pygGroup(row));
+ }
+ renderPygTable();
+}
 function renderPygTable(){
- const year=document.getElementById("pygYear").value;
- const month=document.getElementById("pygMonth").value;
+ const period=pygPeriod();let rows=pygRows();
  const search=document.getElementById("buscarPyg").value.trim().toLowerCase();
  const project=document.getElementById("pygScope").value==="ALL"?"ALL":selectedProject();
- const cols=analyticMatrix(STATE.analytic,year,month,search,project);
- const total=cols.total;
- document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
- const cells=[...cols,total];
- document.getElementById("pygBody").innerHTML=[
-  ["Total Ingresos",g=>g.income,""],
-  ["Total Egresos",g=>g.expense,""],
-  ["Beneficio Total",g=>g.income-g.expense,"benefit"]
- ].map(([label,value,style])=>'<tr class="'+style+'"><th scope="row">'+label+'</th>'+cells.map(g=>'<td class="'+(value(g)<0?'money-negative':'')+'">'+money(value(g))+'</td>').join("")+'</tr>').join("");
- document.getElementById("pygPeriod").textContent=month==="ALL"?"Año "+year:monthName(year+"-"+month+"-01")+" "+year;
- document.getElementById("pygNote").textContent=cols.length?cols.length+" analíticas. Desplaza horizontalmente para ver todas las columnas.":"No hay movimientos para estos filtros.";
+ const cols=analyticMatrix(rows,"ALL","ALL",search,project);
+ const selectedIds=new Set(cols.map(c=>c.id));
+ rows=rows.filter(r=>String(r.analitica_clave||"SIN_ANALITICA").split(",").some(id=>selectedIds.has(id)));
+ STATE.pygColumns=cols;STATE.pygReportRows=rows;STATE.pygReportFilters={search,project,period};
+ document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto / cuenta contable</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
+ STATE.pygRowSpecs=[];
+ function row(label,subset,type,style,toggle,level,group=null,account=null){
+  const specIndex=STATE.pygRowSpecs.push({type,group,account})-1;
+  const values=analyticMatrix(subset,"ALL","ALL",search,project);
+  const byId=new Map(values.map(v=>[v.id,v]));
+  const cells=[...cols.map(c=>byId.get(c.id)||{income:0,expense:0}),values.total];
+  const head=toggle?'<button class="pyg-toggle" data-toggle="'+escapeHtml(toggle)+'" aria-expanded="'+STATE.pygExpanded.has(toggle)+'">'+(STATE.pygExpanded.has(toggle)?'▾ ':'▸ ')+escapeHtml(label)+'</button>':escapeHtml(label);
+  return '<tr class="'+style+'"><th scope="row" style="padding-left:'+(10+level*16)+'px">'+head+'</th>'+cells.map((g,i)=>{
+   const value=type==="income"?g.income:type==="expense"?g.expense:g.income-g.expense;
+   return '<td class="'+(value<0?'money-negative':'')+'"><button class="pyg-cell" data-row="'+specIndex+'" data-col="'+i+'" aria-label="Ver movimientos: '+escapeHtml(label)+' / '+escapeHtml(i<cols.length?cols[i].name:"Total de selección")+'">'+money(value)+'</button></td>';
+  }).join("")+'</tr>';
+ }
+ let output="";
+ const labels={income:"Total Ingresos",expense:"Total Egresos"};
+ const groupNames={"401":"INGRESOS DE ACTIVIDADES ORDINARIAS","403":"OTROS INGRESOS","501":"COSTO DE VENTAS Y PRODUCCIÓN","502":"GASTOS"};
+ for(const type of ["income","expense"]){
+  const subset=rows.filter(r=>pygType(r)===type);
+  output+=row(labels[type],subset,type,"summary-row",type,0);
+  if(!STATE.pygExpanded.has(type))continue;
+  for(const group of [...new Set(subset.map(pygGroup))].sort()){
+   const groupRows=subset.filter(r=>pygGroup(r)===group),key=type+":"+group;
+   output+=row(group==="SIN_GRUPO"?"(Sin grupo)":group+" "+(groupNames[group]||"CUENTAS CONTABLES"),groupRows,type,"group-row",key,1,group);
+   if(!STATE.pygExpanded.has(key))continue;
+   const accounts=new Map(groupRows.map(r=>[pygAccount(r),r]));
+   for(const [id,account] of [...accounts].sort((a,b)=>String(a[1].cuenta_codigo).localeCompare(String(b[1].cuenta_codigo)))){
+    output+=row((account.cuenta_codigo||"")+" "+(account.cuenta_nombre||"Sin cuenta"),groupRows.filter(r=>pygAccount(r)===id),type,"account-row",null,2,group,id);
+   }
+  }
+ }
+ output+=row("Beneficio Total",rows,"benefit","benefit",null,0);
+ document.getElementById("pygBody").innerHTML=output;
+ document.getElementById("pygPeriod").textContent=period.label;
+ document.getElementById("pygNote").textContent=period.invalid?"Selecciona un rango válido: Desde debe ser anterior o igual a Hasta.":cols.length?cols.length+" analíticas. Despliega Ingresos/Egresos y sus grupos para ver cuentas; pulsa cualquier importe para ver movimientos.":"No hay movimientos para estos filtros.";
+ document.querySelectorAll("#pygBody [data-toggle]").forEach(el=>el.onclick=()=>togglePyg(el.dataset.toggle));
+ document.querySelectorAll("#pygBody [data-row]").forEach(el=>el.onclick=()=>abrirMovimientos(Number(el.dataset.row),Number(el.dataset.col)));
+}
+function drillRows(spec,analyticId){
+ const ids=new Set(STATE.pygColumns.map(c=>c.id));
+ return STATE.pygReportRows.filter(r=>{
+  if(spec.type!=="benefit" && pygType(r)!==spec.type)return false;
+  if(spec.group!==null && pygGroup(r)!==spec.group)return false;
+  if(spec.account!==null && pygAccount(r)!==spec.account)return false;
+  const rowIds=String(r.analitica_clave||"SIN_ANALITICA").split(",");
+  return analyticId===null?rowIds.some(id=>ids.has(id)):rowIds.includes(analyticId);
+ });
+}
+function abrirMovimientos(rowIndex,colIndex){
+ const spec=STATE.pygRowSpecs[rowIndex],col=STATE.pygColumns[colIndex];
+ if(!spec)return;
+ const rows=drillRows(spec,col?.id??null);
+ const account=spec.account!==null?rows[0]:null;
+ STATE.pygDrill={rows:rows.slice().sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||number(a.odoo_move_line_id)-number(b.odoo_move_line_id)),page:0};
+ document.getElementById("movementsTitle").textContent=account?(account.cuenta_codigo+" "+account.cuenta_nombre):spec.type==="income"?"Movimientos de ingresos":spec.type==="expense"?"Movimientos de egresos":"Movimientos del beneficio";
+ document.getElementById("movementsContext").textContent=(col?.name||"Total de selección")+" · "+STATE.pygReportFilters.period.label+" · "+rows.length+" distribuciones contables";
+ document.getElementById("buscarMovimiento").value="";
+ renderMovimientos();
+ document.getElementById("pygMovimientos").showModal();
+}
+function renderMovimientos(){
+ const drill=STATE.pygDrill;if(!drill)return;
+ const search=document.getElementById("buscarMovimiento").value.trim().toLowerCase();
+ const rows=drill.rows.filter(r=>[r.move_name,r.cuenta_codigo,r.cuenta_nombre,r.partner_nombre,r.ref,r.analitica_nombre].join(" ").toLowerCase().includes(search));
+ const pages=Math.max(1,Math.ceil(rows.length/100));drill.page=Math.max(0,Math.min(drill.page,pages-1));
+ const pageRows=rows.slice(drill.page*100,(drill.page+1)*100);
+ const amount=r=>pygType(r)==="income"?-number(r.saldo_analitico):number(r.saldo_analitico);
+ document.getElementById("movementsBody").innerHTML=pageRows.length?pageRows.map(r=>'<tr>'+[r.fecha,r.move_name,(r.cuenta_codigo||"")+" "+(r.cuenta_nombre||""),r.partner_nombre,r.ref,r.analitica_nombre,money(r.debito),money(r.credito),percent(r.porcentaje_analitico),money(amount(r))].map(v=>'<td>'+escapeHtml(v||"—")+'</td>').join("")+'</tr>').join(""):'<tr><td colspan="10">No hay movimientos para esta selección.</td></tr>';
+ const income=rows.filter(r=>pygType(r)==="income").reduce((sum,r)=>sum-number(r.saldo_analitico),0);
+ const expense=rows.filter(r=>pygType(r)==="expense").reduce((sum,r)=>sum+number(r.saldo_analitico),0);
+ document.getElementById("movementsSummary").textContent=rows.length+" movimientos · Página "+(drill.page+1)+" de "+pages+" · Ingresos "+money(income)+" · Egresos "+money(expense)+" · Beneficio "+money(income-expense);
+ document.getElementById("movementsPrev").disabled=drill.page===0;
+ document.getElementById("movementsNext").disabled=drill.page>=pages-1;
 }
 
 /* SHAREPOINT COSTS */
