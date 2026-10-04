@@ -6,7 +6,7 @@
 
 <title>Cierre Financiero Proyectado 2026</title>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.95.0"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7"></script>
 
 <style>
@@ -831,6 +831,16 @@ tbody tr:hover{
         grid-template-columns:repeat(2,1fr);
     }
 }
+
+.pyg-matrix th,.pyg-matrix td{text-align:right;min-width:170px}
+.pyg-matrix th:first-child{position:sticky;left:0;z-index:4;text-align:left;min-width:210px}
+.pyg-matrix tbody th{top:auto;background:#d8dade;z-index:3}
+.pyg-matrix tbody td{background:#eef0f2}
+.pyg-matrix tbody tr:nth-child(2) td{color:#008b98}
+.pyg-matrix thead th{white-space:normal;max-width:240px}
+.pyg-matrix .benefit th,.pyg-matrix .benefit td{background:#d8dade;font-weight:800;border-top:2px solid #a9c7ed}
+.report-note{color:var(--muted);font-size:12px;margin:12px 0}
+.sync-report{margin:12px 0;padding:12px;background:#f7f9fc;border-radius:10px}
 </style>
 </head>
 
@@ -1398,54 +1408,26 @@ tbody tr:hover{
 
 
             <!-- PYG -->
-
-            <div
-                id="tab-pyg"
-                class="tab-content hidden">
-
+            <div id="tab-pyg" class="tab-content hidden">
+                <div class="card-title"><h3>Estado de pérdidas y ganancias por analítica</h3><small id="pygPeriod"></small></div>
                 <div class="filters-row">
-
-                    <input
-                        id="buscarPyg"
-                        class="filter-input search"
-                        type="text"
-                        placeholder="Buscar analítica..."
-                        oninput="renderPygTable()">
-
+                    <input id="buscarPyg" class="filter-input search" placeholder="Buscar analítica..." oninput="renderPygTable()">
+                    <label>Año <select id="pygYear" onchange="renderPygTable()"><option>2026</option></select></label>
+                    <label>Periodo <select id="pygMonth" onchange="renderPygTable()"><option value="ALL">Anual</option><option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option><option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option><option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label>
+                    <label>Analíticas <select id="pygScope" onchange="renderPygTable()"><option value="ALL">Todas las analíticas</option><option value="PROJECT">Del proyecto seleccionado</option></select></label>
                 </div>
-
-
-                <div class="table-wrap">
-
-                    <table>
-
-                        <thead>
-                            <tr>
-                                <th>Mes</th>
-                                <th>Analítica</th>
-                                <th>Proyecto</th>
-                                <th>Ingresos</th>
-                                <th>Costo directo</th>
-                                <th>Gastos</th>
-                                <th>Resultado</th>
-                                <th>Margen</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="pygBody"></tbody>
-
-                    </table>
-
-                </div>
-
+                <div class="table-wrap"><table class="pyg-matrix"><thead id="pygHead"></thead><tbody id="pygBody"></tbody></table></div>
+                <p id="pygNote" class="report-note"></p>
+                <p class="report-note">Importes de Odoo contabilizados. Un movimiento puede pertenecer a analíticas de distintos planes y aparecer en varias columnas. El total de selección cuenta cada distribución una vez; no es la suma de columnas de distintos planes. El filtro de proyecto de la cabecera solo aplica aquí al elegir “Del proyecto seleccionado”.</p>
             </div>
-
 
             <!-- COSTS -->
 
             <div
                 id="tab-costos"
                 class="tab-content hidden">
+                <div id="costsSummary" class="report-note"></div>
+                <div id="syncReport" class="sync-report hidden" role="status"></div>
 
                 <div class="filters-row">
 
@@ -1820,6 +1802,8 @@ const sb =
 
 const STATE = {
 
+    analytic: [],
+    syncResults: [],
     projects: [],
 
     monthly: [],
@@ -2074,6 +2058,19 @@ async function logout(){
    LOAD
 ========================================================= */
 
+function escapeHtml(value){
+ return String(value ?? "").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+async function readAll(table,order){
+ const rows=[];
+ for(let start=0;;start+=500){
+  let query=sb.from(table).select("*");
+  for(const column of order) query=query.order(column,{ascending:true});
+  const {data,error}=await query.range(start,start+499);
+  if(error) throw error;
+  rows.push(...(data||[])); if(!data || data.length<500) return {data:rows};
+ }
+}
 async function loadData(){
 
     try{
@@ -2084,58 +2081,17 @@ async function loadData(){
             "dot";
 
 
-        const [
-            projectsRes,
-            monthlyRes,
-            costsRes
-        ] =
-        await Promise.all([
-
-            sb
-            .from(
-                "forecast_dashboard_proyecto"
-            )
-            .select("*")
-            .order(
-                "proyecto_codigo",
-                {
-                    ascending:true
-                }
-            ),
-
-            sb
-            .from(
-                "forecast_pyg_mensual_analitica"
-            )
-            .select("*")
-            .order(
-                "mes",
-                {
-                    ascending:true
-                }
-            ),
-
-            sb
-            .from(
-                "forecast_sharepoint_costos_detalle"
-            )
-            .select("*")
-            .order(
-                "proyecto_codigo",
-                {
-                    ascending:true
-                }
-            )
-            .order(
-                "fila_numero",
-                {
-                    ascending:true
-                }
-            )
-
+        const [projectsRes,monthlyRes,costsRes,analyticRes]=await Promise.all([
+          readAll("forecast_dashboard_proyecto",["proyecto_codigo"]),
+          readAll("forecast_pyg_mensual_analitica",["mes","proyecto_codigo"]),
+          readAll("forecast_sharepoint_costos_detalle",["proyecto_codigo","id"]),
+          readAll("forecast_pyg_analitico",["id"])
         ]);
-
-
+        STATE.analytic=analyticRes.data;
+        const years=[...new Set(STATE.analytic.map(r=>String(r.fecha).slice(0,4)))].sort();
+        const yearSelector=document.getElementById("pygYear"), oldYear=yearSelector.value;
+        yearSelector.replaceChildren(...(years.length?years:["2026"]).map(y=>new Option(y,y)));
+        yearSelector.value=years.includes(oldYear)?oldYear:(years.at(-1)||"2026");
         if(projectsRes.error)
             throw projectsRes.error;
 
@@ -2238,7 +2194,7 @@ function populateProjectSelectors(){
     sim.innerHTML = "";
 
 
-    STATE.projects
+    [...new Map([...STATE.projects,...STATE.costs.map(c=>({proyecto_codigo:c.proyecto_codigo,proyecto_nombre:c.proyecto_carpeta}))].map(p=>[p.proyecto_codigo,p])).values()]
     .filter(
         p =>
             p.proyecto_codigo
@@ -2256,8 +2212,8 @@ function populateProjectSelectors(){
 
         main.insertAdjacentHTML(
             "beforeend",
-            `<option value="${p.proyecto_codigo}">
-                ${label}
+            `<option value="${escapeHtml(p.proyecto_codigo)}">
+                ${escapeHtml(label)}
             </option>`
         );
 
@@ -3253,130 +3209,49 @@ function renderProjects(){
    PYG TABLE
 ========================================================= */
 
+function analyticMatrix(rows,year,month,search,project){
+ const groups=new Map(),total={income:0,expense:0};
+ for(const r of rows){
+  if(String(r.fecha).slice(0,4)!==year || (month!=="ALL" && String(r.fecha).slice(5,7)!==month)) continue;
+  const names=(r.analitica_nombre || "Sin analítica").split(" | ");
+  const ids=String(r.analitica_clave || "SIN_ANALITICA").split(",");
+  const selected=ids.map((id,i)=>({id,name:names[i] || names[0]})).filter(a=>{
+   if(search && !a.name.toLowerCase().includes(search)) return false;
+   return project==="ALL" || a.name.match(/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i)?.[1]===project;
+  });
+  if(!selected.length) continue;
+  const balance=number(r.saldo_analitico);
+  const income=["income","income_other"].includes(r.tipo_cuenta)?-balance:0;
+  const expense=["expense","expense_direct_cost","expense_depreciation"].includes(r.tipo_cuenta)?balance:0;
+  total.income+=income;total.expense+=expense;
+  for(const analytic of selected){
+   if(!groups.has(analytic.id)) groups.set(analytic.id,{name:analytic.name,income:0,expense:0});
+   const g=groups.get(analytic.id);g.income+=income;g.expense+=expense;
+  }
+ }
+ const cols=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,"es",{numeric:true}));
+ cols.total=total;
+ return cols;
+}
 function renderPygTable(){
-
-    const search =
-        (
-            document
-            .getElementById(
-                "buscarPyg"
-            )
-            .value
-            || ""
-        )
-        .toLowerCase();
-
-
-    const rows =
-        filteredMonthly()
-        .filter(row => {
-
-            const text =
-                (
-                    (
-                        row.proyecto_codigo
-                        || ""
-                    )
-                    + " "
-                    + (
-                        row.proyecto_nombre
-                        || ""
-                    )
-                )
-                .toLowerCase();
-
-            return !search
-                || text.includes(
-                    search
-                );
-
-        });
-
-
-    const body =
-        document
-        .getElementById(
-            "pygBody"
-        );
-
-
-    body.innerHTML = "";
-
-
-    rows.forEach(row => {
-
-        const income =
-            number(row.ingresos);
-
-        const result =
-            number(row.resultado);
-
-        const margin =
-            income
-            ? result / income
-            : null;
-
-
-        body.insertAdjacentHTML(
-            "beforeend",
-            `
-            <tr>
-
-                <td>
-                    ${monthName(row.mes)}
-                </td>
-
-                <td>
-                    ${row.proyecto_codigo || ""}
-                </td>
-
-                <td>
-                    ${row.proyecto_nombre || ""}
-                </td>
-
-                <td>
-                    ${money(row.ingresos)}
-                </td>
-
-                <td>
-                    ${money(row.costo_directo)}
-                </td>
-
-                <td>
-                    ${money(row.gastos)}
-                </td>
-
-                <td class="
-                    ${
-                        result >= 0
-                        ? "money-positive"
-                        : "money-negative"
-                    }
-                ">
-                    ${money(result)}
-                </td>
-
-                <td>
-                    ${
-                        margin === null
-                        ? "—"
-                        : percent(margin)
-                    }
-                </td>
-
-            </tr>
-            `
-        );
-
-    });
-
+ const year=document.getElementById("pygYear").value;
+ const month=document.getElementById("pygMonth").value;
+ const search=document.getElementById("buscarPyg").value.trim().toLowerCase();
+ const project=document.getElementById("pygScope").value==="ALL"?"ALL":selectedProject();
+ const cols=analyticMatrix(STATE.analytic,year,month,search,project);
+ const total=cols.total;
+ document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
+ const cells=[...cols,total];
+ document.getElementById("pygBody").innerHTML=[
+  ["Total Ingresos",g=>g.income,""],
+  ["Total Egresos",g=>g.expense,""],
+  ["Beneficio Total",g=>g.income-g.expense,"benefit"]
+ ].map(([label,value,style])=>'<tr class="'+style+'"><th scope="row">'+label+'</th>'+cells.map(g=>'<td class="'+(value(g)<0?'money-negative':'')+'">'+money(value(g))+'</td>').join("")+'</tr>').join("");
+ document.getElementById("pygPeriod").textContent=month==="ALL"?"Año "+year:monthName(year+"-"+month+"-01")+" "+year;
+ document.getElementById("pygNote").textContent=cols.length?cols.length+" analíticas. Desplaza horizontalmente para ver todas las columnas.":"No hay movimientos para estos filtros.";
 }
 
-
-/* =========================================================
-   SHAREPOINT COSTS
-========================================================= */
-
+/* SHAREPOINT COSTS */
 function renderCosts(){
 
     const search =
@@ -3436,11 +3311,8 @@ function renderCosts(){
         });
 
 
-    const body =
-        document
-        .getElementById(
-            "costsBody"
-        );
+    document.getElementById("costsSummary").textContent = new Set(rows.map(r=>r.proyecto_codigo)).size + " proyectos con datos · " + rows.length + " ítems";
+    const body = document.getElementById("costsBody");
 
 
     body.innerHTML = "";
@@ -3774,191 +3646,71 @@ function abrirTab(name,button){
    UPDATE ODOO + SHAREPOINT
 ========================================================= */
 
+async function invokeSync(name,body={}){
+ const {data:{session},error}=await sb.auth.getSession();
+ if(error || !session) throw new Error("Inicia sesión para actualizar.");
+ let active=session;
+ if(session.expires_at*1000-Date.now()<60000){
+  const refreshed=await sb.auth.refreshSession();
+  if(refreshed.error || !refreshed.data.session) throw new Error("Tu sesión venció. Vuelve a ingresar.");
+  active=refreshed.data.session;
+ }
+ const result=await sb.functions.invoke(name,{body,headers:{Authorization:"Bearer "+active.access_token}});
+ if(result.error){
+  let message=result.error.message;
+  if(result.error.context instanceof Response){
+   const payload=await result.error.context.clone().json().catch(()=>null);
+   message=payload?.error || ("HTTP "+result.error.context.status);
+  } else if(result.error.name==="FunctionsFetchError"){
+   message="No se pudo conectar. Comprueba tu conexión; si persiste, revisa CORS o el despliegue de la función.";
+  }
+  throw new Error(message);
+ }
+ if(result.data?.ok!==true) throw new Error(result.data?.error || "La función no confirmó la sincronización.");
+ return result.data;
+}
+function renderSyncResults(){
+ const el=document.getElementById("syncReport");
+ el.classList.remove("hidden");
+ el.replaceChildren();
+ for(const item of STATE.syncResults){
+  const line=document.createElement("div");
+  line.textContent=(item.ok?"✓ ":"⚠ ")+item.name+": "+item.message;
+  el.appendChild(line);
+ }
+}
 async function actualizarTodo(){
-
-    const btn =
-        document
-        .getElementById(
-            "btnActualizar"
-        );
-
-
-    btn.disabled = true;
-
-    btn.textContent =
-        "Actualizando Odoo...";
-
-
+ const btn=document.getElementById("btnActualizar");
+ btn.disabled=true; STATE.syncResults=[];
+ try{
+  btn.textContent="Actualizando Odoo...";
+  try{await invokeSync("forecast-sync-odoo");STATE.syncResults.push({name:"Odoo",ok:true,message:"Actualizado"});}
+  catch(error){STATE.syncResults.push({name:"Odoo",ok:false,message:error.message});}
+  btn.textContent="Buscando proyectos SharePoint...";
+  try{
+   const index=await invokeSync("sharepoint-energy-projects");
+   const folders=index.proyectos || [];
+   if(!folders.length) STATE.syncResults.push({name:"SharePoint",ok:false,message:"No se encontraron proyectos en ejecución"});
+   for(let i=0;i<folders.length;i++){
+    const folder=folders[i]; btn.textContent="SharePoint "+(i+1)+" / "+folders.length;
     try{
-
-        /* ODOO */
-
-        const odoo =
-            await sb.functions.invoke(
-                "forecast-sync-odoo",
-                {
-                    body:{}
-                }
-            );
-
-
-        if(odoo.error)
-            throw new Error(
-                "Odoo: "
-                + odoo.error.message
-            );
-
-
-        document
-        .getElementById(
-            "dotOdoo"
-        )
-        .className =
-            "dot ok";
-
-
-        /* SHAREPOINT INDEX */
-
-        btn.textContent =
-            "Buscando proyectos SharePoint...";
-
-
-        const index =
-            await sb.functions.invoke(
-                "sharepoint-energy-projects",
-                {
-                    body:{}
-                }
-            );
-
-
-        if(index.error)
-            throw new Error(
-                "SharePoint: "
-                + index.error.message
-            );
-
-
-        const folders =
-            index.data
-            ?.proyectos
-            || [];
-
-
-        let success = 0;
-        let failed = 0;
-
-
-        /* SHAREPOINT COSTS */
-
-        for(
-            let i = 0;
-            i < folders.length;
-            i++
-        ){
-
-            const folder =
-                folders[i];
-
-
-            btn.textContent =
-                `SharePoint ${
-                    i + 1
-                } / ${
-                    folders.length
-                }`;
-
-
-            try{
-
-                const result =
-                    await sb.functions.invoke(
-                        "sharepoint-sync-costos",
-                        {
-                            body:{
-                                project:
-                                    folder.name
-                            }
-                        }
-                    );
-
-
-                if(result.error)
-                    throw result.error;
-
-
-                if(
-                    result.data
-                    ?.ok
-                )
-                    success++;
-                else
-                    failed++;
-
-
-            }catch(error){
-
-                console.warn(
-                    "Proyecto no sincronizado",
-                    folder.name,
-                    error
-                );
-
-                failed++;
-
-            }
-
-        }
-
-
-        document
-        .getElementById(
-            "dotSharePoint"
-        )
-        .className =
-            success
-            ? "dot ok"
-            : "dot warn";
-
-
-        btn.textContent =
-            "Recalculando...";
-
-
-        await loadData();
-
-
-        toast(
-            `Actualización completa. SharePoint: ${success} proyectos OK, ${failed} con observación.`
-        );
-
-
-    }catch(error){
-
-        console.error(error);
-
-        toast(
-            "Error de actualización: "
-            + error.message
-        );
-
-
-    }finally{
-
-        btn.disabled = false;
-
-        btn.textContent =
-            "↻ Actualizar datos";
-
-    }
-
+     const out=await invokeSync("sharepoint-sync-costos",{project:folder.name});
+     STATE.syncResults.push({name:folder.name,ok:true,message:out.filas_limpias+" ítems de COSTOS"});
+    }catch(error){STATE.syncResults.push({name:folder.name,ok:false,message:error.message});}
+    renderSyncResults();
+   }
+  }catch(error){STATE.syncResults.push({name:"SharePoint",ok:false,message:error.message});}
+  renderSyncResults();
+  btn.textContent="Cargando resultados...";
+  await loadData();
+  const failures=STATE.syncResults.filter(r=>!r.ok).length;
+  document.getElementById("dotOdoo").className=STATE.syncResults.find(r=>r.name==="Odoo")?.ok?"dot ok":"dot warn";
+  document.getElementById("dotSharePoint").className=STATE.syncResults.some(r=>r.name!=="Odoo"&&!r.ok)?"dot warn":"dot ok";
+  toast(failures?"Actualización con "+failures+" observaciones. Consulta Costos SharePoint.":"Actualización completa.");
+ }finally{btn.disabled=false;btn.textContent="↻ Actualizar datos";}
 }
 
-
-/* =========================================================
-   SIMULATOR
-========================================================= */
-
+/* SIMULATOR */
 function abrirSimulador(){
 
     const selected =
