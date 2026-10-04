@@ -855,6 +855,9 @@ tbody tr:hover{
 .login-brand{margin-bottom:20px}
 .sidebar .brand{background:white;border-radius:12px;padding:12px;margin-bottom:14px}
 .sidebar .brand-sub{display:none}
+.tabs{overflow-x:auto}.tab-btn{flex-shrink:0}
+#consolidatedBody td,#closingForecastBody td{text-align:right}
+#expensePlanBody input[type=number]{width:130px}
 </style>
 </head>
 
@@ -892,7 +895,7 @@ tbody tr:hover{
             ENERGYCONTROL
         </div>
 
-        <div class="menu">
+        <div class="menu"><button class="menu-btn" onclick="abrirTab('consolidado',this)">P&G consolidado</button><button class="menu-btn" onclick="abrirTab('fijos',this)">Gastos fijos</button><button class="menu-btn" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
             <button class="menu-btn active" onclick="abrirTab('proyectos',this)">
                 ▣ Resumen
             </button>
@@ -1308,7 +1311,9 @@ tbody tr:hover{
 
         <section class="card tabs-card">
 
-            <div class="tabs">
+            <div class="tabs"><button class="tab-btn" data-tab="consolidado" onclick="abrirTab('consolidado',this)">P&G consolidado</button>
+<button class="tab-btn" data-tab="fijos" onclick="abrirTab('fijos',this)">Gastos fijos</button>
+<button class="tab-btn" data-tab="proyeccion" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
 
                 <button
                     class="tab-btn active"
@@ -1351,6 +1356,30 @@ tbody tr:hover{
 
             </div>
 
+
+<div id="tab-consolidado" class="tab-content hidden">
+ <h3>P&G consolidado Energycontrol</h3>
+ <p class="report-note" id="consolidatedPeriod"></p>
+ <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real Odoo</th></tr></thead><tbody id="consolidatedBody"></tbody></table></div>
+ <p class="report-note">Incluye todas las analíticas y movimientos sin analítica. El filtro de mes de la cabecera aplica a este reporte; el filtro de proyecto no restringe el consolidado. Las cuentas 501 incluyen las depreciaciones de producción. Los gastos 502 se incluyen una sola vez.</p>
+</div>
+<div id="tab-fijos" class="tab-content hidden">
+ <h3>Gastos fijos y presupuesto de gastos</h3>
+ <p class="report-note">Todas las cuentas 502 de ventas, administración y finanzas. Marca cuáles son fijas y ajusta su presupuesto mensual para los meses restantes. La propuesta inicial es el promedio de los tres meses hasta el corte, incluyendo meses sin gasto; no significa que todas sean fijas.</p>
+ <label>Corte de proyección <input id="forecastCutoff" class="filter-input" type="month" value="2026-09" min="2026-01" max="2026-12" onchange="renderExpensePlan();renderClosingForecast()"></label>
+ <div class="table-wrap"><table><thead><tr><th>Fijo</th><th>Cuenta</th><th>Área</th><th>Real acumulado al corte</th><th>Promedio últimos 3 meses</th><th>Presupuesto por mes restante</th><th>Gasto restante proyectado</th></tr></thead><tbody id="expensePlanBody"></tbody></table></div>
+ <p id="expensePlanSummary" class="report-note"></p>
+ <p class="report-note">Los ajustes son un escenario en pantalla. No cambian la contabilidad. “Restante” comprende los meses completos posteriores al corte hasta diciembre de 2026.</p>
+</div>
+<div id="tab-proyeccion" class="tab-content hidden">
+ <h3>Proyección de cierre 2026</h3>
+ <p id="forecastPeriod" class="report-note"></p>
+ <div class="filters-row"><label>Ingreso adicional a reconocer hasta diciembre <input id="forecastRevenue" type="number" min="0" step="0.01" class="filter-input" placeholder="Ingresar estimación" oninput="renderClosingForecast()"></label>
+ <label>Costo 501 adicional hasta diciembre <input id="forecastCost" type="number" min="0" step="0.01" class="filter-input" placeholder="Ingresar estimación" oninput="renderClosingForecast()"></label></div>
+ <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real acumulado al corte</th><th>Pendiente proyectado</th><th>Estimado al 31/12/2026</th></tr></thead><tbody id="closingForecastBody"></tbody></table></div>
+ <p id="closingForecastStatus" class="report-note"></p>
+ <p class="report-note">El ingreso pendiente es ingreso a reconocer contablemente, no saldo por cobrar. El costo pendiente debe incluir compromisos aún no reconocidos y faltantes sin OC, evitando duplicados. La conexión de órdenes de compra aún no está implementada: estas dos estimaciones se ingresan manualmente. Ajusta el resto de gastos en la pestaña Gastos fijos.</p>
+</div>
 
             <!-- PROJECTS -->
 
@@ -1829,6 +1858,7 @@ const sb =
 
 const STATE = {
 
+    expensePlan: {},
     pygExpanded: new Set(),
     pygDrill: null,
     analytic: [],
@@ -2353,6 +2383,9 @@ function renderAll(){
     renderCosts();
 
     renderQuality();
+    renderConsolidated();
+    renderExpensePlan();
+    renderClosingForecast();
 
 }
 
@@ -3297,6 +3330,73 @@ function expandirPyg(){
  }
  renderPygTable();
 }
+function accountingBucket(r){
+ const code=String(r.cuenta_codigo||"");
+ if(["income","income_other"].includes(r.tipo_cuenta))return "income";
+ if(code.startsWith("501"))return "cost";
+ if(code.startsWith("50201"))return "sales";
+ if(code.startsWith("50202"))return "admin";
+ if(code.startsWith("50203"))return "finance";
+ if(code.startsWith("502"))return "other";
+ return r.tipo_cuenta==="expense_direct_cost"?"cost":"other";
+}
+function accountingTotals(rows){
+ const totals={income:0,cost:0,sales:0,admin:0,finance:0,other:0};
+ for(const r of rows){const key=accountingBucket(r);totals[key]+=(key==="income"?-1:1)*number(r.saldo_analitico);}
+ totals.expenses=totals.sales+totals.admin+totals.finance+totals.other;
+ totals.gross=totals.income-totals.cost;totals.profit=totals.gross-totals.expenses;
+ return totals;
+}
+function consolidatedRows(){
+ const month=selectedMonth();
+ return STATE.analytic.filter(r=>String(r.fecha).startsWith("2026-")&&(month==="ALL"||String(r.fecha).slice(5,7)===month));
+}
+function renderConsolidated(){
+ const t=accountingTotals(consolidatedRows());
+ document.getElementById("consolidatedPeriod").textContent=selectedMonth()==="ALL"?"Acumulado 2026 · Toda Energycontrol":monthName("2026-"+selectedMonth()+"-01")+" 2026 · Toda Energycontrol";
+ const rows=[["Total Ingresos",t.income],["501 Costo de ingresos / producción",t.cost],["Ganancia Bruta",t.gross],["Margen Bruto",t.income?percent(t.gross/t.income):"—"],["50201 Gastos de venta",t.sales],["50202 Gastos administrativos",t.admin],["50203 Gastos financieros",t.finance],["Otros gastos",t.other],["Total Gastos",t.expenses],["Total Egresos (costos + gastos)",t.cost+t.expenses],["Beneficio Total",t.profit],["Margen Neto",t.income?percent(t.profit/t.income):"—"]];
+ document.getElementById("consolidatedBody").innerHTML=rows.map(([label,value])=>'<tr><th scope="row">'+label+'</th><td>'+ (typeof value==="string"?value:money(value))+'</td></tr>').join("");
+}
+function expenseBudget(){
+ const cutoff=document.getElementById("forecastCutoff").value;
+ if(!/^2026-(0[1-9]|1[0-2])$/.test(cutoff))return {accounts:[],remaining:0,cutoff,invalid:true};
+ const month=Number(cutoff.slice(5,7)),start=Math.max(1,month-2),months=month-start+1;
+ const accounts=new Map();
+ for(const r of STATE.analytic){
+  const date=String(r.fecha);
+  if(!date.startsWith("2026-")||date.slice(0,7)>cutoff||String(r.cuenta_codigo||"").startsWith("501")||accountingBucket(r)==="income"||accountingBucket(r)==="cost")continue;
+  const code=String(r.cuenta_codigo||"SIN_CUENTA");
+  if(!accounts.has(code))accounts.set(code,{code,name:r.cuenta_nombre||"Sin cuenta",area:accountingBucket(r),actual:0,recent:0});
+  const a=accounts.get(code);a.actual+=number(r.saldo_analitico);
+  if(Number(date.slice(5,7))>=start)a.recent+=number(r.saldo_analitico);
+ }
+ return {accounts:[...accounts.values()].sort((a,b)=>a.code.localeCompare(b.code)).map(a=>({...a,average:a.recent/months,monthly:STATE.expensePlan[a.code]?.monthly??a.recent/months,fixed:STATE.expensePlan[a.code]?.fixed||false})),remaining:12-month,cutoff,invalid:false};
+}
+function renderExpensePlan(){
+ const plan=expenseBudget(),areas={sales:"Ventas",admin:"Administración",finance:"Finanzas",other:"Otros"};
+ document.getElementById("expensePlanBody").innerHTML=plan.accounts.map(a=>'<tr><td><input type="checkbox" aria-label="Gasto fijo '+escapeHtml(a.code)+'" data-fixed="'+escapeHtml(a.code)+'" '+(a.fixed?'checked':'')+'></td><td>'+escapeHtml(a.code+" "+a.name)+'</td><td>'+areas[a.area]+'</td><td>'+money(a.actual)+'</td><td>'+money(a.average)+'</td><td><input type="number" step="0.01" aria-label="Presupuesto mensual '+escapeHtml(a.code)+'" data-budget="'+escapeHtml(a.code)+'" value="'+a.monthly.toFixed(2)+'"></td><td>'+money(a.monthly*plan.remaining)+'</td></tr>').join("");
+ document.querySelectorAll("[data-budget]").forEach(el=>el.onchange=()=>{const code=el.dataset.budget;STATE.expensePlan[code]={...STATE.expensePlan[code],monthly:number(el.value)};renderExpensePlan();renderClosingForecast();});
+ document.querySelectorAll("[data-fixed]").forEach(el=>el.onchange=()=>{const code=el.dataset.fixed;STATE.expensePlan[code]={...STATE.expensePlan[code],fixed:el.checked};renderExpensePlan();renderClosingForecast();});
+ document.getElementById("expensePlanSummary").textContent=plan.invalid?"Selecciona un corte de 2026.":plan.accounts.length+" cuentas · "+plan.remaining+" meses restantes · Gastos fijos pendientes "+money(plan.accounts.filter(a=>a.fixed).reduce((s,a)=>s+a.monthly*plan.remaining,0))+" · Otros gastos pendientes "+money(plan.accounts.filter(a=>!a.fixed).reduce((s,a)=>s+a.monthly*plan.remaining,0));
+}
+function closingForecast(){
+ const plan=expenseBudget(),actual=accountingTotals(STATE.analytic.filter(r=>String(r.fecha).startsWith("2026-")&&String(r.fecha).slice(0,7)<=plan.cutoff));
+ const revenueInput=document.getElementById("forecastRevenue").value,costInput=document.getElementById("forecastCost").value;
+ const complete=!plan.invalid && revenueInput!=="" && costInput!=="" && Number.isFinite(Number(revenueInput)) && Number.isFinite(Number(costInput)) && Number(revenueInput)>=0 && Number(costInput)>=0;
+ const pending={income:complete?Number(revenueInput):null,cost:complete?Number(costInput):null,sales:0,admin:0,finance:0,other:0};
+ for(const a of plan.accounts)pending[a.area]+=a.monthly*plan.remaining;
+ pending.expenses=pending.sales+pending.admin+pending.finance+pending.other;
+ pending.profit=complete?pending.income-pending.cost-pending.expenses:null;
+ return {plan,actual,pending,complete};
+}
+function renderClosingForecast(){
+ const f=closingForecast();
+ document.getElementById("forecastPeriod").textContent="Real acumulado enero a "+f.plan.cutoff+" · Proyección de los "+f.plan.remaining+" meses restantes · Toda Energycontrol";
+ const rows=[["Ingresos","income"],["Costos 501","cost"],["Gastos de venta","sales"],["Gastos administrativos","admin"],["Gastos financieros","finance"],["Otros gastos","other"],["Total Gastos","expenses"],["Beneficio Total","profit"]];
+ document.getElementById("closingForecastBody").innerHTML=rows.map(([label,key])=>'<tr><th scope="row">'+label+'</th><td>'+money(f.actual[key])+'</td><td>'+(f.pending[key]===null?'Pendiente de estimar':money(f.pending[key]))+'</td><td>'+(f.pending[key]===null?'—':money(f.actual[key]+f.pending[key]))+'</td></tr>').join("");
+ document.getElementById("closingForecastStatus").textContent=f.complete?"Escenario calculado con tus estimaciones y el presupuesto de gastos.":"Proyección incompleta: ingresa ingresos y costos adicionales, incluso si son cero, y revisa el presupuesto de gastos.";
+}
+
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  const search=document.getElementById("buscarPyg").value.trim().toLowerCase();
