@@ -1,0 +1,4528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Cierre Financiero Proyectado 2026</title>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7"></script>
+
+<style>
+:root{
+    --navy:#08284a;
+    --navy2:#0d3764;
+    --blue:#146fe8;
+    --blueSoft:#eaf3ff;
+    --bg:#f4f7fb;
+    --card:#ffffff;
+    --text:#172033;
+    --muted:#6d7a8e;
+    --line:#e3e9f2;
+    --green:#0ba66d;
+    --greenSoft:#e7f8f1;
+    --orange:#f58a33;
+    --orangeSoft:#fff1e4;
+    --red:#e64d5e;
+    --redSoft:#fdecee;
+    --purple:#7757e8;
+    --shadow:0 8px 30px rgba(15,35,70,.07);
+}
+
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+}
+
+button,select,input{
+    font:inherit;
+}
+
+button{
+    cursor:pointer;
+}
+
+.hidden{
+    display:none !important;
+}
+
+/* LOGIN */
+
+.login-overlay{
+    position:fixed;
+    inset:0;
+    background:
+        radial-gradient(circle at 20% 20%,#123f71 0,#071d36 60%);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:9999;
+}
+
+.login-card{
+    width:min(420px,92vw);
+    background:#fff;
+    padding:34px;
+    border-radius:24px;
+    box-shadow:0 30px 80px rgba(0,0,0,.25);
+}
+
+.login-brand{
+    font-size:24px;
+    font-weight:800;
+    color:var(--navy);
+    margin-bottom:4px;
+}
+
+.login-sub{
+    color:var(--muted);
+    margin-bottom:26px;
+}
+
+.login-card label{
+    display:block;
+    margin:14px 0 6px;
+    font-size:13px;
+    font-weight:700;
+}
+
+.login-card input{
+    width:100%;
+    border:1px solid var(--line);
+    padding:12px 14px;
+    border-radius:12px;
+    outline:none;
+}
+
+.login-card input:focus{
+    border-color:var(--blue);
+}
+
+.login-btn{
+    width:100%;
+    margin-top:20px;
+    border:0;
+    background:var(--blue);
+    color:#fff;
+    border-radius:12px;
+    padding:13px;
+    font-weight:700;
+}
+
+.login-error{
+    margin-top:12px;
+    color:var(--red);
+    font-size:13px;
+}
+
+/* APP */
+
+.app{
+    display:grid;
+    grid-template-columns:224px 1fr;
+    min-height:100vh;
+}
+
+.sidebar{
+    background:linear-gradient(180deg,#08294b,#061f39);
+    color:#fff;
+    padding:24px 16px;
+    display:flex;
+    flex-direction:column;
+    position:sticky;
+    top:0;
+    height:100vh;
+}
+
+.brand{
+    font-size:24px;
+    font-weight:800;
+    margin-bottom:3px;
+}
+
+.brand span{
+    font-weight:400;
+}
+
+.brand-sub{
+    color:#68bfff;
+    font-size:13px;
+    margin-bottom:30px;
+}
+
+.menu{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+}
+
+.menu-btn{
+    border:0;
+    background:transparent;
+    color:#e9f1fb;
+    text-align:left;
+    padding:12px 13px;
+    border-radius:10px;
+    font-size:14px;
+}
+
+.menu-btn.active,
+.menu-btn:hover{
+    background:#146fe8;
+    color:#fff;
+}
+
+.sidebar-bottom{
+    margin-top:auto;
+    border-top:1px solid rgba(255,255,255,.18);
+    padding-top:18px;
+}
+
+.sync-time{
+    color:#b7c7d8;
+    font-size:12px;
+    margin-bottom:14px;
+}
+
+.update-btn{
+    width:100%;
+    padding:12px;
+    border:1px solid rgba(255,255,255,.25);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    border-radius:12px;
+    font-weight:700;
+}
+
+.update-btn:hover{
+    background:rgba(255,255,255,.12);
+}
+
+.connection-list{
+    margin-top:17px;
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+    font-size:13px;
+}
+
+.connection{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+
+.dot{
+    width:9px;
+    height:9px;
+    border-radius:50%;
+    background:#9daabc;
+}
+
+.dot.ok{
+    background:#16c784;
+}
+
+.dot.warn{
+    background:#ff9f43;
+}
+
+.logout{
+    margin-top:18px;
+    border:0;
+    background:transparent;
+    color:#b9c9d8;
+    text-align:left;
+    padding:0;
+    font-size:12px;
+}
+
+/* MAIN */
+
+.main{
+    padding:28px;
+    min-width:0;
+}
+
+.topbar{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:20px;
+    margin-bottom:20px;
+}
+
+.title h1{
+    margin:0;
+    font-size:30px;
+    letter-spacing:-.7px;
+}
+
+.title p{
+    color:var(--muted);
+    margin:6px 0 0;
+}
+
+.top-controls{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.control{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+}
+
+.control label{
+    font-size:11px;
+    color:var(--muted);
+    font-weight:700;
+}
+
+select,
+.filter-input{
+    border:1px solid var(--line);
+    border-radius:11px;
+    padding:10px 12px;
+    background:#fff;
+    outline:none;
+}
+
+.sim-btn{
+    border:0;
+    background:linear-gradient(135deg,#6c4cf0,#8d66ff);
+    color:#fff;
+    padding:11px 17px;
+    border-radius:11px;
+    font-weight:800;
+    box-shadow:0 6px 18px rgba(119,87,232,.25);
+}
+
+/* KPI */
+
+.kpis{
+    display:grid;
+    grid-template-columns:repeat(6,minmax(145px,1fr));
+    gap:13px;
+    margin-bottom:18px;
+}
+
+.kpi{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px;
+    box-shadow:var(--shadow);
+}
+
+.kpi-head{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    margin-bottom:12px;
+}
+
+.kpi-icon{
+    width:35px;
+    height:35px;
+    display:grid;
+    place-items:center;
+    border-radius:10px;
+    background:var(--blueSoft);
+    color:var(--blue);
+}
+
+.kpi-label{
+    color:var(--muted);
+    font-size:12px;
+    line-height:1.25;
+}
+
+.kpi-value{
+    font-size:23px;
+    font-weight:800;
+}
+
+.kpi-note{
+    color:var(--muted);
+    font-size:11px;
+    margin-top:5px;
+}
+
+/* GRID */
+
+.dashboard-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.65fr) minmax(330px,.85fr);
+    gap:16px;
+    margin-bottom:18px;
+}
+
+.card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:18px;
+    box-shadow:var(--shadow);
+}
+
+.card-title{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:15px;
+}
+
+.card-title h3{
+    margin:0;
+    font-size:17px;
+}
+
+.card-title small{
+    color:var(--muted);
+}
+
+.chart-wrap{
+    height:310px;
+}
+
+/* RECOGNITION */
+
+.recognition{
+    display:grid;
+    grid-template-columns:145px 1fr;
+    align-items:center;
+    gap:18px;
+}
+
+.progress-ring{
+    width:135px;
+    height:135px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    position:relative;
+    background:
+      conic-gradient(var(--green) 0deg,var(--green) var(--progress,0deg),#edf1f5 var(--progress,0deg));
+}
+
+.progress-ring::after{
+    content:"";
+    width:96px;
+    height:96px;
+    border-radius:50%;
+    background:#fff;
+    position:absolute;
+}
+
+.progress-ring-content{
+    position:relative;
+    z-index:2;
+    text-align:center;
+}
+
+.progress-ring-content strong{
+    display:block;
+    font-size:21px;
+}
+
+.progress-ring-content span{
+    font-size:11px;
+    color:var(--muted);
+}
+
+.rec-list{
+    display:flex;
+    flex-direction:column;
+}
+
+.rec-row{
+    display:flex;
+    justify-content:space-between;
+    gap:15px;
+    padding:11px 0;
+    border-bottom:1px solid var(--line);
+}
+
+.rec-row:last-child{
+    border-bottom:0;
+}
+
+.rec-label{
+    color:var(--muted);
+    font-size:12px;
+}
+
+.rec-value{
+    font-weight:800;
+    text-align:right;
+}
+
+.warning-value{
+    color:var(--orange);
+}
+
+/* TABS */
+
+.tabs-card{
+    padding:0;
+    overflow:hidden;
+}
+
+.tabs{
+    display:flex;
+    gap:2px;
+    background:#eef3f9;
+    padding:0 12px;
+}
+
+.tab-btn{
+    border:0;
+    background:transparent;
+    padding:14px 18px;
+    color:#64748b;
+    font-weight:700;
+    border-bottom:3px solid transparent;
+}
+
+.tab-btn.active{
+    color:var(--blue);
+    background:#fff;
+    border-bottom-color:var(--blue);
+}
+
+.tab-content{
+    padding:16px;
+}
+
+.filters-row{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+}
+
+.filters-row input,
+.filters-row select{
+    min-width:165px;
+}
+
+.search{
+    flex:1;
+    min-width:240px !important;
+}
+
+.table-wrap{
+    overflow:auto;
+    max-height:480px;
+    border:1px solid var(--line);
+    border-radius:13px;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+    background:#fff;
+}
+
+th{
+    position:sticky;
+    top:0;
+    background:#f7f9fc;
+    color:#4f6075;
+    text-align:left;
+    padding:11px 10px;
+    border-bottom:1px solid var(--line);
+    z-index:2;
+    white-space:nowrap;
+}
+
+td{
+    padding:11px 10px;
+    border-bottom:1px solid #edf1f5;
+    white-space:nowrap;
+    vertical-align:middle;
+}
+
+tbody tr:hover{
+    background:#f8fbff;
+}
+
+.project-name{
+    font-weight:700;
+    color:#183c68;
+}
+
+.money-positive{
+    color:var(--green);
+    font-weight:700;
+}
+
+.money-negative{
+    color:var(--red);
+    font-weight:700;
+}
+
+.money-warning{
+    color:var(--orange);
+    font-weight:700;
+}
+
+.badge{
+    display:inline-flex;
+    align-items:center;
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:11px;
+    font-weight:700;
+}
+
+.badge.ok{
+    background:var(--greenSoft);
+    color:#087b50;
+}
+
+.badge.warn{
+    background:#fff0cf;
+    color:#a76400;
+}
+
+.badge.danger{
+    background:var(--redSoft);
+    color:#c83d4e;
+}
+
+.mini-progress{
+    width:72px;
+    height:6px;
+    background:#e8edf3;
+    border-radius:999px;
+    overflow:hidden;
+    margin-top:4px;
+}
+
+.mini-progress div{
+    height:100%;
+    background:var(--green);
+}
+
+/* QUALITY */
+
+.quality-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin-bottom:15px;
+}
+
+.quality-box{
+    border:1px solid var(--line);
+    border-radius:13px;
+    padding:14px;
+    background:#fafcff;
+}
+
+.quality-box span{
+    color:var(--muted);
+    font-size:11px;
+}
+
+.quality-box strong{
+    display:block;
+    font-size:22px;
+    margin-top:4px;
+}
+
+/* SIMULATOR */
+
+.drawer-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(5,18,34,.45);
+    z-index:900;
+}
+
+.sim-drawer{
+    position:fixed;
+    top:0;
+    right:0;
+    width:min(470px,96vw);
+    height:100vh;
+    background:#fff;
+    z-index:901;
+    box-shadow:-20px 0 50px rgba(0,0,0,.15);
+    padding:25px;
+    overflow:auto;
+}
+
+.sim-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    margin-bottom:22px;
+}
+
+.sim-head h2{
+    margin:2px 0 0;
+}
+
+.close-btn{
+    border:0;
+    background:#eef2f7;
+    width:34px;
+    height:34px;
+    border-radius:10px;
+}
+
+.scenarios{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:7px;
+    margin:14px 0 22px;
+}
+
+.scenario-btn{
+    border:1px solid var(--line);
+    background:#fff;
+    padding:10px 8px;
+    border-radius:10px;
+    font-size:12px;
+}
+
+.scenario-btn.active{
+    background:var(--purple);
+    color:#fff;
+    border-color:var(--purple);
+}
+
+.sim-field{
+    margin-bottom:16px;
+}
+
+.sim-field label{
+    display:flex;
+    justify-content:space-between;
+    margin-bottom:7px;
+    color:#56657a;
+    font-size:12px;
+    font-weight:700;
+}
+
+.sim-field input,
+.sim-field select{
+    width:100%;
+}
+
+.sim-summary{
+    margin-top:23px;
+    border-radius:16px;
+    background:#f5f4ff;
+    padding:15px;
+}
+
+.sim-row{
+    display:flex;
+    justify-content:space-between;
+    padding:9px 0;
+    border-bottom:1px solid #e4e0ff;
+}
+
+.sim-row:last-child{
+    border-bottom:0;
+}
+
+.sim-row span{
+    color:#66627d;
+    font-size:12px;
+}
+
+.sim-row strong{
+    font-size:14px;
+}
+
+.sim-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:18px;
+}
+
+.btn-secondary,
+.btn-primary{
+    border:0;
+    border-radius:11px;
+    padding:12px;
+    font-weight:800;
+}
+
+.btn-secondary{
+    background:#eef2f7;
+}
+
+.btn-primary{
+    background:var(--purple);
+    color:#fff;
+}
+
+/* TOAST */
+
+.toast{
+    position:fixed;
+    right:22px;
+    bottom:22px;
+    background:#10283f;
+    color:#fff;
+    padding:12px 16px;
+    border-radius:11px;
+    box-shadow:var(--shadow);
+    z-index:10000;
+    max-width:420px;
+}
+
+@media(max-width:1200px){
+    .kpis{
+        grid-template-columns:repeat(3,1fr);
+    }
+
+    .dashboard-grid{
+        grid-template-columns:1fr;
+    }
+}
+
+@media(max-width:800px){
+    .app{
+        grid-template-columns:1fr;
+    }
+
+    .sidebar{
+        display:none;
+    }
+
+    .main{
+        padding:15px;
+    }
+
+    .kpis{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .topbar{
+        flex-direction:column;
+    }
+
+    .recognition{
+        grid-template-columns:1fr;
+        justify-items:center;
+    }
+
+    .quality-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+        <div class="login-brand">semgroup</div>
+        <div class="login-sub">Cierre Financiero Proyectado 2026</div>
+
+        <label>Correo</label>
+        <input id="loginEmail" type="email" placeholder="usuario@energycontrolsa.com">
+
+        <label>Contraseña</label>
+        <input id="loginPassword" type="password">
+
+        <button class="login-btn" onclick="login()">Ingresar</button>
+
+        <div id="loginError" class="login-error"></div>
+    </div>
+</div>
+
+
+<div id="app" class="app hidden">
+
+    <!-- SIDEBAR -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            sem<span>group</span>
+        </div>
+
+        <div class="brand-sub">
+            ENERGYCONTROL
+        </div>
+
+        <div class="menu">
+            <button class="menu-btn active" onclick="abrirTab('proyectos',this)">
+                ▣ Resumen
+            </button>
+
+            <button class="menu-btn" onclick="abrirTab('proyectos',this)">
+                ◈ Proyectos
+            </button>
+
+            <button class="menu-btn" onclick="abrirTab('pyg',this)">
+                ▥ P&G por analítica
+            </button>
+
+            <button class="menu-btn" onclick="abrirTab('costos',this)">
+                ▤ Costos SharePoint
+            </button>
+
+            <button class="menu-btn" onclick="abrirTab('calidad',this)">
+                ◉ Calidad de datos
+            </button>
+        </div>
+
+
+        <div class="sidebar-bottom">
+
+            <div class="sync-time">
+                Última actualización<br>
+                <strong id="ultimaActualizacion">—</strong>
+            </div>
+
+            <button
+                id="btnActualizar"
+                class="update-btn"
+                onclick="actualizarTodo()">
+                ↻ Actualizar datos
+            </button>
+
+            <div class="connection-list">
+
+                <div class="connection">
+                    <span id="dotOdoo" class="dot"></span>
+                    Odoo
+                </div>
+
+                <div class="connection">
+                    <span id="dotSharePoint" class="dot"></span>
+                    SharePoint
+                </div>
+
+                <div class="connection">
+                    <span id="dotSupabase" class="dot"></span>
+                    Supabase
+                </div>
+
+            </div>
+
+            <button class="logout" onclick="logout()">
+                Cerrar sesión
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <!-- MAIN -->
+
+    <main class="main">
+
+        <div class="topbar">
+
+            <div class="title">
+                <h1>Cierre Financiero Proyectado 2026</h1>
+                <p>
+                    Visión integral de ingresos, costos, gastos,
+                    proyectos y reconocimiento por avance.
+                </p>
+            </div>
+
+
+            <div class="top-controls">
+
+                <div class="control">
+                    <label>Año</label>
+                    <select>
+                        <option>2026</option>
+                    </select>
+                </div>
+
+
+                <div class="control">
+                    <label>Mes</label>
+
+                    <select
+                        id="filtroMes"
+                        onchange="renderAll()">
+
+                        <option value="ALL">Acumulado</option>
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+
+                    </select>
+                </div>
+
+
+                <div class="control">
+                    <label>Proyecto</label>
+
+                    <select
+                        id="filtroProyecto"
+                        onchange="renderAll()">
+
+                        <option value="ALL">
+                            Todos
+                        </option>
+
+                    </select>
+                </div>
+
+
+                <div class="control">
+                    <label>Vista</label>
+
+                    <select id="filtroVista">
+                        <option value="COMPARE">
+                            Real vs Forecast
+                        </option>
+
+                        <option value="REAL">
+                            Real contable
+                        </option>
+                    </select>
+                </div>
+
+
+                <button
+                    class="sim-btn"
+                    onclick="abrirSimulador()">
+
+                    ▶ Simular
+
+                </button>
+
+            </div>
+
+        </div>
+
+
+        <!-- KPIs -->
+
+        <section class="kpis">
+
+            <div class="kpi">
+                <div class="kpi-head">
+                    <div class="kpi-icon">$</div>
+                    <div class="kpi-label">
+                        Ingresos reconocidos<br>Odoo
+                    </div>
+                </div>
+
+                <div
+                    id="kpiIngresos"
+                    class="kpi-value">
+                    $0
+                </div>
+
+                <div class="kpi-note">
+                    Contabilidad publicada
+                </div>
+            </div>
+
+
+            <div class="kpi">
+                <div class="kpi-head">
+                    <div class="kpi-icon">↗</div>
+                    <div class="kpi-label">
+                        Ingreso según avance<br>Forecast
+                    </div>
+                </div>
+
+                <div
+                    id="kpiIngresoTeorico"
+                    class="kpi-value">
+                    $0
+                </div>
+
+                <div class="kpi-note">
+                    Referencia gerencial acumulada
+                </div>
+            </div>
+
+
+            <div class="kpi">
+                <div class="kpi-head">
+                    <div class="kpi-icon">▣</div>
+                    <div class="kpi-label">
+                        Costo directo<br>Odoo
+                    </div>
+                </div>
+
+                <div
+                    id="kpiCostos"
+                    class="kpi-value">
+                    $0
+                </div>
+
+                <div class="kpi-note">
+                    Costos contabilizados
+                </div>
+            </div>
+
+
+            <div class="kpi">
+                <div class="kpi-head">
+                    <div class="kpi-icon">▤</div>
+                    <div class="kpi-label">
+                        Gastos<br>Odoo
+                    </div>
+                </div>
+
+                <div
+                    id="kpiGastos"
+                    class="kpi-value">
+                    $0
+                </div>
+
+                <div class="kpi-note">
+                    Gastos del P&G
+                </div>
+            </div>
+
+
+            <div class="kpi">
+                <div class="kpi-head">
+                    <div class="kpi-icon">▥</div>
+                    <div class="kpi-label">
+                        Resultado<br>Real
+                    </div>
+                </div>
+
+                <div
+                    id="kpiResultado"
+                    class="kpi-value">
+                    $0
+                </div>
+
+                <div class="kpi-note">
+                    Ingresos - costos - gastos
+                </div>
+            </div>
+
+
+            <div class="kpi">
+                <div class="kpi-head">
+                    <div class="kpi-icon">%</div>
+                    <div class="kpi-label">
+                        Margen<br>Real
+                    </div>
+                </div>
+
+                <div
+                    id="kpiMargen"
+                    class="kpi-value">
+                    —
+                </div>
+
+                <div class="kpi-note">
+                    Resultado / ingresos
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- CHART + RECOGNITION -->
+
+        <section class="dashboard-grid">
+
+            <div class="card">
+
+                <div class="card-title">
+                    <div>
+                        <h3>Evolución mensual 2026</h3>
+                        <small>
+                            P&G contable real proveniente de Odoo
+                        </small>
+                    </div>
+                </div>
+
+                <div class="chart-wrap">
+                    <canvas id="monthlyChart"></canvas>
+                </div>
+
+            </div>
+
+
+            <div class="card">
+
+                <div class="card-title">
+                    <div>
+                        <h3>Reconocimiento de ingresos</h3>
+                        <small id="recProyectoNombre">
+                            Proyecto seleccionado
+                        </small>
+                    </div>
+                </div>
+
+
+                <div class="recognition">
+
+                    <div
+                        id="progressRing"
+                        class="progress-ring">
+
+                        <div class="progress-ring-content">
+                            <strong id="recAvance">
+                                0%
+                            </strong>
+
+                            <span>
+                                Avance físico
+                            </span>
+                        </div>
+
+                    </div>
+
+
+                    <div class="rec-list">
+
+                        <div class="rec-row">
+                            <span class="rec-label">
+                                Monto contrato
+                            </span>
+
+                            <span
+                                id="recContrato"
+                                class="rec-value">
+                                $0
+                            </span>
+                        </div>
+
+
+                        <div class="rec-row">
+                            <span class="rec-label">
+                                Ingreso reconocido Odoo
+                            </span>
+
+                            <span
+                                id="recIngresoOdoo"
+                                class="rec-value">
+                                $0
+                            </span>
+                        </div>
+
+
+                        <div class="rec-row">
+                            <span class="rec-label">
+                                Ingreso según avance
+                            </span>
+
+                            <span
+                                id="recIngresoTeorico"
+                                class="rec-value">
+                                $0
+                            </span>
+                        </div>
+
+
+                        <div class="rec-row">
+                            <span class="rec-label">
+                                Pendiente por reconocer
+                            </span>
+
+                            <span
+                                id="recPendiente"
+                                class="rec-value warning-value">
+                                $0
+                            </span>
+                        </div>
+
+
+                        <div class="rec-row">
+                            <span class="rec-label">
+                                Diferencia costo Odoo vs SharePoint
+                            </span>
+
+                            <span
+                                id="recDiferenciaCosto"
+                                class="rec-value">
+                                $0
+                            </span>
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- TABS -->
+
+        <section class="card tabs-card">
+
+            <div class="tabs">
+
+                <button
+                    class="tab-btn active"
+                    data-tab="proyectos"
+                    onclick="abrirTab('proyectos',this)">
+
+                    Proyectos
+
+                </button>
+
+
+                <button
+                    class="tab-btn"
+                    data-tab="pyg"
+                    onclick="abrirTab('pyg',this)">
+
+                    P&G por analítica
+
+                </button>
+
+
+                <button
+                    class="tab-btn"
+                    data-tab="costos"
+                    onclick="abrirTab('costos',this)">
+
+                    Detalle costos SharePoint
+
+                </button>
+
+
+                <button
+                    class="tab-btn"
+                    data-tab="calidad"
+                    onclick="abrirTab('calidad',this)">
+
+                    Calidad de datos
+
+                </button>
+
+            </div>
+
+
+            <!-- PROJECTS -->
+
+            <div
+                id="tab-proyectos"
+                class="tab-content">
+
+                <div class="filters-row">
+
+                    <input
+                        id="buscarProyecto"
+                        class="filter-input search"
+                        type="text"
+                        placeholder="Buscar proyecto..."
+                        oninput="renderProjects()">
+
+                    <select
+                        id="filtroEstado"
+                        onchange="renderProjects()">
+
+                        <option value="ALL">
+                            Todos los estados
+                        </option>
+
+                        <option value="REVISAR">
+                            Revisar
+                        </option>
+
+                        <option value="OK">
+                            Sin alerta crítica
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="table-wrap">
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th>Proyecto</th>
+                                <th>Avance físico</th>
+                                <th>Contrato</th>
+                                <th>Ingreso Odoo</th>
+                                <th>Ingreso según avance</th>
+                                <th>Pendiente reconocer</th>
+                                <th>Costo Odoo</th>
+                                <th>Costo operativo SP</th>
+                                <th>Diferencia costo</th>
+                                <th>Por ejecutar SP</th>
+                                <th>Resultado real</th>
+                                <th>Margen real</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="projectsBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <!-- PYG -->
+
+            <div
+                id="tab-pyg"
+                class="tab-content hidden">
+
+                <div class="filters-row">
+
+                    <input
+                        id="buscarPyg"
+                        class="filter-input search"
+                        type="text"
+                        placeholder="Buscar analítica..."
+                        oninput="renderPygTable()">
+
+                </div>
+
+
+                <div class="table-wrap">
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th>Mes</th>
+                                <th>Analítica</th>
+                                <th>Proyecto</th>
+                                <th>Ingresos</th>
+                                <th>Costo directo</th>
+                                <th>Gastos</th>
+                                <th>Resultado</th>
+                                <th>Margen</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="pygBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <!-- COSTS -->
+
+            <div
+                id="tab-costos"
+                class="tab-content hidden">
+
+                <div class="filters-row">
+
+                    <input
+                        id="buscarCosto"
+                        class="filter-input search"
+                        type="text"
+                        placeholder="Buscar ítem, proveedor o categoría..."
+                        oninput="renderCosts()">
+
+                </div>
+
+
+                <div class="table-wrap">
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th>Proyecto</th>
+                                <th>Categoría</th>
+                                <th>Ítem</th>
+                                <th>Proveedor</th>
+                                <th>Pres. inicial</th>
+                                <th>Pres. aterrizado</th>
+                                <th>Ejecutado</th>
+                                <th>Avance costo</th>
+                                <th>Por ejecutar</th>
+                                <th>Diferencia real vs plan</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="costsBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+
+            <!-- QUALITY -->
+
+            <div
+                id="tab-calidad"
+                class="tab-content hidden">
+
+                <div class="quality-grid">
+
+                    <div class="quality-box">
+                        <span>Proyectos cargados</span>
+                        <strong id="qualityProjects">0</strong>
+                    </div>
+
+                    <div class="quality-box">
+                        <span>Sin SharePoint</span>
+                        <strong id="qualityMissingSP">0</strong>
+                    </div>
+
+                    <div class="quality-box">
+                        <span>Con ingreso pendiente</span>
+                        <strong id="qualityPendingIncome">0</strong>
+                    </div>
+
+                    <div class="quality-box">
+                        <span>Diferencia costo >5%</span>
+                        <strong id="qualityCostDiff">0</strong>
+                    </div>
+
+                </div>
+
+
+                <div class="table-wrap">
+
+                    <table>
+
+                        <thead>
+                            <tr>
+                                <th>Proyecto</th>
+                                <th>Control</th>
+                                <th>Detalle</th>
+                                <th>Nivel</th>
+                            </tr>
+                        </thead>
+
+                        <tbody id="qualityBody"></tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+</div>
+
+
+<!-- SIMULATOR -->
+
+<div
+    id="drawerBackdrop"
+    class="drawer-backdrop hidden"
+    onclick="cerrarSimulador()">
+</div>
+
+
+<aside
+    id="simDrawer"
+    class="sim-drawer hidden">
+
+    <div class="sim-head">
+
+        <div>
+            <small>FORECAST FINANCIERO</small>
+            <h2>Simular escenario</h2>
+        </div>
+
+        <button
+            class="close-btn"
+            onclick="cerrarSimulador()">
+            ✕
+        </button>
+
+    </div>
+
+
+    <div class="sim-field">
+
+        <label>Proyecto</label>
+
+        <select
+            id="simProyecto"
+            onchange="cargarProyectoSimulador()">
+        </select>
+
+    </div>
+
+
+    <div class="scenarios">
+
+        <button
+            id="scenarioConservador"
+            class="scenario-btn"
+            onclick="setScenario('CONSERVADOR')">
+
+            Conservador
+
+        </button>
+
+
+        <button
+            id="scenarioBase"
+            class="scenario-btn active"
+            onclick="setScenario('BASE')">
+
+            Base
+
+        </button>
+
+
+        <button
+            id="scenarioOptimista"
+            class="scenario-btn"
+            onclick="setScenario('OPTIMISTA')">
+
+            Optimista
+
+        </button>
+
+    </div>
+
+
+    <div class="sim-field">
+
+        <label>
+            Avance físico
+            <strong id="simAvanceLabel">0%</strong>
+        </label>
+
+        <input
+            id="simAvance"
+            type="range"
+            min="0"
+            max="100"
+            step=".1"
+            value="0"
+            oninput="actualizarSimulacion()">
+
+    </div>
+
+
+    <div class="sim-field">
+
+        <label>
+            Método de reconocimiento
+        </label>
+
+        <select
+            id="simMetodo"
+            onchange="actualizarSimulacion()">
+
+            <option value="AVANCE">
+                Según avance físico
+            </option>
+
+            <option value="MANUAL">
+                Porcentaje manual
+            </option>
+
+        </select>
+
+    </div>
+
+
+    <div class="sim-field">
+
+        <label>
+            % ingreso a reconocer
+        </label>
+
+        <input
+            id="simReconocimiento"
+            type="number"
+            min="0"
+            max="100"
+            step=".1"
+            value="0"
+            oninput="actualizarSimulacion()">
+
+    </div>
+
+
+    <div class="sim-field">
+
+        <label>
+            Costo pendiente adicional
+        </label>
+
+        <input
+            id="simCostoPendiente"
+            type="number"
+            step="100"
+            value="0"
+            oninput="actualizarSimulacion()">
+
+    </div>
+
+
+    <div class="sim-field">
+
+        <label>
+            Margen objetivo %
+        </label>
+
+        <input
+            id="simMargenObjetivo"
+            type="number"
+            min="-100"
+            max="99"
+            step=".1"
+            value="20"
+            oninput="actualizarSimulacion()">
+
+    </div>
+
+
+    <div class="sim-summary">
+
+        <div class="sim-row">
+            <span>Monto contrato</span>
+            <strong id="simContrato">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Ingreso Odoo actual</span>
+            <strong id="simIngresoActual">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Ingreso proyectado</span>
+            <strong id="simIngresoProyectado">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Costo directo Odoo</span>
+            <strong id="simCostoOdoo">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Gastos Odoo</span>
+            <strong id="simGastosOdoo">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Costo pendiente adicional</span>
+            <strong id="simCostoAdicional">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Resultado proyectado</span>
+            <strong id="simResultado">$0</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Margen proyectado</span>
+            <strong id="simMargen">—</strong>
+        </div>
+
+        <div class="sim-row">
+            <span>Ingreso requerido para margen objetivo</span>
+            <strong id="simIngresoObjetivo">$0</strong>
+        </div>
+
+    </div>
+
+
+    <div class="sim-actions">
+
+        <button
+            class="btn-secondary"
+            onclick="cargarProyectoSimulador()">
+
+            Restaurar
+
+        </button>
+
+        <button
+            class="btn-primary"
+            onclick="aplicarSimulacionPantalla()">
+
+            Aplicar en pantalla
+
+        </button>
+
+    </div>
+
+</aside>
+
+
+<div
+    id="toast"
+    class="toast hidden">
+</div>
+
+
+<script>
+
+/* =========================================================
+   SUPABASE
+========================================================= */
+
+const SUPABASE_URL =
+    "https://wiqnfnlnsdnkxgshchjg.supabase.co";
+
+const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_Rk88NYc5jpdJiTQgUKViZA_0VvpbRpE";
+
+
+const sb =
+    supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+    );
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+const STATE = {
+
+    projects: [],
+
+    monthly: [],
+
+    costs: [],
+
+    chart: null,
+
+    simulation: null,
+
+    simulatedProjects: {}
+
+};
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function number(v){
+
+    const n = Number(v);
+
+    return Number.isFinite(n)
+        ? n
+        : 0;
+
+}
+
+
+function money(v){
+
+    return new Intl.NumberFormat(
+        "es-EC",
+        {
+            style:"currency",
+            currency:"USD",
+            minimumFractionDigits:2,
+            maximumFractionDigits:2
+        }
+    ).format(number(v));
+
+}
+
+
+function percent(v){
+
+    if(v === null || v === undefined)
+        return "—";
+
+    return (
+        number(v) * 100
+    ).toFixed(1)
+     .replace(".",",")
+     + "%";
+
+}
+
+
+function percentPoints(v){
+
+    if(v === null || v === undefined)
+        return "—";
+
+    return number(v)
+        .toFixed(1)
+        .replace(".",",")
+        + "%";
+
+}
+
+
+function monthName(date){
+
+    if(!date)
+        return "";
+
+    const month =
+        String(date).slice(5,7);
+
+    const names = {
+        "01":"Enero",
+        "02":"Febrero",
+        "03":"Marzo",
+        "04":"Abril",
+        "05":"Mayo",
+        "06":"Junio",
+        "07":"Julio",
+        "08":"Agosto",
+        "09":"Septiembre",
+        "10":"Octubre",
+        "11":"Noviembre",
+        "12":"Diciembre"
+    };
+
+    return names[month] || month;
+
+}
+
+
+function selectedProject(){
+
+    return document
+        .getElementById("filtroProyecto")
+        .value;
+
+}
+
+
+function selectedMonth(){
+
+    return document
+        .getElementById("filtroMes")
+        .value;
+
+}
+
+
+function toast(message){
+
+    const el =
+        document.getElementById("toast");
+
+    el.textContent = message;
+
+    el.classList.remove("hidden");
+
+    clearTimeout(
+        window.__toastTimer
+    );
+
+    window.__toastTimer =
+        setTimeout(
+            () =>
+                el.classList.add("hidden"),
+            3500
+        );
+
+}
+
+
+/* =========================================================
+   AUTH
+========================================================= */
+
+async function boot(){
+
+    const {
+        data:{session}
+    } =
+        await sb.auth.getSession();
+
+
+    if(session){
+
+        showApp();
+
+        await loadData();
+
+    }else{
+
+        showLogin();
+
+    }
+
+}
+
+
+function showApp(){
+
+    document
+        .getElementById("loginOverlay")
+        .classList.add("hidden");
+
+    document
+        .getElementById("app")
+        .classList.remove("hidden");
+
+}
+
+
+function showLogin(){
+
+    document
+        .getElementById("loginOverlay")
+        .classList.remove("hidden");
+
+    document
+        .getElementById("app")
+        .classList.add("hidden");
+
+}
+
+
+async function login(){
+
+    const email =
+        document
+        .getElementById("loginEmail")
+        .value
+        .trim();
+
+    const password =
+        document
+        .getElementById("loginPassword")
+        .value;
+
+
+    const {
+        error
+    } =
+        await sb.auth.signInWithPassword({
+            email,
+            password
+        });
+
+
+    if(error){
+
+        document
+            .getElementById("loginError")
+            .textContent =
+            error.message;
+
+        return;
+
+    }
+
+
+    document
+        .getElementById("loginError")
+        .textContent = "";
+
+
+    showApp();
+
+    await loadData();
+
+}
+
+
+async function logout(){
+
+    await sb.auth.signOut();
+
+    location.reload();
+
+}
+
+
+/* =========================================================
+   LOAD
+========================================================= */
+
+async function loadData(){
+
+    try{
+
+        document
+            .getElementById("dotSupabase")
+            .className =
+            "dot";
+
+
+        const [
+            projectsRes,
+            monthlyRes,
+            costsRes
+        ] =
+        await Promise.all([
+
+            sb
+            .from(
+                "forecast_dashboard_proyecto"
+            )
+            .select("*")
+            .order(
+                "proyecto_codigo",
+                {
+                    ascending:true
+                }
+            ),
+
+            sb
+            .from(
+                "forecast_pyg_mensual_analitica"
+            )
+            .select("*")
+            .order(
+                "mes",
+                {
+                    ascending:true
+                }
+            ),
+
+            sb
+            .from(
+                "forecast_sharepoint_costos_detalle"
+            )
+            .select("*")
+            .order(
+                "proyecto_codigo",
+                {
+                    ascending:true
+                }
+            )
+            .order(
+                "fila_numero",
+                {
+                    ascending:true
+                }
+            )
+
+        ]);
+
+
+        if(projectsRes.error)
+            throw projectsRes.error;
+
+        if(monthlyRes.error)
+            throw monthlyRes.error;
+
+        if(costsRes.error)
+            throw costsRes.error;
+
+
+        STATE.projects =
+            projectsRes.data || [];
+
+        STATE.monthly =
+            monthlyRes.data || [];
+
+        STATE.costs =
+            costsRes.data || [];
+
+
+        document
+            .getElementById("dotSupabase")
+            .className =
+            "dot ok";
+
+
+        document
+            .getElementById("dotOdoo")
+            .className =
+            STATE.monthly.length
+            ? "dot ok"
+            : "dot warn";
+
+
+        document
+            .getElementById("dotSharePoint")
+            .className =
+            STATE.costs.length
+            ? "dot ok"
+            : "dot warn";
+
+
+        populateProjectSelectors();
+
+        renderAll();
+
+
+        document
+            .getElementById(
+                "ultimaActualizacion"
+            )
+            .textContent =
+            new Date()
+            .toLocaleString(
+                "es-EC"
+            );
+
+
+    }catch(error){
+
+        console.error(error);
+
+        toast(
+            "Error cargando datos: "
+            + error.message
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   SELECTORS
+========================================================= */
+
+function populateProjectSelectors(){
+
+    const main =
+        document.getElementById(
+            "filtroProyecto"
+        );
+
+    const sim =
+        document.getElementById(
+            "simProyecto"
+        );
+
+
+    const current =
+        main.value;
+
+
+    main.innerHTML =
+        `<option value="ALL">
+            Todos
+        </option>`;
+
+
+    sim.innerHTML = "";
+
+
+    STATE.projects
+    .filter(
+        p =>
+            p.proyecto_codigo
+            &&
+            p.proyecto_codigo
+            !== "SIN_PROYECTO"
+    )
+    .forEach(p => {
+
+        const label =
+            `${p.proyecto_codigo} - ${
+                p.proyecto_nombre || ""
+            }`;
+
+
+        main.insertAdjacentHTML(
+            "beforeend",
+            `<option value="${p.proyecto_codigo}">
+                ${label}
+            </option>`
+        );
+
+
+        sim.insertAdjacentHTML(
+            "beforeend",
+            `<option value="${p.proyecto_codigo}">
+                ${label}
+            </option>`
+        );
+
+    });
+
+
+    if(
+        [...main.options]
+        .some(
+            x =>
+                x.value === current
+        )
+    ){
+
+        main.value = current;
+
+    }
+
+}
+
+
+/* =========================================================
+   FILTERED DATA
+========================================================= */
+
+function filteredMonthly(){
+
+    const project =
+        selectedProject();
+
+    const month =
+        selectedMonth();
+
+
+    return STATE.monthly
+    .filter(row => {
+
+        if(
+            project !== "ALL"
+            &&
+            row.proyecto_codigo
+            !== project
+        )
+            return false;
+
+
+        if(
+            month !== "ALL"
+            &&
+            String(row.mes)
+            .slice(5,7)
+            !== month
+        )
+            return false;
+
+
+        return true;
+
+    });
+
+}
+
+
+function filteredProjects(){
+
+    const project =
+        selectedProject();
+
+
+    if(project === "ALL")
+        return STATE.projects;
+
+
+    return STATE.projects
+        .filter(
+            p =>
+                p.proyecto_codigo
+                === project
+        );
+
+}
+
+
+/* =========================================================
+   MAIN RENDER
+========================================================= */
+
+function renderAll(){
+
+    renderKPIs();
+
+    renderChart();
+
+    renderRecognition();
+
+    renderProjects();
+
+    renderPygTable();
+
+    renderCosts();
+
+    renderQuality();
+
+}
+
+
+/* =========================================================
+   KPI
+========================================================= */
+
+function renderKPIs(){
+
+    const rows =
+        filteredMonthly();
+
+
+    const ingresos =
+        rows.reduce(
+            (s,r) =>
+                s
+                + number(r.ingresos),
+            0
+        );
+
+
+    const costos =
+        rows.reduce(
+            (s,r) =>
+                s
+                + number(
+                    r.costo_directo
+                ),
+            0
+        );
+
+
+    const gastos =
+        rows.reduce(
+            (s,r) =>
+                s
+                + number(r.gastos),
+            0
+        );
+
+
+    const resultado =
+        ingresos
+        - costos
+        - gastos;
+
+
+    const margen =
+        ingresos
+        ? resultado
+          / ingresos
+        : null;
+
+
+    const projects =
+        filteredProjects()
+        .filter(
+            p =>
+                p.proyecto_codigo
+                !== "SIN_PROYECTO"
+        );
+
+
+    const teorico =
+        projects.reduce(
+            (s,p) =>
+                s
+                + number(
+                    p.ingreso_teorico_por_avance
+                ),
+            0
+        );
+
+
+    document
+    .getElementById(
+        "kpiIngresos"
+    ).textContent =
+        money(ingresos);
+
+
+    document
+    .getElementById(
+        "kpiIngresoTeorico"
+    ).textContent =
+        money(teorico);
+
+
+    document
+    .getElementById(
+        "kpiCostos"
+    ).textContent =
+        money(costos);
+
+
+    document
+    .getElementById(
+        "kpiGastos"
+    ).textContent =
+        money(gastos);
+
+
+    const resultEl =
+        document.getElementById(
+            "kpiResultado"
+        );
+
+    resultEl.textContent =
+        money(resultado);
+
+    resultEl.style.color =
+        resultado >= 0
+        ? "var(--green)"
+        : "var(--red)";
+
+
+    document
+    .getElementById(
+        "kpiMargen"
+    ).textContent =
+        margen === null
+        ? "—"
+        : percent(margen);
+
+}
+
+
+/* =========================================================
+   CHART
+========================================================= */
+
+function renderChart(){
+
+    const project =
+        selectedProject();
+
+
+    const months = [
+        "01","02","03","04",
+        "05","06","07","08",
+        "09","10","11","12"
+    ];
+
+
+    const names = [
+        "Ene","Feb","Mar","Abr",
+        "May","Jun","Jul","Ago",
+        "Sep","Oct","Nov","Dic"
+    ];
+
+
+    const data =
+        months.map(month => {
+
+            const rows =
+                STATE.monthly
+                .filter(row => {
+
+                    if(
+                        String(row.mes)
+                        .slice(5,7)
+                        !== month
+                    )
+                        return false;
+
+
+                    if(
+                        project !== "ALL"
+                        &&
+                        row.proyecto_codigo
+                        !== project
+                    )
+                        return false;
+
+
+                    return true;
+
+                });
+
+
+            return {
+
+                ingresos:
+                    rows.reduce(
+                        (s,r) =>
+                            s
+                            + number(
+                                r.ingresos
+                            ),
+                        0
+                    ),
+
+                costos:
+                    rows.reduce(
+                        (s,r) =>
+                            s
+                            + number(
+                                r.costo_directo
+                            ),
+                        0
+                    ),
+
+                gastos:
+                    rows.reduce(
+                        (s,r) =>
+                            s
+                            + number(
+                                r.gastos
+                            ),
+                        0
+                    )
+
+            };
+
+        });
+
+
+    const resultados =
+        data.map(
+            x =>
+                x.ingresos
+                - x.costos
+                - x.gastos
+        );
+
+
+    if(STATE.chart)
+        STATE.chart.destroy();
+
+
+    const ctx =
+        document
+        .getElementById(
+            "monthlyChart"
+        );
+
+
+    STATE.chart =
+        new Chart(
+            ctx,
+            {
+                data:{
+                    labels:names,
+
+                    datasets:[
+
+                        {
+                            type:"bar",
+                            label:"Ingresos",
+                            data:
+                                data.map(
+                                    x =>
+                                        x.ingresos
+                                ),
+                            backgroundColor:
+                                "#2b72cf",
+                            borderRadius:5
+                        },
+
+                        {
+                            type:"bar",
+                            label:"Costos",
+                            data:
+                                data.map(
+                                    x =>
+                                        x.costos
+                                ),
+                            backgroundColor:
+                                "#f59a49",
+                            borderRadius:5
+                        },
+
+                        {
+                            type:"bar",
+                            label:"Gastos",
+                            data:
+                                data.map(
+                                    x =>
+                                        x.gastos
+                                ),
+                            backgroundColor:
+                                "#ec5668",
+                            borderRadius:5
+                        },
+
+                        {
+                            type:"line",
+                            label:"Resultado",
+                            data:resultados,
+                            borderColor:
+                                "#0ba66d",
+                            backgroundColor:
+                                "#0ba66d",
+                            borderWidth:2,
+                            tension:.3,
+                            pointRadius:3
+                        }
+
+                    ]
+
+                },
+
+                options:{
+
+                    responsive:true,
+
+                    maintainAspectRatio:false,
+
+                    interaction:{
+                        mode:"index",
+                        intersect:false
+                    },
+
+                    plugins:{
+
+                        legend:{
+                            position:"top"
+                        },
+
+                        tooltip:{
+                            callbacks:{
+                                label:
+                                    context =>
+                                        context
+                                        .dataset
+                                        .label
+                                        + ": "
+                                        + money(
+                                            context.raw
+                                        )
+                            }
+                        }
+
+                    },
+
+                    scales:{
+
+                        y:{
+                            ticks:{
+                                callback:
+                                    v =>
+                                        new Intl
+                                        .NumberFormat(
+                                            "es-EC",
+                                            {
+                                                notation:
+                                                    "compact",
+                                                style:
+                                                    "currency",
+                                                currency:
+                                                    "USD"
+                                            }
+                                        )
+                                        .format(v)
+                            }
+                        }
+
+                    }
+
+                }
+
+            }
+        );
+
+}
+
+
+/* =========================================================
+   RECOGNITION
+========================================================= */
+
+function renderRecognition(){
+
+    const projects =
+        filteredProjects()
+        .filter(
+            p =>
+                p.proyecto_codigo
+                !== "SIN_PROYECTO"
+        );
+
+
+    if(!projects.length)
+        return;
+
+
+    let contract = 0;
+    let income = 0;
+    let theoretical = 0;
+    let pending = 0;
+    let weightedProgress = 0;
+    let costOdoo = 0;
+    let costSp = 0;
+
+
+    projects.forEach(p => {
+
+        const c =
+            number(
+                p.monto_contrato
+            );
+
+
+        contract += c;
+
+        income +=
+            number(
+                p.ingresos_odoo
+            );
+
+        theoretical +=
+            number(
+                p.ingreso_teorico_por_avance
+            );
+
+        pending +=
+            number(
+                p.ingreso_pendiente_reconocimiento
+            );
+
+        costOdoo +=
+            number(
+                p.costo_directo_odoo
+            );
+
+        costSp +=
+            number(
+                p.ejecutado_operativo
+            );
+
+
+        weightedProgress +=
+            c
+            * number(
+                p.avance_fisico
+            );
+
+    });
+
+
+    const progress =
+        contract
+        ? weightedProgress
+          / contract
+        : 0;
+
+
+    document
+    .getElementById(
+        "recProyectoNombre"
+    ).textContent =
+        selectedProject()
+        === "ALL"
+        ? "Todos los proyectos"
+        : (
+            projects[0]
+            ?.proyecto_nombre
+            || selectedProject()
+        );
+
+
+    document
+    .getElementById(
+        "recAvance"
+    ).textContent =
+        progress
+        .toFixed(1)
+        .replace(".",",")
+        + "%";
+
+
+    document
+    .getElementById(
+        "progressRing"
+    ).style.setProperty(
+        "--progress",
+        `${Math.min(
+            360,
+            progress * 3.6
+        )}deg`
+    );
+
+
+    document
+    .getElementById(
+        "recContrato"
+    ).textContent =
+        money(contract);
+
+
+    document
+    .getElementById(
+        "recIngresoOdoo"
+    ).textContent =
+        money(income);
+
+
+    document
+    .getElementById(
+        "recIngresoTeorico"
+    ).textContent =
+        money(theoretical);
+
+
+    document
+    .getElementById(
+        "recPendiente"
+    ).textContent =
+        money(pending);
+
+
+    const diff =
+        costOdoo
+        - costSp;
+
+
+    const diffEl =
+        document
+        .getElementById(
+            "recDiferenciaCosto"
+        );
+
+
+    diffEl.textContent =
+        money(diff);
+
+
+    diffEl.style.color =
+        Math.abs(diff) > 1
+        ? "var(--orange)"
+        : "var(--green)";
+
+}
+
+
+/* =========================================================
+   PROJECT TABLE
+========================================================= */
+
+function projectStatus(p){
+
+    const incomePending =
+        number(
+            p.ingreso_pendiente_reconocimiento
+        );
+
+
+    const spCost =
+        number(
+            p.ejecutado_operativo
+        );
+
+
+    const odooCost =
+        number(
+            p.costo_directo_odoo
+        );
+
+
+    const diffPct =
+        spCost
+        ? Math.abs(
+            odooCost
+            - spCost
+          )
+          / spCost
+        : (
+            odooCost
+            ? 1
+            : 0
+        );
+
+
+    if(
+        incomePending > 0
+        ||
+        diffPct > .05
+    )
+        return "REVISAR";
+
+
+    return "OK";
+
+}
+
+
+function renderProjects(){
+
+    const search =
+        (
+            document
+            .getElementById(
+                "buscarProyecto"
+            )
+            .value
+            || ""
+        )
+        .toLowerCase();
+
+
+    const statusFilter =
+        document
+        .getElementById(
+            "filtroEstado"
+        )
+        .value;
+
+
+    let rows =
+        filteredProjects()
+        .filter(
+            p =>
+                p.proyecto_codigo
+                !== "SIN_PROYECTO"
+        );
+
+
+    rows =
+        rows.filter(p => {
+
+            const haystack =
+                (
+                    (
+                        p.proyecto_codigo
+                        || ""
+                    )
+                    + " "
+                    + (
+                        p.proyecto_nombre
+                        || ""
+                    )
+                )
+                .toLowerCase();
+
+
+            if(
+                search
+                &&
+                !haystack
+                .includes(search)
+            )
+                return false;
+
+
+            const status =
+                projectStatus(p);
+
+
+            if(
+                statusFilter
+                !== "ALL"
+                &&
+                status
+                !== statusFilter
+            )
+                return false;
+
+
+            return true;
+
+        });
+
+
+    const body =
+        document
+        .getElementById(
+            "projectsBody"
+        );
+
+
+    body.innerHTML = "";
+
+
+    rows.forEach(p => {
+
+        const contract =
+            number(
+                p.monto_contrato
+            );
+
+
+        const income =
+            number(
+                p.ingresos_odoo
+            );
+
+
+        const result =
+            number(
+                p.resultado_odoo
+            );
+
+
+        const margin =
+            income
+            ? result
+              / income
+            : null;
+
+
+        const progress =
+            number(
+                p.avance_fisico
+            );
+
+
+        const odooCost =
+            number(
+                p.costo_directo_odoo
+            );
+
+
+        const spCost =
+            number(
+                p.ejecutado_operativo
+            );
+
+
+        const costDiff =
+            odooCost
+            - spCost;
+
+
+        const status =
+            projectStatus(p);
+
+
+        const simulation =
+            STATE
+            .simulatedProjects[
+                p.proyecto_codigo
+            ];
+
+
+        const theoretical =
+            simulation
+            ? simulation.ingreso
+            : number(
+                p.ingreso_teorico_por_avance
+              );
+
+
+        const pending =
+            simulation
+            ? simulation.ingreso
+              - income
+            : number(
+                p.ingreso_pendiente_reconocimiento
+              );
+
+
+        body.insertAdjacentHTML(
+            "beforeend",
+            `
+            <tr>
+
+                <td>
+                    <div class="project-name">
+                        ${p.proyecto_codigo}
+                        -
+                        ${p.proyecto_nombre || ""}
+                    </div>
+                </td>
+
+                <td>
+                    <strong>
+                        ${progress.toFixed(1)}%
+                    </strong>
+
+                    <div class="mini-progress">
+                        <div style="
+                            width:${
+                                Math.min(
+                                    100,
+                                    progress
+                                )
+                            }%;
+                        "></div>
+                    </div>
+                </td>
+
+                <td>
+                    ${money(contract)}
+                </td>
+
+                <td>
+                    ${money(income)}
+                </td>
+
+                <td>
+                    ${money(theoretical)}
+                </td>
+
+                <td class="
+                    ${
+                        pending > 0
+                        ? "money-warning"
+                        : ""
+                    }
+                ">
+                    ${money(pending)}
+                </td>
+
+                <td>
+                    ${money(odooCost)}
+                </td>
+
+                <td>
+                    ${money(spCost)}
+                </td>
+
+                <td class="
+                    ${
+                        Math.abs(costDiff)
+                        > 1
+                        ? "money-warning"
+                        : ""
+                    }
+                ">
+                    ${money(costDiff)}
+                </td>
+
+                <td>
+                    ${money(
+                        p.por_ejecutar_operativo
+                    )}
+                </td>
+
+                <td class="
+                    ${
+                        result >= 0
+                        ? "money-positive"
+                        : "money-negative"
+                    }
+                ">
+                    ${money(result)}
+                </td>
+
+                <td class="
+                    ${
+                        margin !== null
+                        &&
+                        margin >= 0
+                        ? "money-positive"
+                        : "money-negative"
+                    }
+                ">
+                    ${
+                        margin === null
+                        ? "—"
+                        : percent(margin)
+                    }
+                </td>
+
+                <td>
+                    ${
+                        status === "OK"
+                        ? `
+                            <span class="badge ok">
+                                OK
+                            </span>
+                          `
+                        : `
+                            <span class="badge warn">
+                                Revisar
+                            </span>
+                          `
+                    }
+                </td>
+
+            </tr>
+            `
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   PYG TABLE
+========================================================= */
+
+function renderPygTable(){
+
+    const search =
+        (
+            document
+            .getElementById(
+                "buscarPyg"
+            )
+            .value
+            || ""
+        )
+        .toLowerCase();
+
+
+    const rows =
+        filteredMonthly()
+        .filter(row => {
+
+            const text =
+                (
+                    (
+                        row.proyecto_codigo
+                        || ""
+                    )
+                    + " "
+                    + (
+                        row.proyecto_nombre
+                        || ""
+                    )
+                )
+                .toLowerCase();
+
+            return !search
+                || text.includes(
+                    search
+                );
+
+        });
+
+
+    const body =
+        document
+        .getElementById(
+            "pygBody"
+        );
+
+
+    body.innerHTML = "";
+
+
+    rows.forEach(row => {
+
+        const income =
+            number(row.ingresos);
+
+        const result =
+            number(row.resultado);
+
+        const margin =
+            income
+            ? result / income
+            : null;
+
+
+        body.insertAdjacentHTML(
+            "beforeend",
+            `
+            <tr>
+
+                <td>
+                    ${monthName(row.mes)}
+                </td>
+
+                <td>
+                    ${row.proyecto_codigo || ""}
+                </td>
+
+                <td>
+                    ${row.proyecto_nombre || ""}
+                </td>
+
+                <td>
+                    ${money(row.ingresos)}
+                </td>
+
+                <td>
+                    ${money(row.costo_directo)}
+                </td>
+
+                <td>
+                    ${money(row.gastos)}
+                </td>
+
+                <td class="
+                    ${
+                        result >= 0
+                        ? "money-positive"
+                        : "money-negative"
+                    }
+                ">
+                    ${money(result)}
+                </td>
+
+                <td>
+                    ${
+                        margin === null
+                        ? "—"
+                        : percent(margin)
+                    }
+                </td>
+
+            </tr>
+            `
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   SHAREPOINT COSTS
+========================================================= */
+
+function renderCosts(){
+
+    const search =
+        (
+            document
+            .getElementById(
+                "buscarCosto"
+            )
+            .value
+            || ""
+        )
+        .toLowerCase();
+
+
+    const project =
+        selectedProject();
+
+
+    const rows =
+        STATE.costs
+        .filter(row => {
+
+            if(
+                project !== "ALL"
+                &&
+                row.proyecto_codigo
+                !== project
+            )
+                return false;
+
+
+            const text =
+                (
+                    (
+                        row.categoria
+                        || ""
+                    )
+                    + " "
+                    + (
+                        row.item_descripcion
+                        || ""
+                    )
+                    + " "
+                    + (
+                        row.proveedor
+                        || ""
+                    )
+                )
+                .toLowerCase();
+
+
+            return !search
+                || text.includes(
+                    search
+                );
+
+        });
+
+
+    const body =
+        document
+        .getElementById(
+            "costsBody"
+        );
+
+
+    body.innerHTML = "";
+
+
+    rows.forEach(row => {
+
+        const landed =
+            number(
+                row.presupuesto_aterrizado
+            );
+
+
+        const executed =
+            number(
+                row.ejecutado_real
+            );
+
+
+        const costProgress =
+            landed
+            ? executed / landed
+            : null;
+
+
+        body.insertAdjacentHTML(
+            "beforeend",
+            `
+            <tr>
+
+                <td>
+                    ${row.proyecto_codigo || ""}
+                </td>
+
+                <td>
+                    ${row.categoria || ""}
+                </td>
+
+                <td>
+                    ${row.item_descripcion || ""}
+                </td>
+
+                <td>
+                    ${row.proveedor || ""}
+                </td>
+
+                <td>
+                    ${money(row.presupuesto_inicial)}
+                </td>
+
+                <td>
+                    ${money(row.presupuesto_aterrizado)}
+                </td>
+
+                <td>
+                    ${money(row.ejecutado_real)}
+                </td>
+
+                <td>
+                    ${
+                        costProgress === null
+                        ? "—"
+                        : percent(costProgress)
+                    }
+                </td>
+
+                <td>
+                    ${money(row.por_ejecutar)}
+                </td>
+
+                <td>
+                    ${money(row.diferencia_real_plan)}
+                </td>
+
+            </tr>
+            `
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   QUALITY
+========================================================= */
+
+function renderQuality(){
+
+    const projects =
+        STATE.projects
+        .filter(
+            p =>
+                p.proyecto_codigo
+                &&
+                p.proyecto_codigo
+                !== "SIN_PROYECTO"
+        );
+
+
+    let missingSp = 0;
+    let pendingIncome = 0;
+    let costDiff = 0;
+
+    const alerts = [];
+
+
+    projects.forEach(p => {
+
+        const odoo =
+            number(
+                p.costo_directo_odoo
+            );
+
+
+        const sp =
+            number(
+                p.ejecutado_operativo
+            );
+
+
+        const pending =
+            number(
+                p.ingreso_pendiente_reconocimiento
+            );
+
+
+        if(
+            p.ejecutado_operativo
+            === null
+            ||
+            p.ejecutado_operativo
+            === undefined
+        ){
+
+            missingSp++;
+
+            alerts.push({
+                project:
+                    p.proyecto_codigo,
+                control:
+                    "SharePoint",
+                detail:
+                    "Sin costo operativo cargado",
+                level:
+                    "ALTO"
+            });
+
+        }
+
+
+        if(pending > 0){
+
+            pendingIncome++;
+
+            alerts.push({
+                project:
+                    p.proyecto_codigo,
+                control:
+                    "Reconocimiento",
+                detail:
+                    `Ingreso pendiente estimado ${money(pending)}`,
+                level:
+                    "MEDIO"
+            });
+
+        }
+
+
+        if(sp){
+
+            const pct =
+                Math.abs(
+                    odoo - sp
+                )
+                / Math.abs(sp);
+
+
+            if(pct > .05){
+
+                costDiff++;
+
+                alerts.push({
+                    project:
+                        p.proyecto_codigo,
+                    control:
+                        "Odoo vs SharePoint",
+                    detail:
+                        `Diferencia ${money(odoo - sp)} (${(pct*100).toFixed(1)}%)`,
+                    level:
+                        "ALTO"
+                });
+
+            }
+
+        }
+
+    });
+
+
+    document
+    .getElementById(
+        "qualityProjects"
+    ).textContent =
+        projects.length;
+
+
+    document
+    .getElementById(
+        "qualityMissingSP"
+    ).textContent =
+        missingSp;
+
+
+    document
+    .getElementById(
+        "qualityPendingIncome"
+    ).textContent =
+        pendingIncome;
+
+
+    document
+    .getElementById(
+        "qualityCostDiff"
+    ).textContent =
+        costDiff;
+
+
+    const body =
+        document
+        .getElementById(
+            "qualityBody"
+        );
+
+
+    body.innerHTML = "";
+
+
+    alerts.forEach(a => {
+
+        const cls =
+            a.level === "ALTO"
+            ? "danger"
+            : "warn";
+
+
+        body.insertAdjacentHTML(
+            "beforeend",
+            `
+            <tr>
+
+                <td>
+                    ${a.project}
+                </td>
+
+                <td>
+                    ${a.control}
+                </td>
+
+                <td>
+                    ${a.detail}
+                </td>
+
+                <td>
+                    <span class="badge ${cls}">
+                        ${a.level}
+                    </span>
+                </td>
+
+            </tr>
+            `
+        );
+
+    });
+
+}
+
+
+/* =========================================================
+   TABS
+========================================================= */
+
+function abrirTab(name,button){
+
+    document
+    .querySelectorAll(
+        ".tab-content"
+    )
+    .forEach(
+        el =>
+            el.classList
+            .add("hidden")
+    );
+
+
+    document
+    .getElementById(
+        "tab-" + name
+    )
+    .classList
+    .remove("hidden");
+
+
+    document
+    .querySelectorAll(
+        ".tab-btn"
+    )
+    .forEach(
+        el =>
+            el.classList
+            .remove("active")
+    );
+
+
+    const tabButton =
+        document
+        .querySelector(
+            `.tab-btn[data-tab="${name}"]`
+        );
+
+
+    if(tabButton)
+        tabButton
+        .classList
+        .add("active");
+
+}
+
+
+/* =========================================================
+   UPDATE ODOO + SHAREPOINT
+========================================================= */
+
+async function actualizarTodo(){
+
+    const btn =
+        document
+        .getElementById(
+            "btnActualizar"
+        );
+
+
+    btn.disabled = true;
+
+    btn.textContent =
+        "Actualizando Odoo...";
+
+
+    try{
+
+        /* ODOO */
+
+        const odoo =
+            await sb.functions.invoke(
+                "forecast-sync-odoo",
+                {
+                    body:{}
+                }
+            );
+
+
+        if(odoo.error)
+            throw new Error(
+                "Odoo: "
+                + odoo.error.message
+            );
+
+
+        document
+        .getElementById(
+            "dotOdoo"
+        )
+        .className =
+            "dot ok";
+
+
+        /* SHAREPOINT INDEX */
+
+        btn.textContent =
+            "Buscando proyectos SharePoint...";
+
+
+        const index =
+            await sb.functions.invoke(
+                "sharepoint-energy-projects",
+                {
+                    body:{}
+                }
+            );
+
+
+        if(index.error)
+            throw new Error(
+                "SharePoint: "
+                + index.error.message
+            );
+
+
+        const folders =
+            index.data
+            ?.proyectos
+            || [];
+
+
+        let success = 0;
+        let failed = 0;
+
+
+        /* SHAREPOINT COSTS */
+
+        for(
+            let i = 0;
+            i < folders.length;
+            i++
+        ){
+
+            const folder =
+                folders[i];
+
+
+            btn.textContent =
+                `SharePoint ${
+                    i + 1
+                } / ${
+                    folders.length
+                }`;
+
+
+            try{
+
+                const result =
+                    await sb.functions.invoke(
+                        "sharepoint-sync-costos",
+                        {
+                            body:{
+                                project:
+                                    folder.name
+                            }
+                        }
+                    );
+
+
+                if(result.error)
+                    throw result.error;
+
+
+                if(
+                    result.data
+                    ?.ok
+                )
+                    success++;
+                else
+                    failed++;
+
+
+            }catch(error){
+
+                console.warn(
+                    "Proyecto no sincronizado",
+                    folder.name,
+                    error
+                );
+
+                failed++;
+
+            }
+
+        }
+
+
+        document
+        .getElementById(
+            "dotSharePoint"
+        )
+        .className =
+            success
+            ? "dot ok"
+            : "dot warn";
+
+
+        btn.textContent =
+            "Recalculando...";
+
+
+        await loadData();
+
+
+        toast(
+            `Actualización completa. SharePoint: ${success} proyectos OK, ${failed} con observación.`
+        );
+
+
+    }catch(error){
+
+        console.error(error);
+
+        toast(
+            "Error de actualización: "
+            + error.message
+        );
+
+
+    }finally{
+
+        btn.disabled = false;
+
+        btn.textContent =
+            "↻ Actualizar datos";
+
+    }
+
+}
+
+
+/* =========================================================
+   SIMULATOR
+========================================================= */
+
+function abrirSimulador(){
+
+    const selected =
+        selectedProject();
+
+
+    const simSelect =
+        document
+        .getElementById(
+            "simProyecto"
+        );
+
+
+    if(
+        selected !== "ALL"
+        &&
+        [...simSelect.options]
+        .some(
+            o =>
+                o.value
+                === selected
+        )
+    ){
+
+        simSelect.value =
+            selected;
+
+    }
+
+
+    document
+    .getElementById(
+        "drawerBackdrop"
+    )
+    .classList
+    .remove("hidden");
+
+
+    document
+    .getElementById(
+        "simDrawer"
+    )
+    .classList
+    .remove("hidden");
+
+
+    cargarProyectoSimulador();
+
+}
+
+
+function cerrarSimulador(){
+
+    document
+    .getElementById(
+        "drawerBackdrop"
+    )
+    .classList
+    .add("hidden");
+
+
+    document
+    .getElementById(
+        "simDrawer"
+    )
+    .classList
+    .add("hidden");
+
+}
+
+
+function currentSimProject(){
+
+    const code =
+        document
+        .getElementById(
+            "simProyecto"
+        )
+        .value;
+
+
+    return STATE.projects
+        .find(
+            p =>
+                p.proyecto_codigo
+                === code
+        );
+
+}
+
+
+function cargarProyectoSimulador(){
+
+    const p =
+        currentSimProject();
+
+
+    if(!p)
+        return;
+
+
+    const advance =
+        number(
+            p.avance_fisico
+        );
+
+
+    document
+    .getElementById(
+        "simAvance"
+    ).value =
+        advance;
+
+
+    document
+    .getElementById(
+        "simReconocimiento"
+    ).value =
+        advance;
+
+
+    document
+    .getElementById(
+        "simMetodo"
+    ).value =
+        "AVANCE";
+
+
+    document
+    .getElementById(
+        "simCostoPendiente"
+    ).value =
+        number(
+            p.por_ejecutar_operativo
+        );
+
+
+    document
+    .getElementById(
+        "simMargenObjetivo"
+    ).value =
+        20;
+
+
+    setScenario(
+        "BASE",
+        false
+    );
+
+}
+
+
+function setScenario(
+    type,
+    recalc = true
+){
+
+    document
+    .querySelectorAll(
+        ".scenario-btn"
+    )
+    .forEach(
+        x =>
+            x.classList
+            .remove("active")
+    );
+
+
+    const map = {
+        CONSERVADOR:
+            "scenarioConservador",
+        BASE:
+            "scenarioBase",
+        OPTIMISTA:
+            "scenarioOptimista"
+    };
+
+
+    document
+    .getElementById(
+        map[type]
+    )
+    .classList
+    .add("active");
+
+
+    const p =
+        currentSimProject();
+
+
+    if(!p)
+        return;
+
+
+    const advance =
+        number(
+            p.avance_fisico
+        );
+
+
+    let recognition;
+
+
+    if(
+        type
+        === "CONSERVADOR"
+    ){
+
+        recognition =
+            Math.max(
+                0,
+                advance * .80
+            );
+
+    }
+
+
+    if(
+        type
+        === "BASE"
+    ){
+
+        recognition =
+            advance;
+
+    }
+
+
+    if(
+        type
+        === "OPTIMISTA"
+    ){
+
+        recognition =
+            Math.min(
+                100,
+                advance + 10
+            );
+
+    }
+
+
+    document
+    .getElementById(
+        "simMetodo"
+    ).value =
+        "MANUAL";
+
+
+    document
+    .getElementById(
+        "simReconocimiento"
+    ).value =
+        recognition.toFixed(1);
+
+
+    if(recalc)
+        actualizarSimulacion();
+    else
+        actualizarSimulacion();
+
+}
+
+
+function actualizarSimulacion(){
+
+    const p =
+        currentSimProject();
+
+
+    if(!p)
+        return;
+
+
+    const advance =
+        number(
+            document
+            .getElementById(
+                "simAvance"
+            )
+            .value
+        );
+
+
+    const method =
+        document
+        .getElementById(
+            "simMetodo"
+        )
+        .value;
+
+
+    let recognition =
+        number(
+            document
+            .getElementById(
+                "simReconocimiento"
+            )
+            .value
+        );
+
+
+    if(method === "AVANCE"){
+
+        recognition =
+            advance;
+
+
+        document
+        .getElementById(
+            "simReconocimiento"
+        )
+        .value =
+            advance.toFixed(1);
+
+    }
+
+
+    const extraCost =
+        number(
+            document
+            .getElementById(
+                "simCostoPendiente"
+            )
+            .value
+        );
+
+
+    const targetMargin =
+        number(
+            document
+            .getElementById(
+                "simMargenObjetivo"
+            )
+            .value
+        )
+        / 100;
+
+
+    const contract =
+        number(
+            p.monto_contrato
+        );
+
+
+    const currentIncome =
+        number(
+            p.ingresos_odoo
+        );
+
+
+    const directCost =
+        number(
+            p.costo_directo_odoo
+        );
+
+
+    const expenses =
+        number(
+            p.gastos_odoo
+        );
+
+
+    const projectedIncome =
+        contract
+        * recognition
+        / 100;
+
+
+    const totalProjectedCost =
+        directCost
+        + expenses
+        + extraCost;
+
+
+    const projectedResult =
+        projectedIncome
+        - totalProjectedCost;
+
+
+    const projectedMargin =
+        projectedIncome
+        ? projectedResult
+          / projectedIncome
+        : null;
+
+
+    let targetRevenue = null;
+
+
+    if(targetMargin < 1){
+
+        targetRevenue =
+            totalProjectedCost
+            /
+            (
+                1
+                - targetMargin
+            );
+
+    }
+
+
+    STATE.simulation = {
+
+        proyecto:
+            p.proyecto_codigo,
+
+        ingreso:
+            projectedIncome,
+
+        resultado:
+            projectedResult,
+
+        margen:
+            projectedMargin,
+
+        reconocimiento:
+            recognition,
+
+        costo_total:
+            totalProjectedCost
+
+    };
+
+
+    document
+    .getElementById(
+        "simAvanceLabel"
+    ).textContent =
+        advance
+        .toFixed(1)
+        .replace(".",",")
+        + "%";
+
+
+    document
+    .getElementById(
+        "simContrato"
+    ).textContent =
+        money(contract);
+
+
+    document
+    .getElementById(
+        "simIngresoActual"
+    ).textContent =
+        money(currentIncome);
+
+
+    document
+    .getElementById(
+        "simIngresoProyectado"
+    ).textContent =
+        money(projectedIncome);
+
+
+    document
+    .getElementById(
+        "simCostoOdoo"
+    ).textContent =
+        money(directCost);
+
+
+    document
+    .getElementById(
+        "simGastosOdoo"
+    ).textContent =
+        money(expenses);
+
+
+    document
+    .getElementById(
+        "simCostoAdicional"
+    ).textContent =
+        money(extraCost);
+
+
+    const resultEl =
+        document
+        .getElementById(
+            "simResultado"
+        );
+
+
+    resultEl.textContent =
+        money(projectedResult);
+
+
+    resultEl.style.color =
+        projectedResult >= 0
+        ? "var(--green)"
+        : "var(--red)";
+
+
+    const marginEl =
+        document
+        .getElementById(
+            "simMargen"
+        );
+
+
+    marginEl.textContent =
+        projectedMargin === null
+        ? "—"
+        : percent(
+            projectedMargin
+        );
+
+
+    marginEl.style.color =
+        projectedMargin !== null
+        &&
+        projectedMargin >= 0
+        ? "var(--green)"
+        : "var(--red)";
+
+
+    document
+    .getElementById(
+        "simIngresoObjetivo"
+    ).textContent =
+        targetRevenue === null
+        ? "—"
+        : money(targetRevenue);
+
+}
+
+
+function aplicarSimulacionPantalla(){
+
+    if(!STATE.simulation)
+        return;
+
+
+    STATE
+    .simulatedProjects[
+        STATE.simulation.proyecto
+    ] =
+        {
+            ...STATE.simulation
+        };
+
+
+    renderProjects();
+
+
+    toast(
+        "Simulación aplicada solo en pantalla. No se modificó Odoo ni la contabilidad."
+    );
+
+
+    cerrarSimulador();
+
+}
+
+
+/* =========================================================
+   START
+========================================================= */
+
+boot();
+
+</script>
+
+</body>
+</html>
