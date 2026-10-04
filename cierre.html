@@ -1361,7 +1361,7 @@ tbody tr:hover{
  <h3>P&G consolidado Energycontrol</h3>
  <p class="report-note" id="consolidatedPeriod"></p>
  <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real Odoo</th></tr></thead><tbody id="consolidatedBody"></tbody></table></div>
- <p class="report-note">Incluye todas las analíticas y movimientos sin analítica, contando cada línea contable una sola vez. El filtro de mes de la cabecera aplica a este reporte; el filtro de proyecto no restringe el consolidado. Las cuentas 501 incluyen las depreciaciones de producción. Los gastos 502 se incluyen una sola vez.</p>
+ <p id="consolidatedAllocation" class="report-note"></p><p class="report-note">Incluye todas las analíticas y movimientos sin analítica, contando cada línea contable una sola vez. El filtro de mes de la cabecera aplica a este reporte; el filtro de proyecto no restringe el consolidado. Las cuentas 501 incluyen las depreciaciones de producción. Los gastos 502 se incluyen una sola vez.</p>
 </div>
 <div id="tab-fijos" class="tab-content hidden">
  <h3>Gastos fijos y presupuesto de gastos</h3>
@@ -2544,7 +2544,7 @@ function renderChart(){
         months.map(month => {
 
             const rows =
-                STATE.monthly
+                (project==="ALL"?ledgerMonthly():STATE.monthly)
                 .filter(row => {
 
                     if(
@@ -3371,7 +3371,10 @@ function consolidatedRows(){
  return STATE.analytic.filter(r=>String(r.fecha).startsWith("2026-")&&(month==="ALL"||String(r.fecha).slice(5,7)===month));
 }
 function renderConsolidated(){
- const t=accountingTotals(consolidatedRows());
+ const source=consolidatedRows(),t=accountingTotals(source);
+ const allocatedProfit=-source.reduce((s,r)=>s+number(r.saldo_analitico),0);
+ const allocationDifference=allocatedProfit-t.profit;
+ document.getElementById("consolidatedAllocation").textContent=Math.abs(allocationDifference)<0.005?"Asignaciones analíticas conciliadas con el resultado contable del periodo.":"Diferencia entre resultado asignado a analíticas y resultado contable: "+money(allocationDifference)+". El consolidado usa la línea original; revisa las distribuciones analíticas en Odoo.";
  document.getElementById("consolidatedPeriod").textContent=selectedMonth()==="ALL"?"Acumulado 2026 · Toda Energycontrol":monthName("2026-"+selectedMonth()+"-01")+" 2026 · Toda Energycontrol";
  const rows=[["Total Ingresos",t.income],["501 Costo de ingresos / producción",t.cost],["Ganancia Bruta",t.gross],["Margen Bruto",t.income?percent(t.gross/t.income):"—"],["50201 Gastos de venta",t.sales],["50202 Gastos administrativos",t.admin],["50203 Gastos financieros",t.finance],["Otros gastos",t.other],["Total Gastos",t.expenses],["Total Egresos (costos + gastos)",t.cost+t.expenses],["Beneficio Total",t.profit],["Margen Neto",t.income?percent(t.profit/t.income):"—"]];
  document.getElementById("consolidatedBody").innerHTML=rows.map(([label,value])=>'<tr><th scope="row">'+label+'</th><td>'+ (typeof value==="string"?value:money(value))+'</td></tr>').join("");
