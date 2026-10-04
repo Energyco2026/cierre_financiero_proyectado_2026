@@ -1361,7 +1361,7 @@ tbody tr:hover{
  <h3>P&G consolidado Energycontrol</h3>
  <p class="report-note" id="consolidatedPeriod"></p>
  <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real Odoo</th></tr></thead><tbody id="consolidatedBody"></tbody></table></div>
- <p class="report-note">Incluye todas las analíticas y movimientos sin analítica. El filtro de mes de la cabecera aplica a este reporte; el filtro de proyecto no restringe el consolidado. Las cuentas 501 incluyen las depreciaciones de producción. Los gastos 502 se incluyen una sola vez.</p>
+ <p class="report-note">Incluye todas las analíticas y movimientos sin analítica, contando cada línea contable una sola vez. El filtro de mes de la cabecera aplica a este reporte; el filtro de proyecto no restringe el consolidado. Las cuentas 501 incluyen las depreciaciones de producción. Los gastos 502 se incluyen una sola vez.</p>
 </div>
 <div id="tab-fijos" class="tab-content hidden">
  <h3>Gastos fijos y presupuesto de gastos</h3>
@@ -2396,8 +2396,9 @@ function renderAll(){
 
 function renderKPIs(){
 
-    const rows =
-        filteredMonthly();
+    const rows = selectedProject()==="ALL"
+      ? ledgerMonthly().filter(r=>selectedMonth()==="ALL"||String(r.mes).slice(5,7)===selectedMonth())
+      : filteredMonthly();
 
 
     const ingresos =
@@ -3330,6 +3331,24 @@ function expandirPyg(){
  }
  renderPygTable();
 }
+function ledgerLines(rows){
+ const seen=new Set();
+ return rows.filter(r=>{
+  if(r.odoo_move_line_id===null||r.odoo_move_line_id===undefined)return true;
+  if(seen.has(r.odoo_move_line_id))return false;
+  seen.add(r.odoo_move_line_id);return true;
+ }).map(r=>({...r,saldo_analitico:r.saldo_linea??r.saldo_analitico}));
+}
+function ledgerMonthly(){
+ const groups=new Map();
+ for(const r of ledgerLines(STATE.analytic)){
+  const mes=String(r.fecha).slice(0,7)+"-01";
+  if(!groups.has(mes))groups.set(mes,{mes,ingresos:0,costo_directo:0,gastos:0});
+  const row=groups.get(mes),bucket=accountingBucket(r),amount=number(r.saldo_analitico);
+  if(bucket==="income")row.ingresos-=amount;else if(bucket==="cost")row.costo_directo+=amount;else row.gastos+=amount;
+ }
+ return [...groups.values()].map(r=>({...r,resultado:r.ingresos-r.costo_directo-r.gastos})).sort((a,b)=>a.mes.localeCompare(b.mes));
+}
 function accountingBucket(r){
  const code=String(r.cuenta_codigo||"");
  if(["income","income_other"].includes(r.tipo_cuenta))return "income";
@@ -3342,7 +3361,7 @@ function accountingBucket(r){
 }
 function accountingTotals(rows){
  const totals={income:0,cost:0,sales:0,admin:0,finance:0,other:0};
- for(const r of rows){const key=accountingBucket(r);totals[key]+=(key==="income"?-1:1)*number(r.saldo_analitico);}
+ for(const r of ledgerLines(rows)){const key=accountingBucket(r);totals[key]+=(key==="income"?-1:1)*number(r.saldo_analitico);}
  totals.expenses=totals.sales+totals.admin+totals.finance+totals.other;
  totals.gross=totals.income-totals.cost;totals.profit=totals.gross-totals.expenses;
  return totals;
@@ -3362,7 +3381,7 @@ function expenseBudget(){
  if(!/^2026-(0[1-9]|1[0-2])$/.test(cutoff))return {accounts:[],remaining:0,cutoff,invalid:true};
  const month=Number(cutoff.slice(5,7)),start=Math.max(1,month-2),months=month-start+1;
  const accounts=new Map();
- for(const r of STATE.analytic){
+ for(const r of ledgerLines(STATE.analytic)){
   const date=String(r.fecha);
   if(!date.startsWith("2026-")||date.slice(0,7)>cutoff||String(r.cuenta_codigo||"").startsWith("501")||accountingBucket(r)==="income"||accountingBucket(r)==="cost")continue;
   const code=String(r.cuenta_codigo||"SIN_CUENTA");
