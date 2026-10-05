@@ -1020,6 +1020,7 @@ tbody tr:hover{
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 15:30</div>
 
         </div>
 
@@ -2497,7 +2498,7 @@ function renderCrm(){
  const orden=['Residencial','Comercial','Industrial','Sector Público','PPA','Agropecuario'];
  const tipos=[...new Set([...orden.filter(t=>(STATE.crm||[]).some(l=>tipoCrm(l).tipo===t)),...(STATE.crm||[]).map(l=>tipoCrm(l).tipo)])].sort((a,b)=>(a==='Sin tipo')-(b==='Sin tipo')||((orden.indexOf(a)+1||99)-(orden.indexOf(b)+1||99)));
  selT.innerHTML='<option value="ALL">Todos los tipos</option>'+tipos.map(t=>'<option'+(t===tipoSel?' selected':'')+'>'+escapeHtml(t)+'</option>').join('');
- document.getElementById('crmTipos').innerHTML=tipos.filter(t=>porTipo.has(t)).map(t=>{const g=porTipo.get(t);return '<button class="btn-secondary" style="'+(t===tipoSel?'outline:2px solid #2b72cf;':'')+(t==='Sin tipo'?'border-color:#e0a400;':'')+'" onclick="setCrmTipo(\''+escapeHtml(t)+'\')" title="Filtrar por '+escapeHtml(t)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.m)+'</button>';}).join('')+(tipoSel!=='ALL'?'<button class="btn-secondary" onclick="setCrmTipo(\'ALL\')">✕ Quitar filtro</button>':'')+(tipoSel==='PPA'?'<button class="btn-primary" onclick="irAPpa()">Contratos PPA en el cierre →</button>':'');
+ document.getElementById('crmTipos').innerHTML=tipos.map(t=>{const g=porTipo.get(t)||{n:0,m:0};return '<button class="btn-secondary" style="'+(t===tipoSel?'outline:2px solid #2b72cf;':'')+(t==='Sin tipo'?'border-color:#e0a400;':'')+'" onclick="setCrmTipo(\''+escapeHtml(t)+'\')" title="Filtrar por '+escapeHtml(t)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.m)+'</button>';}).join('')+(tipoSel!=='ALL'?'<button class="btn-secondary" onclick="setCrmTipo(\'ALL\')">✕ Quitar filtro</button>':'')+(tipoSel==='PPA'?'<button class="btn-primary" onclick="irAPpa()">Contratos PPA en el cierre →</button>':'');
  const rowsT=rowsDelTipo.filter(enMeses);
  renderCrmPpaPanel(tipoSel==='PPA');
  renderCrmResPanel(tipoSel==='Residencial');
