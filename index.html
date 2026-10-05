@@ -1508,10 +1508,12 @@ tbody tr:hover{
                 <div class="filters-row">
                   <input id="buscarCrm" class="filter-input search" placeholder="Buscar oportunidad, cliente o PO..." oninput="renderCrm()">
                   <select id="crmAnio" onchange="renderCrm()" aria-label="Año de cierre"><option value="2026">Cerradas en 2026</option><option value="2025">Cerradas en 2025</option><option value="ALL">Todas</option></select>
+                  <select id="crmTipo" onchange="renderCrm()" aria-label="Tipo de oportunidad"><option value="ALL">Todos los tipos</option></select>
                   <select id="crmEstado" onchange="renderCrm()" aria-label="Estado"><option value="ALL">Todos los estados</option><option value="PEND">Sin simular</option><option value="SIM">Ya en el cierre</option></select>
                 </div>
+                <div id="crmTipos" class="filters-row" style="gap:8px;flex-wrap:wrap"></div>
                 <div class="table-wrap"><table>
-                  <thead><tr><th>Fecha cierre</th><th>Oportunidad</th><th>Cliente</th><th>Monto CRM</th><th>Orden de venta (sin IVA)</th><th>PO</th><th>Ingreso 2026 en Odoo</th><th>Estado</th><th></th></tr></thead>
+                  <thead><tr><th>Fecha cierre</th><th>Tipo</th><th>Oportunidad</th><th>Cliente</th><th>Monto CRM</th><th>Orden de venta (sin IVA)</th><th title="Contrato que usa el cierre: Excel SharePoint (PORTADA) o, si no hay, la orden de venta">Contrato en el cierre</th><th>PO</th><th>Ingreso 2026 en Odoo</th><th>Estado</th><th></th></tr></thead>
                   <tbody id="crmBody"></tbody>
                 </table></div>
                 <p id="crmNota" class="report-note"></p>
@@ -2355,20 +2357,49 @@ function renderPve(){
  document.getElementById('pveNota').textContent=filasProy.length+' proyectos · Presupuesto '+money(G.p)+' · Facturado '+money(G.re)+' · OC abiertas '+money(G.abierta)+' · Real + OC '+money(G.oc)+' · Sin OC '+money(G.sinOc)+' · Por ejecutar '+money(G.porEj)+' · Sobrecostos '+money(G.sobre)+'.';
 }
 function togglePve(code){STATE.pveOpen.has(code)?STATE.pveOpen.delete(code):STATE.pveOpen.add(code);renderPve();}
+function tipoCrm(l){
+ const st=l.atributos?.studio||{};
+ const t=String(st['Tipo de Oportunidad']||'').trim();if(t)return {tipo:t,fuente:'Tipo de Oportunidad'};
+ const g=String(st['Segmento de Mercado']||'').trim();if(g)return {tipo:g,fuente:'Segmento de Mercado (Tipo de Oportunidad vacío)'};
+ return {tipo:'Sin tipo',fuente:'Odoo no tiene Tipo de Oportunidad ni Segmento de Mercado'};
+}
+// Monto de la venta: la orden de venta (sin IVA); si no hay o es casi cero frente al CRM (ej. $0,08), el monto del CRM.
+function montoVentaCrm(l){const ov=number(l.monto_ov),crm=number(l.monto_esperado);return ov>0&&!(crm>0&&ov<crm*0.05)?ov:crm;}
+function celdaContratoCrm(l){
+ if(!l.proyecto_codigo)return '<td>—</td>';
+ const c=number(projectInfo(l.proyecto_codigo).monto_contrato),ov=number(l.monto_ov),crm=number(l.monto_esperado);
+ if(!c)return '<td><span class="badge danger" title="La PO no tiene contrato cargado: el forecast por avance no puede reconocer ingreso">Sin contrato</span></td>';
+ const dif=(a,b)=>b>0&&Math.abs(a-b)>Math.max(1,b*0.01);
+ const al=[];
+ if(dif(c,ov))al.push('vs OV '+(c-ov>0?'+':'')+money(c-ov));
+ if(dif(c,crm))al.push('vs CRM '+(c-crm>0?'+':'')+money(c-crm));
+ return '<td>'+money(c)+(al.length?'<br><span class="badge warn" title="Diferencia entre el contrato del cierre y la orden de venta / monto CRM">'+escapeHtml(al.join(' · '))+'</span>':'')+'</td>';
+}
+function setCrmTipo(t){document.getElementById('crmTipo').value=t;renderCrm();}
 function renderCrm(){
  const body=document.getElementById('crmBody');if(!body)return;
  const q=(document.getElementById('buscarCrm').value||'').toLowerCase(),anio=document.getElementById('crmAnio').value,est=document.getElementById('crmEstado').value;
  const guardados=new Set((STATE.savedSims||[]).map(x=>x.proyecto_codigo));
  const rows=(STATE.crm||[]).map(l=>{const codeSim=l.proyecto_codigo||('CRM-'+l.lead_id);return {...l,codeSim,sim:guardados.has(codeSim)};})
-  .filter(l=>(anio==='ALL'||String(l.fecha_cierre||'').startsWith(anio))&&(est==='ALL'||(est==='SIM'?l.sim:!l.sim))&&(!q||[l.nombre,l.cliente,l.proyecto_codigo,l.ordenes_venta,l.vendedor].join(' ').toLowerCase().includes(q)))
+  .map(l=>({...l,...tipoCrm(l)}))
+  .filter(l=>(anio==='ALL'||String(l.fecha_cierre||'').startsWith(anio))&&(est==='ALL'||(est==='SIM'?l.sim:!l.sim))&&(!q||[l.nombre,l.cliente,l.proyecto_codigo,l.ordenes_venta,l.vendedor,l.tipo].join(' ').toLowerCase().includes(q)))
   .sort((a,b)=>String(b.fecha_cierre).localeCompare(String(a.fecha_cierre)));
- body.innerHTML=rows.map(l=>{
+ // Resumen por tipo (con los demás filtros aplicados) y selector
+ const selT=document.getElementById('crmTipo'),tipoSel=selT.value;
+ const porTipo=new Map();for(const l of rows){const g=porTipo.get(l.tipo)||{n:0,m:0};g.n++;g.m+=montoVentaCrm(l);porTipo.set(l.tipo,g);}
+ const orden=['Residencial','Comercial','Industrial','Sector Público','PPA','Agropecuario'];
+ const tipos=[...new Set([...orden.filter(t=>(STATE.crm||[]).some(l=>tipoCrm(l).tipo===t)),...(STATE.crm||[]).map(l=>tipoCrm(l).tipo)])].sort((a,b)=>(a==='Sin tipo')-(b==='Sin tipo')||((orden.indexOf(a)+1||99)-(orden.indexOf(b)+1||99)));
+ selT.innerHTML='<option value="ALL">Todos los tipos</option>'+tipos.map(t=>'<option'+(t===tipoSel?' selected':'')+'>'+escapeHtml(t)+'</option>').join('');
+ document.getElementById('crmTipos').innerHTML=tipos.filter(t=>porTipo.has(t)).map(t=>{const g=porTipo.get(t);return '<button class="btn-secondary" style="'+(t===tipoSel?'outline:2px solid #2b72cf;':'')+(t==='Sin tipo'?'border-color:#e0a400;':'')+'" onclick="setCrmTipo(\''+escapeHtml(t)+'\')" title="Filtrar por '+escapeHtml(t)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.m)+'</button>';}).join('')+(tipoSel!=='ALL'?'<button class="btn-secondary" onclick="setCrmTipo(\'ALL\')">✕ Quitar filtro</button>':'');
+ const rowsT=tipoSel==='ALL'?rows:rows.filter(l=>l.tipo===tipoSel);
+ body.innerHTML=rowsT.map(l=>{
   const ing=l.proyecto_codigo?projectRealAtCutoff(l.proyecto_codigo).income:null;
+  const tipoHtml='<span class="badge'+(l.tipo==='Sin tipo'?' warn':l.tipo==='Residencial'?'':' ok')+'" title="'+escapeHtml(l.fuente)+'">'+escapeHtml(l.tipo)+(l.fuente.startsWith('Segmento')?' *':'')+'</span>';
   const estado=l.sim?'<span class="badge ok">En el cierre ✓</span>':!l.proyecto_codigo?'<span class="badge warn">Sin PO en Odoo</span>':'<span class="badge">Sin simular</span>';
-  return '<tr><td>'+escapeHtml(l.fecha_cierre||'—')+'</td><td style="white-space:normal;max-width:280px">'+escapeHtml(l.nombre||'')+'</td><td style="white-space:normal;max-width:220px">'+escapeHtml(l.cliente||'')+'</td><td>'+money(l.monto_esperado)+'</td><td>'+(l.monto_ov?money(l.monto_ov):'—')+'</td><td>'+escapeHtml(l.proyecto_codigo||'—')+'</td><td>'+(ing===null?'—':money(ing))+'</td><td>'+estado+'</td><td><button class="btn-secondary" onclick="simularVentaCrm('+Number(l.lead_id)+')">'+(l.sim?'Editar':'Simular')+'</button></td></tr>';
- }).join('')||'<tr><td colspan="9">'+(STATE.crmError?'No se pudo cargar: '+escapeHtml(STATE.crmError):(STATE.crm||[]).length?'Sin ventas para este filtro.':'Aún no hay datos: pulsa "Actualizar datos" para traer el CRM de Odoo.')+'</td></tr>';
- const tot=rows.reduce((s,l)=>s+number(l.monto_ov||l.monto_esperado),0);
- document.getElementById('crmNota').textContent=rows.length+' ventas · '+money(tot)+' (orden de venta o monto CRM) · '+rows.filter(l=>l.sim).length+' ya en el cierre · '+rows.filter(l=>!l.proyecto_codigo).length+' sin PO vinculada.';
+  return '<tr><td>'+escapeHtml(l.fecha_cierre||'—')+'</td><td>'+tipoHtml+'</td><td style="white-space:normal;max-width:280px">'+escapeHtml(l.nombre||'')+'</td><td style="white-space:normal;max-width:220px">'+escapeHtml(l.cliente||'')+'</td><td>'+money(l.monto_esperado)+'</td><td>'+(l.monto_ov?money(l.monto_ov)+(number(l.monto_esperado)>0&&number(l.monto_ov)<number(l.monto_esperado)*0.05?'<br><span class="badge danger" title="La orden de venta en Odoo no refleja el contrato">OV mal cargada</span>':''):'—')+'</td>'+celdaContratoCrm(l)+'<td>'+escapeHtml(l.proyecto_codigo||'—')+'</td><td>'+(ing===null?'—':money(ing))+'</td><td>'+estado+'</td><td><button class="btn-secondary" onclick="simularVentaCrm('+Number(l.lead_id)+')">'+(l.sim?'Editar':'Simular')+'</button></td></tr>';
+ }).join('')||'<tr><td colspan="11">'+(STATE.crmError?'No se pudo cargar: '+escapeHtml(STATE.crmError):(STATE.crm||[]).length?'Sin ventas para este filtro.':'Aún no hay datos: pulsa "Actualizar datos" para traer el CRM de Odoo.')+'</td></tr>';
+ const tot=rowsT.reduce((s,l)=>s+montoVentaCrm(l),0),sinTipo=rows.filter(l=>l.tipo==='Sin tipo').length;
+ document.getElementById('crmNota').textContent=rowsT.length+' ventas · '+money(tot)+' (orden de venta o monto CRM) · '+rowsT.filter(l=>l.sim).length+' ya en el cierre · '+rowsT.filter(l=>!l.proyecto_codigo).length+' sin PO vinculada.'+(sinTipo?' '+sinTipo+' venta(s) sin Tipo de Oportunidad en Odoo: pide a comercial llenarlo. * = tomado de Segmento de Mercado.':'');
 }
 function simularVentaCrm(leadId){
  const l=(STATE.crm||[]).find(x=>Number(x.lead_id)===Number(leadId));if(!l)return;
