@@ -1507,13 +1507,13 @@ tbody tr:hover{
                 class="tab-content hidden">
                 <div id="syncReport" class="sync-report hidden" role="status"></div>
                 <h3>Presupuesto vs Ejecución por proyecto</h3>
-                <p class="report-note">Presupuesto aterrizado (Excel de Control Operativo en SharePoint) contra lo ejecutado en Odoo y lo comprometido en órdenes de compra. Pulsa ▸ para ver los rubros. "Total en OC emitidas" es el valor completo de las órdenes de compra (incluye lo ya facturado), no el saldo abierto.</p>
+                <p class="report-note"><b>Presupuesto</b> = Excel de Control Operativo, hoja COSTOS (SharePoint, botón Actualizar datos). <b>Facturado real</b> y <b>OC abiertas</b> = Odoo, con la misma regla y asignaciones de Control de Operaciones (aquí solo se leen). Se cruzan por rubro: Importación, Mano de obra, Cables, Estructuras, Materiales, Obra civil, Otros. Por rubro: <b>Real + OC</b> = facturado + OC abiertas sin facturar · <b>Sin OC</b> = presupuesto − (real + OC) · <b>Por ejecutar</b> = OC abierta + sin OC · <b>Sobrecosto</b> = lo comprometido o facturado que supera el presupuesto. Pulsa ▸ en la PO para ver los rubros y ▸ en el rubro para ver los ítems del Excel.</p>
                 <div class="table-wrap"><table>
-                  <thead><tr><th>Proyecto</th><th>Contrato (OV Odoo)</th><th>Contrato (SharePoint)</th><th>Pres. aterrizado</th><th>Ejecutado real</th><th>Total en OC emitidas</th><th>Por ejecutar</th><th>% ejecutado</th><th>Avance físico</th><th>Estado</th></tr></thead>
+                  <thead><tr><th>Proyecto / rubro</th><th>Presupuesto</th><th>Real + OC</th><th>Facturado real</th><th title="Saldo de OC emitidas que aún no se facturan">OC abiertas s/ facturar</th><th title="Presupuesto sin orden de compra todavía">Sin OC</th><th>Por ejecutar</th><th>Sobrecosto</th><th>% ejecutado / avance</th><th>Estado</th></tr></thead>
                   <tbody id="pveBody"></tbody>
                 </table></div>
                 <p id="pveNota" class="report-note"></p>
-                <details open style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">Detalle de ítems del Excel de COSTOS (SharePoint)</summary>
+                <details style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">Ver el Excel de COSTOS completo (todas las columnas)</summary>
                 <div id="costsSummary" class="report-note"></div>
 
                 <div class="filters-row">
@@ -2046,7 +2046,7 @@ async function loadData(){
 
 
         try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
-        try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("presupuesto_categoria_vs_comprometido",["proyecto","id"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
+        try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("forecast_pve_sharepoint",["proyecto","familia"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
         try{const cr=await readAll("forecast_crm_ventas",["lead_id"]);STATE.crm=cr.data||[];}catch(e){STATE.crm=[];STATE.crmError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
         STATE.projects =
@@ -2256,27 +2256,66 @@ function filteredProjects(){
    MAIN RENDER
 ========================================================= */
 
+function familiaCosto(p){
+ const v=String(p||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/_/g,' ').replace(/\s+/g,' ').trim();
+ if(!v||v==='0')return null;
+ if(v.startsWith('sin clasificar'))return 'sin_clasificar';
+ if(v.startsWith('import')||v.startsWith('aduana')||v.startsWith('gastos de import')||v==='proveedor')return 'importacion';
+ if(v.startsWith('mano de obra')||v==='m/o'||v==='mo')return 'mano_de_obra';
+ if(v.startsWith('cable')||v.startsWith('conductor'))return 'cables';
+ if(v.startsWith('estructura'))return 'estructuras';
+ if(v.startsWith('material')||v.startsWith('canalizacion')||v.startsWith('proteccion'))return 'materiales';
+ if(v.startsWith('estudio'))return 'estudios_civiles';
+ if(v.includes('obra civil')||v==='civil')return 'obra_civil';
+ if(v.startsWith('linea')||v.startsWith('equipos')||v.startsWith('comunicacion'))return 'equipos_linea';
+ if(v==='local')return 'local';
+ return 'otros';
+}
+function calcRubro(c){
+ // Misma regla que Control de Operaciones: "comprometido" = saldo de OC abiertas sin facturar (OC bloqueadas excluidas).
+ const p=number(c.presupuesto_aterrizado),abierta=number(c.comprometido),re=number(c.presupuesto_real);
+ const usado=re+abierta,sinOc=Math.max(p-usado,0),sobre=Math.max(usado-p,0);
+ return {p,oc:usado,re,abierta,sinOc,porEj:abierta+sinOc,sobre};
+}
 function renderPve(){
  const body=document.getElementById('pveBody');if(!body)return;
  STATE.pveOpen??=new Set();
- const rows=(STATE.pve||[]).slice().sort((a,b)=>String(a.proyecto).localeCompare(String(b.proyecto)));
- const pct=(a,b)=>b>0?a/b:null;
- body.innerHTML=rows.map(r=>{
-  const code=r.proyecto,ater=number(r.presupuesto_aterrizado),real=number(r.real_ejecutado),comp=number(r.comprometido),porEj=ater-real,p=pct(real,ater);
-  const ov=number(STATE.contratosOdoo?.[code]),sp=number(r.monto_contrato),avance=r.avance_fisico==null?null:number(r.avance_fisico)/100;
-  const estado=!ater?'<span class="badge danger">Sin presupuesto</span>':real>ater?'<span class="badge danger">Sobre presupuesto</span>':(avance!==null&&p!==null&&p-avance>0.10)?'<span class="badge warn">Costo adelantado al avance</span>':'<span class="badge ok">En rango</span>';
-  const difOv=ov&&sp?ov-sp:null;
-  const alertaOv=difOv!==null&&Math.abs(difOv)>Math.max(1,sp*0.01)?' <span class="badge warn" title="Orden de venta Odoo '+money(ov)+' vs SharePoint '+money(sp)+'">OV ≠ contrato</span>':(sp&&!ov?' <span class="badge warn">Sin OV en Odoo</span>':'');
+ // Presupuesto = Excel SharePoint (camino 2). Real y OC abiertas = Odoo, misma regla que Control de Operaciones (solo lectura).
+ const opMap=new Map((STATE.pve||[]).map(r=>[String(r.proyecto),r]));
+ const filasProy=[...new Set((STATE.pveCat||[]).map(c=>String(c.proyecto)))].map(code=>opMap.get(code)||{proyecto:code}).sort((a,b)=>String(a.proyecto).localeCompare(String(b.proyecto)));
+ const celdas=(t,extra)=>'<td>'+money(t.p)+'</td><td><b>'+money(t.oc)+'</b></td><td>'+money(t.re)+'</td><td>'+money(t.abierta)+'</td><td>'+money(t.sinOc)+'</td><td><b>'+money(t.porEj)+'</b></td><td class="'+(t.sobre>0?'money-negative':'')+'">'+(t.sobre>0?money(t.sobre):'—')+'</td>'+extra;
+ let G={p:0,oc:0,re:0,abierta:0,sinOc:0,porEj:0,sobre:0};
+ body.innerHTML=filasProy.map(r=>{
+  const code=r.proyecto,cats=(STATE.pveCat||[]).filter(c=>c.proyecto===code).map(c=>({c,...calcRubro(c)}));
+  const t=cats.reduce((a,x)=>{for(const k of Object.keys(a))a[k]+=x[k];return a;},{p:0,oc:0,re:0,abierta:0,sinOc:0,porEj:0,sobre:0});
+  for(const k of Object.keys(G))G[k]+=t[k];
+  const avance=r.avance_fisico==null?null:number(r.avance_fisico)/100,pctRe=t.p?t.re/t.p:null;
+  const sinClas=cats.filter(x=>/sin clasificar/i.test(x.c.rubro||'')).reduce((a,x)=>a+x.re+x.abierta,0);
+  const sp=number(r.monto_contrato),ov=number(STATE.contratosOdoo?.[code]);
+  const est=[];
+  if(!t.p)est.push('<span class="badge danger">Sin presupuesto</span>');
+  else if(t.sobre>0)est.push('<span class="badge danger">Sobrecosto '+money(t.sobre)+'</span>');
+  if(avance!==null&&pctRe!==null&&pctRe-avance>0.10)est.push('<span class="badge warn">Costo adelantado al avance</span>');
+  if(avance!==null&&avance>=0.9&&t.sinOc>t.p*0.1)est.push('<span class="badge warn">Obra casi terminada y '+money(t.sinOc)+' sin OC</span>');
+  if(sinClas>0)est.push('<span class="badge warn">'+money(sinClas)+' sin rubro</span>');
+  if(ov&&sp&&Math.abs(ov-sp)>Math.max(1,sp*0.01))est.push('<span class="badge warn">OV ≠ contrato</span>');
+  if(!est.length)est.push('<span class="badge ok">En rango</span>');
   const abierto=STATE.pveOpen.has(code);
-  let html='<tr><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button></td><td>'+(ov?money(ov):'—')+'</td><td>'+(sp?money(sp):'—')+'</td><td>'+money(ater)+'</td><td>'+money(real)+'</td><td>'+money(comp)+'</td><td class="'+(porEj<0?'money-negative':'')+'">'+money(porEj)+'</td><td>'+(p===null?'—':percent(p))+'</td><td>'+(avance===null?'—':percent(avance))+'</td><td>'+estado+alertaOv+'</td></tr>';
+  let html='<tr style="background:#f1f5fb"><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button></td>'+celdas(t,'<td>'+(pctRe===null?'—':percent(pctRe))+' / '+(avance===null?'—':percent(avance))+'</td><td style="white-space:normal;min-width:200px">'+est.join(' ')+'</td>')+'</tr>';
   if(abierto){
-   html+=(STATE.pveCat||[]).filter(c=>c.proyecto===code).sort((a,b)=>String(a.rubro).localeCompare(String(b.rubro))).map(c=>{const a=number(c.presupuesto_aterrizado),re=number(c.presupuesto_real),co=number(c.comprometido),pe=a-re;
-    return '<tr style="background:#fafcff"><td style="padding-left:34px">'+escapeHtml(c.rubro||'')+'</td><td></td><td></td><td>'+money(a)+'</td><td>'+money(re)+'</td><td>'+money(co)+'</td><td class="'+(pe<0?'money-negative':'')+'">'+money(pe)+'</td><td>'+(a>0?percent(re/a):'—')+'</td><td></td><td></td></tr>';}).join('')||'<tr><td colspan="10" style="padding-left:34px">Sin rubros cargados.</td></tr>';
+   html+=cats.sort((a,b)=>b.p-a.p).map(x=>{
+    const fk=code+'|'+x.c.familia,fa=STATE.pveOpen.has(fk),items=(STATE.costs||[]).filter(i=>i.proyecto_codigo===code&&familiaCosto(i.categoria)===x.c.familia&&number(i.presupuesto_aterrizado)!==0);
+    const nombreRubro=escapeHtml(x.c.rubro||'')+(items.length?' <small class="report-note">('+items.length+' ítems)</small>':'');
+    const etiqueta=items.length?'<button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(fk)+'\')">'+(fa?'▾ ':'▸ ')+nombreRubro+'</button>':nombreRubro;
+    const est=/sin clasificar/i.test(x.c.rubro||'')?'<span class="badge warn">Asignar rubro en Control de Operaciones</span>':(!x.c.tiene_presupuesto_sp&&(x.re||x.abierta))?'<span class="badge warn">Gasto sin rubro en el Excel</span>':x.sobre>0?'<span class="badge danger">Sobrecosto</span>':x.sinOc>0&&x.abierta===0&&x.re===0?'<span class="badge">Sin OC aún</span>':'';
+    let h='<tr><td style="padding-left:30px;white-space:normal;max-width:300px">'+etiqueta+'</td>'+celdas(x,'<td>'+(x.p?percent(x.re/x.p):'—')+'</td><td>'+est+'</td>')+'</tr>';
+    if(fa)h+=items.sort((a,b)=>number(b.presupuesto_aterrizado)-number(a.presupuesto_aterrizado)).map(i=>'<tr style="color:#475569"><td style="padding-left:56px;white-space:normal;max-width:300px">'+escapeHtml(i.item_descripcion||'')+(i.proveedor?' <small class="report-note">· '+escapeHtml(i.proveedor)+'</small>':'')+'</td><td>'+money(number(i.presupuesto_aterrizado))+'</td><td colspan="8" class="report-note">Presupuesto del ítem (Excel). Real y OC se cruzan por rubro, no por ítem.</td></tr>').join('');
+    return h;
+   }).join('')||'<tr><td colspan="10" style="padding-left:30px">Sin rubros cargados.</td></tr>';
   }
   return html;
  }).join('')||'<tr><td colspan="10">'+(STATE.pveError?'No se pudo cargar: '+escapeHtml(STATE.pveError):'Sin proyectos con presupuesto.')+'</td></tr>';
- const t=rows.reduce((s,r)=>({a:s.a+number(r.presupuesto_aterrizado),r:s.r+number(r.real_ejecutado),c:s.c+number(r.comprometido)}),{a:0,r:0,c:0});
- document.getElementById('pveNota').textContent=rows.length+' proyectos · Presupuesto '+money(t.a)+' · Ejecutado '+money(t.r)+' · Total en OC '+money(t.c)+' · Por ejecutar '+money(t.a-t.r)+'. "Costo adelantado al avance": el % ejecutado supera en más de 10 puntos al avance físico.';
+ document.getElementById('pveNota').textContent=filasProy.length+' proyectos · Presupuesto '+money(G.p)+' · Facturado '+money(G.re)+' · OC abiertas '+money(G.abierta)+' · Real + OC '+money(G.oc)+' · Sin OC '+money(G.sinOc)+' · Por ejecutar '+money(G.porEj)+' · Sobrecostos '+money(G.sobre)+'.';
 }
 function togglePve(code){STATE.pveOpen.has(code)?STATE.pveOpen.delete(code):STATE.pveOpen.add(code);renderPve();}
 function renderCrm(){
@@ -4057,4 +4096,4 @@ boot();
 </script>
 
 </body>
-</html>
+</html>
