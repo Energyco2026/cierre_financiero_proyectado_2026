@@ -3618,7 +3618,7 @@ function renderForecastAvance(){
    +'</tr>';
  }).join('')||'<tr><td colspan="20">Sin proyectos para este filtro.</td></tr>';
  const T=k=>filas.reduce((s,r)=>s+r[k],0);
- document.getElementById('favFoot').innerHTML='<tr><td class="fav-sticky">Total ('+filas.length+')</td><td>'+money(T('C'))+'</td><td></td><td></td><td>'+money(T('E'))+'</td><td>'+(T('C')?percent((T('C')-T('E'))/T('C')):'—')+'</td>'
+ document.getElementById('favFoot').innerHTML='<tr><td class="fav-sticky">Total ('+filas.length+')</td><td>'+money(T('C'))+'</td><td></td><td></td><td>'+money(T('E'))+'</td><td>'+favMargenTotal(filas)+'</td>'
   +['ingAcum','ingPrevio','ing2026','ingReg','ingFalta','cosAcum','cosPrevio','cos2026','cosReg','cosFalta','efecto'].map(k=>'<td class="'+(T(k)<0?'money-negative':'')+'">'+money(T(k))+'</td>').join('')+'<td></td><td></td></tr>';
  const enCierre=todas.filter(r=>r.saved&&!r.dirty),pend=todas.filter(r=>!r.saved||r.dirty);
  document.getElementById('favResumen').textContent=enCierre.length+' de '+todas.length+' proyectos en el cierre · Efecto Oct–Dic guardado: '+money(enCierre.reduce((s,r)=>s+r.efecto,0));
@@ -4304,7 +4304,7 @@ boot();
 </script>
 
 </body>
-</html'<td title="Solo proyectos con costo total">'+favMargenTotal(filas)+'</td>'
+</html
   +['ingAcum','ingPrevio','ing2026','ingReg','ingFalta','cosAcum','cosPrevio','cos2026','cosReg','cosFalta','efecto'].map(k=>'<td class="'+(T(k)<0?'money-negative':'')+'">'+money(T(k))+'</td>').join('')+'<td></td><td></td></tr>';
  const enCierre=todas.filter(r=>r.saved&&!r.dirty),pend=todas.filter(r=>!r.saved||r.dirty);
  document.getElementById('favResumen').textContent=enCierre.length+' de '+todas.length+' proyectos en el cierre · Efecto Oct–Dic guardado: '+money(enCierre.reduce((s,r)=>s+r.efecto,0));
