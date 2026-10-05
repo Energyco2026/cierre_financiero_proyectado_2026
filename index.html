@@ -1394,7 +1394,7 @@ tbody tr:hover{
                         placeholder="Buscar proyecto..."
                         oninput="renderProjects()">
 
-                    <label class="report-note"><input type="checkbox" id="verSinMovimiento" onchange="renderProjects()"> Mostrar proyectos sin movimiento</label>
+                    <select id="alcanceProyectos" onchange="renderProjects()" aria-label="Qué proyectos mostrar"><option value="CONTRATO">Con valor de contrato</option><option value="MOV">Con movimiento 2026</option><option value="ALL">Todas las analíticas</option></select>
                     <select
                         id="filtroEstado"
                         onchange="renderProjects()">
@@ -1524,7 +1524,7 @@ tbody tr:hover{
                 <div class="quality-grid">
 
                     <div class="quality-box">
-                        <span>Proyectos cargados</span>
+                        <span>Proyectos con contrato</span>
                         <strong id="qualityProjects">0</strong>
                     </div>
 
@@ -2862,7 +2862,10 @@ function renderProjects(){
 
 
             const conMovimiento=[p.monto_contrato,p.ingresos_odoo,p.costo_directo_odoo,p.ejecutado_operativo,p.por_ejecutar_operativo].some(v=>Math.abs(number(v))>0.005)||(STATE.savedSims||[]).some(x=>x.proyecto_codigo===p.proyecto_codigo);
-            if(!conMovimiento&&!document.getElementById("verSinMovimiento").checked)
+            const alcance=document.getElementById("alcanceProyectos").value;
+            if(alcance==="CONTRATO"&&!(number(p.monto_contrato)>0))
+                return false;
+            if(alcance==="MOV"&&!conMovimiento)
                 return false;
 
             const status =
@@ -3291,10 +3294,11 @@ function renderClosingForecast(){
 function renderForecastReports(){renderConsolidated();renderExpensePlan();renderClosingForecast();}
 function resetForecast(){STATE.expensePlan={};renderForecastReports();toast('Se restauraron los valores del Excel. Los proyectos guardados se mantienen; quítalos con 🗑.');}
 
+function nombreAnalitica(name){const code=String(name||'').match(/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i)?.[1];const n=code&&STATE.names[code];return n&&!String(name).toUpperCase().includes(String(n).toUpperCase())?n:'';}
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  {const seen=new Map();for(const r of rows){const ids=String(r.analitica_clave||"SIN_ANALITICA").split(","),nm=(r.analitica_nombre||"Sin analítica").split(" | ");ids.forEach((id,i)=>{if(!seen.has(id))seen.set(id,nm[i]||nm[0]);});}
-  const items=[...seen].map(([value,label])=>({value,label})).sort((a,b)=>a.label.localeCompare(b.label,"es",{numeric:true}));
+  const items=[...seen].map(([value,label])=>({value,label:label+(nombreAnalitica(label)?' · '+nombreAnalitica(label):'')})).sort((a,b)=>a.label.localeCompare(b.label,"es",{numeric:true}));
   const sig=items.map(i=>i.value).join(",");if(STATE.pygItemsSig!==sig){STATE.pygItemsSig=sig;checklist("pygAnaliticas",items,STATE.pygPick,"Todas",renderPygTable,true);}}
  const search=document.getElementById("buscarPyg").value.trim().toLowerCase();
  const project=document.getElementById("pygScope").value==="ALL"?"ALL":selectedProject();
@@ -3302,7 +3306,7 @@ function renderPygTable(){
  const selectedIds=new Set(cols.map(c=>c.id));
  rows=rows.filter(r=>String(r.analitica_clave||"SIN_ANALITICA").split(",").some(id=>selectedIds.has(id)));
  STATE.pygColumns=cols;STATE.pygReportRows=rows;STATE.pygReportFilters={search,project,period};
- document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto / cuenta contable</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
+ document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto / cuenta contable</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+(nombreAnalitica(g.name)?'<br><small>'+escapeHtml(nombreAnalitica(g.name))+'</small>':'')+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
  STATE.pygRowSpecs=[];
  function row(label,subset,type,style,toggle,level,group=null,account=null){
   const specIndex=STATE.pygRowSpecs.push({type,group,account})-1;
@@ -3535,6 +3539,8 @@ function renderQuality(){
                 &&
                 p.proyecto_codigo
                 !== "SIN_PROYECTO"
+                &&
+                number(p.monto_contrato) > 0
         );
 
 
@@ -3787,6 +3793,7 @@ async function invokeSync(name,body={}){
   if(result.error.context instanceof Response){
    const payload=await result.error.context.clone().json().catch(()=>null);
    message=payload?.error || ("HTTP "+result.error.context.status);
+   if(typeof message!=="string")message=message?.message||JSON.stringify(message);
   } else if(result.error.name==="FunctionsFetchError"){
    message="No se pudo conectar. Comprueba tu conexión; si persiste, revisa CORS o el despliegue de la función.";
   }
