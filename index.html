@@ -1519,13 +1519,13 @@ tbody tr:hover{
                 <p class="report-note">Oportunidades en etapa ganada en Odoo. La PO se toma de la orden de venta vinculada a la oportunidad. Pulsa <b>Simular</b> para llevarla al cierre 2026.</p>
                 <div class="filters-row">
                   <input id="buscarCrm" class="filter-input search" placeholder="Buscar oportunidad, cliente o PO..." oninput="renderCrm()">
-                  <select id="crmAnio" onchange="renderCrm()" aria-label="Año de cierre"><option value="2026">Cerradas en 2026</option><option value="2025">Cerradas en 2025</option><option value="ALL">Todas</option></select>
+                  <select id="crmAnio" onchange="STATE.crmMonths?.clear();STATE.crmMesSig=null;renderCrm()" aria-label="Año de cierre"><option value="2026">Cerradas en 2026</option><option value="2025">Cerradas en 2025</option><option value="ALL">Todas</option></select>
                   <select id="crmTipo" onchange="renderCrm()" aria-label="Tipo de oportunidad"><option value="ALL">Todos los tipos</option></select>
-                  <select id="crmMes" onchange="renderCrm()" aria-label="Mes de cierre"><option value="ALL">Todos los meses</option></select>
+                  <details id="crmMes" class="ms" aria-label="Meses de cierre"><summary>Todos los meses</summary><div class="ms-panel"></div></details>
                   <select id="crmEstado" onchange="renderCrm()" aria-label="Estado"><option value="ALL">Todos los estados</option><option value="PEND">Sin simular</option><option value="SIM">Ya en el cierre</option></select>
                 </div>
                 <div id="crmTipos" class="filters-row" style="gap:8px;flex-wrap:wrap"></div>
-                <div id="crmMeses" class="filters-row" style="gap:6px;flex-wrap:wrap;margin-top:-4px"></div>
+                <div id="crmResPanel" class="hidden" style="margin:6px 0 14px"></div>
                 <div id="crmPpaPanel" class="hidden" style="margin:6px 0 14px"></div>
                 <div class="table-wrap"><table>
                   <thead><tr><th>Fecha cierre</th><th>Tipo</th><th>Oportunidad</th><th>Cliente</th><th>Monto CRM</th><th>Orden de venta (sin IVA)</th><th title="Contrato que usa el cierre: Excel SharePoint (PORTADA) o, si no hay, la orden de venta">Contrato en el cierre</th><th>PO</th><th>Ingreso 2026 en Odoo</th><th>Estado</th><th></th></tr></thead>
@@ -2411,6 +2411,59 @@ function renderCrmPpaPanel(mostrar){
    return '<tr><td>'+escapeHtml(f.po||'Sin PO')+'</td><td style="white-space:normal;max-width:300px">'+escapeHtml(nm||'')+'</td><td>'+escapeHtml(f.l?.fecha_cierre||'—')+'</td><td>'+(f.l?money(montoVentaCrm(f.l)):'—')+'</td><td>'+(k&&k.kwh?k.kwh.toLocaleString('es-EC'):'—')+'</td><td>'+(k&&k.tar?'$'+k.tar:'—')+'</td><td><b>'+(k?money(k.mensual):'—')+'</b></td><td>'+ini+'</td><td>'+(k?money(k.total):'—')+'</td><td>'+est+'</td><td><button class="btn-secondary" onclick="configurarPpaDesdeCrm('+(f.l?Number(f.l.lead_id):'null')+',\''+escapeHtml(f.po||'')+'\')">'+(f.c?'Editar':'Configurar')+'</button></td></tr>';}).join('')
   +'</tbody></table></div>';
 }
+function renderCrmResPanel(mostrar){
+ const el=document.getElementById('crmResPanel');if(!el)return;
+ el.classList.toggle('hidden',!mostrar);if(!mostrar)return;
+ const filas=STATE.resRows||[],d=STATE.resDraft||{};
+ const guardado={ingreso:filas[0]?number(filas[0].ingreso):'',costo:filas[0]&&number(filas[0].costo)?number(filas[0].costo):'',meses:new Set(filas.map(r=>String(r.mes).slice(0,7)))};
+ const v={ingreso:d.ingreso??guardado.ingreso,costo:d.costo??guardado.costo,meses:d.meses??(filas.length?guardado.meses:new Set(['2026-10','2026-11','2026-12']))};
+ // Referencia: promedio mensual de ventas residenciales ganadas en 2026 (ene–sep) según el CRM
+ const res26=(STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='Residencial'&&String(l.fecha_cierre||'')>='2026-01'&&String(l.fecha_cierre||'')<'2026-10');
+ const prom=res26.reduce((s,l)=>s+montoVentaCrm(l),0)/9;
+ // Riesgo de doble conteo: ventas residenciales ya llevadas una a una al cierre
+ const simRes=(STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='Residencial').map(l=>l.proyecto_codigo||('CRM-'+l.lead_id)).filter(c=>(STATE.savedSims||[]).some(x=>x.proyecto_codigo===c));
+ const meses=[...v.meses].sort(),total=number(v.ingreso)*meses.length,costoT=number(v.costo)*meses.length;
+ const sucio=!!STATE.resDraft;
+ el.innerHTML='<div class="card-title" style="margin:0 0 6px"><h4 style="margin:0">Provisión mensual de ventas residenciales</h4><small>'+(filas.length&&!sucio?'<span class="badge ok">En el cierre ✓</span> ':sucio?'<span class="badge warn">Sin guardar</span> ':'')+'Oct–Dic: ingreso '+money(total)+(costoT?' · costo '+money(costoT):'')+'</small></div>'
+  +'<p class="report-note" style="margin:0 0 8px">Un solo valor mensual para todas las ventas residenciales, en lugar de proyectarlas una por una. Referencia: ventas residenciales ganadas ene–sep 2026 según el CRM = '+money(prom*9)+' (promedio '+money(prom)+' al mes).</p>'
+  +'<div class="filters-row" style="align-items:flex-end;gap:14px">'
+  +'<label>Ingreso mensual<br><input id="resIngreso" class="fav-in" type="number" min="0" step="0.01" style="width:140px" value="'+escapeHtml(String(v.ingreso))+'" onchange="resEditar()"></label>'
+  +'<label title="Costo de ventas mensual estimado. Si lo dejas vacío, la provisión entra al 100% de margen.">Costo mensual (opcional)<br><input id="resCosto" class="fav-in" type="number" min="0" step="0.01" style="width:140px" value="'+escapeHtml(String(v.costo))+'" onchange="resEditar()"></label>'
+  +'<div style="display:flex;flex-direction:column;gap:4px">Meses<div>'+['2026-10','2026-11','2026-12'].map(m=>'<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;min-width:0;width:auto"><input type="checkbox" class="resMes" style="width:auto;min-width:0;margin:0" value="'+m+'"'+(v.meses.has(m)?' checked':'')+' onchange="resEditar()">'+['Oct','Nov','Dic'][Number(m.slice(5))-10]+'</label>').join('')+'</div></div>'
+  +'<button class="btn-primary" onclick="resGuardar()"'+(sucio?'':' disabled')+'>Guardar en el cierre</button>'
+  +(filas.length?'<button class="btn-secondary" onclick="resEliminar()">🗑 Quitar provisión</button>':'')
+  +'</div>'
+  +(number(v.ingreso)>0&&!number(v.costo)?'<div class="ledger-msg warn" style="margin-top:8px">Sin costo: la provisión suma '+money(total)+' a la utilidad completa. Si el margen residencial es, por ejemplo, 30%, el costo mensual sería '+money(number(v.ingreso)*0.7)+'.</div>':'')
+  +(simRes.length?'<div class="ledger-msg warn" style="margin-top:8px">Ojo, doble conteo: '+simRes.length+' venta(s) residencial(es) ya están en el cierre una por una ('+escapeHtml(simRes.slice(0,5).join(', '))+'). Quítalas o baja la provisión.</div>':'');
+}
+function resEditar(){
+ const ing=document.getElementById('resIngreso').value,cos=document.getElementById('resCosto').value;
+ if((ing!==''&&(!Number.isFinite(Number(ing))||Number(ing)<0))||(cos!==''&&(!Number.isFinite(Number(cos))||Number(cos)<0))){toast('Escribe montos positivos.');return;}
+ STATE.resDraft={ingreso:ing===''?'':Number(ing),costo:cos===''?'':Number(cos),meses:new Set([...document.querySelectorAll('.resMes:checked')].map(x=>x.value))};
+ setTimeout(()=>renderCrmResPanel(true),0);
+}
+async function resGuardar(){
+ const d=STATE.resDraft;if(!d)return;
+ const meses=[...d.meses].sort();
+ if(!(number(d.ingreso)>0)||!meses.length){toast('Escribe el ingreso mensual y marca al menos un mes.');return;}
+ if(!STATE.escenarioBaseId){toast('No se encontró el escenario Base en Supabase.');return;}
+ try{
+  const {data:{user}}=await sb.auth.getUser();
+  const ids=(STATE.resRows||[]).map(r=>r.id);
+  if(ids.length){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).in('id',ids);if(del.error)throw del.error;}
+  const ins=await sb.from('forecast_movimientos').insert(meses.map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:'RESIDENCIAL',concepto:'Provisión ventas residenciales',mes:m+'-01',ingreso:Number(number(d.ingreso).toFixed(2)),costo:Number(number(d.costo).toFixed(2)),fuente_ref:'RESIDENCIAL',fecha_corte:'2026-09-30',detalle:{origen:'provision_residencial'}})));
+  if(ins.error)throw ins.error;
+  STATE.resDraft=null;await cargarForecastGuardado();renderCrm();renderForecastReports();
+  toast('Provisión residencial guardada: '+money(number(d.ingreso))+' mensuales en '+meses.length+' mes(es).');
+ }catch(e){toast('No se guardó la provisión: '+e.message);await cargarForecastGuardado();renderCrm();}
+}
+async function resEliminar(){
+ if(!confirm('¿Quitar la provisión de ventas residenciales del cierre 2026? Quedará en el historial.'))return;
+ const {data:{user}}=await sb.auth.getUser();
+ const r=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).in('id',(STATE.resRows||[]).map(x=>x.id));
+ if(r.error){toast('No se pudo quitar: '+r.error.message);return;}
+ STATE.resDraft=null;await cargarForecastGuardado();renderCrm();renderForecastReports();toast('Se quitó la provisión residencial.');
+}
 function configurarPpaDesdeCrm(leadId,po){
  let code=po;
  if(!code){const sug=ppaConfigs().find(c=>!ppaLeadDe(c))?.code||'';code=(prompt('Esta oportunidad no tiene PO en Odoo. Escribe la PO del PPA'+(sug?' (la '+sug+' es un PPA sin oportunidad vinculada)':'')+':',sug)||'').match(/\d{3,4}/)?.[0];if(!code)return;}
@@ -2418,7 +2471,6 @@ function configurarPpaDesdeCrm(leadId,po){
  else if(leadId&&!ppaConfigs().find(c=>c.code===code).lead_id){const a=ppaConfigs().find(c=>c.code===code);STATE.ppaDraft[code]={kwh_anual:a.kwh_anual,disponibilidad:a.disponibilidad,tarifa:a.tarifa,inicio:a.inicio,mensual_manual:a.mensual_manual,costo_mensual:a.costo_mensual,lead_id:leadId};}
  renderPpa();irAPpa();
 }
-function setCrmMes(m){document.getElementById('crmMes').value=m;renderCrm();}
 function setCrmTipo(t){document.getElementById('crmTipo').value=t;renderCrm();}
 function renderCrm(){
  const body=document.getElementById('crmBody');if(!body)return;
@@ -2431,23 +2483,24 @@ function renderCrm(){
   .sort((a,b)=>String(b.fecha_cierre).localeCompare(String(a.fecha_cierre)));
  // Resumen por tipo (con los demás filtros aplicados) y selector
  const selT=document.getElementById('crmTipo'),tipoSel=selT.value;
- const selM=document.getElementById('crmMes'),mesSel=selM.value;
+ STATE.crmMonths??=new Set();
  const mesDe=l=>String(l.fecha_cierre||'').slice(0,7);
- const rowsDelMes=mesSel==='ALL'?rows:rows.filter(l=>mesDe(l)===mesSel);
+ const enMeses=l=>!STATE.crmMonths.size||STATE.crmMonths.has(mesDe(l));
+ const rowsDelMes=rows.filter(enMeses);
  const rowsDelTipo=tipoSel==='ALL'?rows:rows.filter(l=>l.tipo===tipoSel);
- // Totales por mes (con el tipo elegido)
- const porMes=new Map();for(const l of rowsDelTipo){const k=mesDe(l)||'Sin fecha';const g=porMes.get(k)||{n:0,m:0};g.n++;g.m+=montoVentaCrm(l);porMes.set(k,g);}
- const mesesOrd=[...porMes.keys()].sort().reverse();
+ // Selector de meses (varios a la vez); la suma de la selección sale abajo de la tabla y en los botones de tipo
  const etiquetaMes=k=>/^\d{4}-\d{2}$/.test(k)?['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][Number(k.slice(5))-1]+' '+k.slice(0,4):k;
- selM.innerHTML='<option value="ALL">Todos los meses</option>'+[...new Set([...mesesOrd,...(mesSel!=='ALL'?[mesSel]:[])])].sort().reverse().map(k=>'<option value="'+escapeHtml(k)+'"'+(k===mesSel?' selected':'')+'>'+escapeHtml(etiquetaMes(k))+'</option>').join('');
- document.getElementById('crmMeses').innerHTML=mesesOrd.length?'<span class="report-note" style="margin:0 4px 0 0">Por mes'+(tipoSel!=='ALL'?' ('+escapeHtml(tipoSel)+')':'')+':</span>'+mesesOrd.map(k=>{const g=porMes.get(k);return '<button class="btn-secondary" style="padding:4px 10px;font-size:12px;'+(k===mesSel?'outline:2px solid #2b72cf;':'')+'" onclick="setCrmMes(\''+escapeHtml(k)+'\')">'+escapeHtml(etiquetaMes(k))+' · '+g.n+' · <b>'+money(g.m)+'</b></button>';}).join('')+(mesSel!=='ALL'?'<button class="btn-secondary" style="padding:4px 10px;font-size:12px" onclick="setCrmMes(\'ALL\')">✕ Todos los meses</button>':''):'';
+ const mesesDisp=[...new Set([...rows.map(mesDe).filter(Boolean),...STATE.crmMonths])].sort().reverse();
+ const sigM=mesesDisp.join(',');
+ if(STATE.crmMesSig!==sigM){STATE.crmMesSig=sigM;checklist('crmMes',mesesDisp.map(k=>({value:k,label:etiquetaMes(k)})),STATE.crmMonths,'Todos los meses',renderCrm,false);}
  const porTipo=new Map();for(const l of rowsDelMes){const g=porTipo.get(l.tipo)||{n:0,m:0};g.n++;g.m+=montoVentaCrm(l);porTipo.set(l.tipo,g);}
  const orden=['Residencial','Comercial','Industrial','Sector Público','PPA','Agropecuario'];
  const tipos=[...new Set([...orden.filter(t=>(STATE.crm||[]).some(l=>tipoCrm(l).tipo===t)),...(STATE.crm||[]).map(l=>tipoCrm(l).tipo)])].sort((a,b)=>(a==='Sin tipo')-(b==='Sin tipo')||((orden.indexOf(a)+1||99)-(orden.indexOf(b)+1||99)));
  selT.innerHTML='<option value="ALL">Todos los tipos</option>'+tipos.map(t=>'<option'+(t===tipoSel?' selected':'')+'>'+escapeHtml(t)+'</option>').join('');
  document.getElementById('crmTipos').innerHTML=tipos.filter(t=>porTipo.has(t)).map(t=>{const g=porTipo.get(t);return '<button class="btn-secondary" style="'+(t===tipoSel?'outline:2px solid #2b72cf;':'')+(t==='Sin tipo'?'border-color:#e0a400;':'')+'" onclick="setCrmTipo(\''+escapeHtml(t)+'\')" title="Filtrar por '+escapeHtml(t)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.m)+'</button>';}).join('')+(tipoSel!=='ALL'?'<button class="btn-secondary" onclick="setCrmTipo(\'ALL\')">✕ Quitar filtro</button>':'')+(tipoSel==='PPA'?'<button class="btn-primary" onclick="irAPpa()">Contratos PPA en el cierre →</button>':'');
- const rowsT=rowsDelTipo.filter(l=>mesSel==='ALL'||mesDe(l)===mesSel);
+ const rowsT=rowsDelTipo.filter(enMeses);
  renderCrmPpaPanel(tipoSel==='PPA');
+ renderCrmResPanel(tipoSel==='Residencial');
  body.innerHTML=rowsT.map(l=>{
   const ing=l.proyecto_codigo?projectRealAtCutoff(l.proyecto_codigo).income:null;
   const tipoHtml='<span class="badge'+(l.tipo==='Sin tipo'?' warn':l.tipo==='Residencial'?'':' ok')+'" title="'+escapeHtml(l.fuente)+'">'+escapeHtml(l.tipo)+(l.fuente.startsWith('Segmento')?' *':'')+'</span>';
@@ -3531,6 +3584,11 @@ function forecastModel(){
   add(month,'PPA:'+code,'Venta de energía PPA PO '+code,'income',number(r.ingreso),'PPA');
   if(number(r.costo))add(month,'PPACOSTO:'+code,'Costo operación PPA PO '+code,'cost',number(r.costo),'PPA');
  }
+ for(const r of STATE.resRows||[]){
+  const month=String(r.mes).slice(0,10);
+  add(month,'RESIDENCIAL','Provisión ventas residenciales','income',number(r.ingreso),'Provisión');
+  if(number(r.costo))add(month,'RESIDENCIAL_COSTO','Costo provisión ventas residenciales','cost',number(r.costo),'Provisión');
+ }
  const manualIncome=document.getElementById('forecastRevenue').value,manualCost=document.getElementById('forecastCost').value;
  const valid=v=>v!==''&&Number.isFinite(Number(v))&&Number(v)>=0;
  if(valid(manualIncome))add('2026-12-01','OTROS_INGRESOS','Otros ingresos pendientes','income',Number(manualIncome),'Manual');
@@ -4325,9 +4383,10 @@ async function cargarForecastGuardado(){
   const sims=await sb.from('forecast_movimientos').select('*').eq('tipo','proyecto').eq('escenario_id',STATE.escenarioBaseId).is('eliminado_en',null).order('proyecto_codigo');
   if(sims.error)throw sims.error;
   STATE.savedSims=sims.data||[];
-  const ppa=await sb.from('forecast_movimientos').select('*').eq('tipo','ajuste').eq('escenario_id',STATE.escenarioBaseId).is('eliminado_en',null).like('fuente_ref','PPA:%').order('mes');
-  if(ppa.error)throw ppa.error;
-  STATE.ppaRows=ppa.data||[];
+  const aj=await sb.from('forecast_movimientos').select('*').eq('tipo','ajuste').eq('escenario_id',STATE.escenarioBaseId).is('eliminado_en',null).order('mes');
+  if(aj.error)throw aj.error;
+  STATE.ppaRows=(aj.data||[]).filter(r=>String(r.fuente_ref||'').startsWith('PPA:'));
+  STATE.resRows=(aj.data||[]).filter(r=>r.fuente_ref==='RESIDENCIAL');
   STATE.simulatedProjects=Object.fromEntries(STATE.savedSims.map(s=>[s.proyecto_codigo,{ingreso:number(s.monto_contrato)*number(s.avance_acumulado)/100,month:String(s.mes).slice(0,10)}]));
   STATE.forecastError=null;
  }catch(e){STATE.savedSims=[];STATE.recPrevio=STATE.recPrevio||[];STATE.forecastError=e.message;toast('No se pudo cargar el forecast guardado: '+e.message);}
