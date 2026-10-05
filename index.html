@@ -1027,18 +1027,12 @@ tbody tr:hover{
 
             <div class="top-controls">
 
-                <div class="control">
-                    <label>Año</label>
-                    <select>
-                        <option>2026</option>
-                    </select>
-                </div>
 
 
                 <div class="control">
-                    <label>Mes</label>
+                    <label>Meses 2026</label>
 
-                    <details id="filtroMes" class="ms"><summary>Acumulado</summary><div class="ms-panel"></div></details>
+                    <details id="filtroMes" class="ms"><summary>Todo el año</summary><div class="ms-panel"></div></details>
                 </div>
 
 
@@ -1057,19 +1051,7 @@ tbody tr:hover{
                 </div>
 
 
-                <div class="control">
-                    <label>Vista</label>
 
-                    <select id="filtroVista">
-                        <option value="COMPARE">
-                            Real vs Forecast
-                        </option>
-
-                        <option value="REAL">
-                            Real contable
-                        </option>
-                    </select>
-                </div>
 
 
                 <button
@@ -1104,7 +1086,7 @@ tbody tr:hover{
                 </div>
 
                 <div class="kpi-note">
-                    Contabilidad publicada
+                    <span class="kpiNotaPeriodo">Contabilidad publicada</span>
                 </div>
             </div>
 
@@ -1144,7 +1126,7 @@ tbody tr:hover{
                 </div>
 
                 <div class="kpi-note">
-                    Costos contabilizados
+                    <span class="kpiNotaPeriodo">Costos contabilizados</span>
                 </div>
             </div>
 
@@ -1164,7 +1146,7 @@ tbody tr:hover{
                 </div>
 
                 <div class="kpi-note">
-                    Gastos del P&G
+                    <span class="kpiNotaPeriodo">Gastos del P&G</span>
                 </div>
             </div>
 
@@ -1184,7 +1166,7 @@ tbody tr:hover{
                 </div>
 
                 <div class="kpi-note">
-                    Ingresos - costos - gastos
+                    <span class="kpiNotaPeriodo">Ingresos - costos - gastos</span>
                 </div>
             </div>
 
@@ -1868,7 +1850,7 @@ function checklist(id,items,set,emptyLabel,onChange,withSearch){
 document.addEventListener('click',e=>{document.querySelectorAll('details.ms[open]').forEach(d=>{if(!d.contains(e.target))d.removeAttribute('open');});});
 function initFiltrosMes(){
  const items=MESES_LISTA.map(([v,l])=>({value:v,label:l}));
- checklist('filtroMes',items,STATE.months,'Acumulado',renderAll,false);
+ checklist('filtroMes',items,STATE.months,'Todo el año',renderAll,false);
  checklist('pygMeses',items,STATE.pygMonths,'Anual',()=>{document.getElementById('pygFrom').value='';document.getElementById('pygTo').value='';STATE.pygCustom=false;renderPygTable();},false);
 }
 function selectedMonth(){return 'ALL';}
@@ -2347,7 +2329,17 @@ function renderAll(){
    KPI
 ========================================================= */
 
+function periodoKpi(){
+ const reales=[...new Set(STATE.analytic.map(r=>String(r.fecha).slice(5,7)))].sort();
+ const meses=STATE.months.size?[...STATE.months].sort():reales;
+ if(!meses.length)return 'Sin datos';
+ const n=m=>monthName('2026-'+m+'-01').slice(0,3);
+ const ultimo=STATE.analytic.reduce((a,r)=>String(r.fecha)>a?String(r.fecha):a,'');
+ const parcial=meses.includes(ultimo.slice(5,7))&&ultimo.slice(8,10)<'28'?' (al '+ultimo.slice(8,10)+'-'+n(ultimo.slice(5,7)).toLowerCase()+')':'';
+ return (meses.length>1&&STATE.months.size===0?n(meses[0])+'–'+n(meses.at(-1)):meses.map(n).join(', '))+' 2026'+parcial;
+}
 function renderKPIs(){
+    document.querySelectorAll('.kpiNotaPeriodo').forEach(el=>el.textContent='Odoo · '+periodoKpi());
 
     const rows = selectedProject()==="ALL"
       ? ledgerMonthly().filter(r=>monthIncluded(String(r.mes).slice(5,7)))
@@ -3336,6 +3328,12 @@ function budgetEntry(r){
  const key=r.source_row+':'+r.period,o=STATE.expensePlan[key]||{};
  return {...r,amount:Object.hasOwn(o,'amount')?o.amount:r.amount,allocations:o.code?[{code:o.code,weight:1}]:r.allocations};
 }
+function projectRealAfterCutoff(code){
+ const rows=STATE.analytic.filter(r=>String(r.fecha).slice(0,7)>'2026-09');
+ const cols=analyticMatrix(rows,'ALL','ALL','',code);
+ const cost=analyticMatrix(rows.filter(r=>accountingBucket(r)==='cost'),'ALL','ALL','',code).total.expense;
+ return {income:cols.total.income,cost};
+}
 function projectRealAtCutoff(code){
  const rows=STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
  const cols=analyticMatrix(rows,'ALL','ALL','',code);
@@ -3993,6 +3991,8 @@ function renderLedger(s){
    :'<div class="ledger-msg ok">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: faltan <b>'+money(s.ingAcum-recon)+'</b> por reconocer en Oct–Dic.</div>';
  }
  const costoProyecto=Math.max(presupuestoProyecto(s.code)||0,s.costoTotal,s.avance>0?s.costoTotal/avance:0);
+ const post=projectRealAfterCutoff(s.code);
+ const notaPost=(Math.abs(post.cost)>1||Math.abs(post.income)>1)?'<div class="ledger-msg ok">Odoo ya registró después de septiembre: ingreso <b>'+money(post.income)+'</b> y costo <b>'+money(post.cost)+'</b>. Falta por registrar hasta el 31-dic: ingreso <b>'+money(s.ingPend-post.income)+'</b> y costo <b>'+money(s.costPend-post.cost)+'</b>.</div>':'';
  el.innerHTML=bloque('Ingreso: cómo se reparte el contrato',s.contrato,[
    {t:'Reconocido en 2025',v:s.ingPrevio,c:'#8aa4c8'},
    {t:'Reconocido 2026 ene–sep (Odoo)',v:s.ing2026,c:'#2b72cf'},
@@ -4003,7 +4003,7 @@ function renderLedger(s){
    {t:'Registrado 2026 ene–sep (Odoo, cuenta 501)',v:s.cost2026,c:'#f58a33'},
    {t:'Oct–Dic 2026',v:s.costPend,c:'#c0562a',b:true},
    {t:'Queda para 2027 en adelante',v:costoProyecto-s.costoTotal,c:'#f1e3d6'}],
-   Math.abs(s.cost2026)<Math.abs(s.ing2026)*0.2&&s.ing2026>0?'<div class="ledger-msg warn">En 2026 hay '+money(s.ing2026)+' de ingreso pero solo '+money(s.cost2026)+' de costo en la cuenta 501: el costo del año puede estar en inventario u obra en proceso. Confírmalo con contabilidad.</div>':'');
+   notaPost+(Math.abs(s.cost2026)<Math.abs(s.ing2026)*0.2&&s.ing2026>0&&Math.abs(post.cost)<Math.abs(s.costPend)*0.5?'<div class="ledger-msg warn">En 2026 hay '+money(s.ing2026)+' de ingreso pero solo '+money(s.cost2026)+' de costo en la cuenta 501: el costo del año puede estar en inventario u obra en proceso. Confírmalo con contabilidad.</div>':''));
 }
 function ponerAvance(v){
  const p=currentSimProject(),el=document.getElementById('simAvance');
