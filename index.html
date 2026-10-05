@@ -891,6 +891,19 @@ tbody tr:hover{
 .sim-alerta{font-size:12px;color:#a76400;margin:10px 0}
 .sim-detalle{margin-top:6px;font-size:12px}
 .sim-detalle summary{cursor:pointer;color:var(--blue);font-weight:700;margin-bottom:6px}
+
+.sim-ledger{margin-top:14px}
+.sim-ledger h4{margin:14px 0 6px;font-size:13px}
+.ledger-bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:#edf1f5;margin:6px 0 8px}
+.ledger-bar div{height:100%}
+.ledger-row{display:grid;grid-template-columns:12px 1fr auto 52px;gap:8px;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px solid #eef0f5}
+.ledger-row:last-child{border-bottom:0}
+.ledger-dot{width:10px;height:10px;border-radius:3px}
+.ledger-row b{font-weight:800}
+.ledger-total{font-weight:800;border-top:2px solid var(--line)}
+.ledger-msg{font-size:12px;padding:8px 10px;border-radius:10px;margin-top:6px}
+.ledger-msg.warn{background:#fff6e6;color:#8a5300}
+.ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
 <style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.closing-cell{background:#e7edff!important;font-weight:700}.consolidated-matrix .pyg-benefit{border-top:12px solid white}.consolidated-matrix .pyg-toggle{border:0;background:transparent;color:inherit;font-weight:inherit;text-align:left}.table-wrap input{max-width:190px;padding:7px;border:1px solid #d7dee9;border-radius:6px}</style></head>
 
@@ -1677,17 +1690,7 @@ tbody tr:hover{
  </div>
  <p id="simAlerta" class="sim-alerta"></p>
 
- <details class="sim-detalle"><summary>Ver cómo se calcula</summary>
-  <div class="sim-row"><span>Ingreso que corresponde al avance (contrato × %)</span><strong id="simIngAcum">$0</strong></div>
-  <div class="sim-row"><span>− Ya reconocido en años anteriores</span><strong id="simIngPrevio">$0</strong></div>
-  <div class="sim-row"><span>− Ya registrado en Odoo en 2026 (ene–sep)</span><strong id="simIng2026">$0</strong></div>
-  <div class="sim-row"><span>= Ingreso que falta registrar</span><strong id="simIngPend2">$0</strong></div>
-  <div class="sim-row"><span>Costo acumulado esperado</span><strong id="simCostTotalEco">$0</strong></div>
-  <div class="sim-row"><span>− Costo reconocido en años anteriores</span><strong id="simCostPrevio">$0</strong></div>
-  <div class="sim-row"><span>− Costo registrado en Odoo en 2026 (ene–sep)</span><strong id="simCost2026">$0</strong></div>
-  <div class="sim-row"><span>= Costo que falta registrar</span><strong id="simCostPend2">$0</strong></div>
-  <p class="report-note">Si sale negativo, ya se reconoció más de lo que corresponde al avance: lo pendiente es una reversa.</p>
- </details>
+ <div id="simLedger" class="sim-ledger"></div>
 
  <div class="sim-field" style="margin-top:14px"><label for="simForecastMonth">Mes en que se registra</label><select id="simForecastMonth" onchange="actualizarSimulacion()"><option value="2026-10-01">Octubre</option><option value="2026-11-01">Noviembre</option><option value="2026-12-01" selected>Diciembre</option></select></div>
  <div class="sim-field"><label for="simNota">Nota (sustento)</label><input id="simNota" type="text" maxlength="300" class="filter-input" placeholder="Ej.: avance según informe de obra 30-sep"></div>
@@ -3956,12 +3959,13 @@ function calcularSimulacion(){
 }
 function actualizarSimulacion(){
  const s=calcularSimulacion();if(!s)return;STATE.simulation=s;
- const set=(id,v,neg)=>{const el=document.getElementById(id);el.textContent=money(v);el.style.color=neg&&v<0?'var(--red)':'';};
+ const set=(id,v,neg)=>{const el=document.getElementById(id);if(!el)return;el.textContent=money(v);el.style.color=neg&&v<0?'var(--red)':'';};
  document.getElementById('simAvanceLabel').textContent=percentPoints(s.avance);
  set('simIngAcum',s.ingAcum);set('simIngPrevio',s.ingPrevio);set('simIng2026',s.ing2026);set('simIngPend',s.ingPend,true);
  set('simCostPrevio',s.cosPrevio);set('simCost2026',s.cost2026);set('simCostPend',s.costPend,true);set('simIngPend2',s.ingPend,true);set('simCostPend2',s.costPend,true);set('simCostTotalEco',s.costoTotal);
  const ef=document.getElementById('simEfecto');ef.textContent=money(s.ingPend-s.costPend);ef.style.color=s.ingPend-s.costPend>=0?'var(--green)':'var(--red)';
  const mg=document.getElementById('simMargen');mg.textContent=s.margen===null?'—':percent(s.margen);mg.style.color=s.margen!==null&&s.margen<0?'var(--red)':'';
+ renderLedger(s);
  const alertas=[];
  if(s.contrato<=0)alertas.push('Falta el contrato.');
  if(s.costoTotalRaw==='')alertas.push('Falta el costo total acumulado.');
@@ -3969,6 +3973,37 @@ function actualizarSimulacion(){
  if(s.ingSaldo>0)alertas.push('Saldo de reconocimiento de ingreso aún sin reversar en CxC: '+money(s.ingSaldo)+'.');
  if(s.margen!==null&&s.margen<0)alertas.push('El costo acumulado supera al ingreso acumulado: el proyecto cerraría en pérdida.');
  document.getElementById('simAlerta').textContent=alertas.join(' ');
+}
+function renderLedger(s){
+ const el=document.getElementById('simLedger');if(!el)return;
+ const pctOf=(v,t)=>t?(v/t*100).toFixed(1).replace('.',',')+'%':'—';
+ const bloque=(titulo,total,partes,nota)=>{
+  const pos=partes.filter(p=>p.v>0);
+  const barra=total>0?'<div class="ledger-bar">'+pos.map(p=>'<div style="width:'+Math.min(100,p.v/total*100)+'%;background:'+p.c+'" title="'+escapeHtml(p.t)+'"></div>').join('')+'</div>':'';
+  const filas=partes.map(p=>'<div class="ledger-row"><span class="ledger-dot" style="background:'+p.c+'"></span><span>'+(p.b?'<b>'+escapeHtml(p.t)+'</b>':escapeHtml(p.t))+'</span><span class="'+(p.v<0?'money-negative':'')+'">'+(p.b?'<b>'+money(p.v)+'</b>':money(p.v))+'</span><span class="report-note" style="margin:0;text-align:right">'+pctOf(p.v,total)+'</span></div>').join('');
+  const suma=partes.reduce((a,p)=>a+p.v,0);
+  return '<h4>'+titulo+'</h4>'+barra+filas+'<div class="ledger-row ledger-total"><span></span><span>Total = '+(titulo.startsWith('Ingreso')?'contrato':'costo total del proyecto')+'</span><span>'+money(suma)+'</span><span></span></div>'+(nota||'');
+ };
+ const recon=s.ingPrevio+s.ing2026,avance=s.avance/100,pctRec=s.contrato?recon/s.contrato:0;
+ let notaIng='';
+ if(s.contrato>0){
+  const dif=(pctRec-avance)*100;
+  notaIng=Math.abs(dif)<0.05?'<div class="ledger-msg ok">Lo reconocido coincide con el avance.</div>'
+   :dif>0?'<div class="ledger-msg warn">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: reconociste <b>'+money(recon-s.ingAcum)+'</b> de más. En Oct–Dic corresponde una reversa.</div>'
+   :'<div class="ledger-msg ok">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: faltan <b>'+money(s.ingAcum-recon)+'</b> por reconocer en Oct–Dic.</div>';
+ }
+ const costoProyecto=Math.max(presupuestoProyecto(s.code)||0,s.costoTotal,s.avance>0?s.costoTotal/avance:0);
+ el.innerHTML=bloque('Ingreso: cómo se reparte el contrato',s.contrato,[
+   {t:'Reconocido en 2025',v:s.ingPrevio,c:'#8aa4c8'},
+   {t:'Reconocido 2026 ene–sep (Odoo)',v:s.ing2026,c:'#2b72cf'},
+   {t:'Oct–Dic 2026 según avance',v:s.ingPend,c:'#7757e8',b:true},
+   {t:'Queda para 2027 en adelante',v:s.contrato-s.ingAcum,c:'#d7dde8'}],notaIng)
+  +bloque('Costo: cómo se reparte el costo total',costoProyecto,[
+   {t:'Reconocido en 2025',v:s.cosPrevio,c:'#e9b48a'},
+   {t:'Registrado 2026 ene–sep (Odoo, cuenta 501)',v:s.cost2026,c:'#f58a33'},
+   {t:'Oct–Dic 2026',v:s.costPend,c:'#c0562a',b:true},
+   {t:'Queda para 2027 en adelante',v:costoProyecto-s.costoTotal,c:'#f1e3d6'}],
+   Math.abs(s.cost2026)<Math.abs(s.ing2026)*0.2&&s.ing2026>0?'<div class="ledger-msg warn">En 2026 hay '+money(s.ing2026)+' de ingreso pero solo '+money(s.cost2026)+' de costo en la cuenta 501: el costo del año puede estar en inventario u obra en proceso. Confírmalo con contabilidad.</div>':'');
 }
 function ponerAvance(v){
  const p=currentSimProject(),el=document.getElementById('simAvance');
