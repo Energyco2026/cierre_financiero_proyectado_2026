@@ -1509,7 +1509,7 @@ tbody tr:hover{
                   <button class="btn-secondary" onclick="ppaNuevo()">+ Agregar PPA</button>
                 </div>
                 <div class="table-wrap fav-wrap"><table class="fav-table">
-                  <thead><tr><th style="min-width:200px">Proyecto</th><th class="fav-edit-h">kWh / año ✎</th><th class="fav-edit-h">Disponibilidad % ✎</th><th class="fav-edit-h">Tarifa $/kWh ✎</th><th class="fav-edit-h">Inicio de operación ✎</th><th class="fav-edit-h">Ingreso mensual ✎</th><th class="fav-edit-h" title="O&M, seguros u otros costos mensuales de la planta (opcional)">Costo mensual ✎</th><th>Meses en el forecast</th><th>Ingreso Oct–Dic</th><th>Estado</th><th></th></tr></thead>
+                  <thead><tr><th style="min-width:200px">Proyecto</th><th class="fav-edit-h">kWh / año ✎</th><th class="fav-edit-h">Disponibilidad % ✎</th><th class="fav-edit-h">Tarifa $/kWh ✎</th><th class="fav-edit-h">Inicio de operación ✎</th><th class="fav-edit-h">Ingreso mensual ✎</th><th class="fav-edit-h" title="O&M, seguros u otros costos mensuales de la planta (opcional)">Costo mensual ✎</th><th class="fav-edit-h">Oportunidad CRM ✎</th><th>Meses en el forecast</th><th>Ingreso Oct–Dic</th><th>Estado</th><th></th></tr></thead>
                   <tbody id="ppaBody"></tbody>
                 </table></div>
             </div>
@@ -1526,6 +1526,7 @@ tbody tr:hover{
                 </div>
                 <div id="crmTipos" class="filters-row" style="gap:8px;flex-wrap:wrap"></div>
                 <div id="crmMeses" class="filters-row" style="gap:6px;flex-wrap:wrap;margin-top:-4px"></div>
+                <div id="crmPpaPanel" class="hidden" style="margin:6px 0 14px"></div>
                 <div class="table-wrap"><table>
                   <thead><tr><th>Fecha cierre</th><th>Tipo</th><th>Oportunidad</th><th>Cliente</th><th>Monto CRM</th><th>Orden de venta (sin IVA)</th><th title="Contrato que usa el cierre: Excel SharePoint (PORTADA) o, si no hay, la orden de venta">Contrato en el cierre</th><th>PO</th><th>Ingreso 2026 en Odoo</th><th>Estado</th><th></th></tr></thead>
                   <tbody id="crmBody"></tbody>
@@ -2381,6 +2382,7 @@ function tipoCrm(l){
 function montoVentaCrm(l){const ov=number(l.monto_ov),crm=number(l.monto_esperado);return ov>0&&!(crm>0&&ov<crm*0.05)?ov:crm;}
 function celdaContratoCrm(l){
  if(!l.proyecto_codigo)return '<td>—</td>';
+ if(ppaCodigos().has(l.proyecto_codigo)){const c=ppaConfigs().find(x=>x.code===l.proyecto_codigo);return '<td title="PPA: venta de energía, no contrato de obra">PPA · '+money(ppaCalc(c).mensual)+' / mes</td>';}
  const c=number(projectInfo(l.proyecto_codigo).monto_contrato),ov=number(l.monto_ov),crm=number(l.monto_esperado);
  if(!c)return '<td><span class="badge danger" title="La PO no tiene contrato cargado: el forecast por avance no puede reconocer ingreso">Sin contrato</span></td>';
  const dif=(a,b)=>b>0&&Math.abs(a-b)>Math.max(1,b*0.01);
@@ -2388,6 +2390,33 @@ function celdaContratoCrm(l){
  if(dif(c,ov))al.push('vs OV '+(c-ov>0?'+':'')+money(c-ov));
  if(dif(c,crm))al.push('vs CRM '+(c-crm>0?'+':'')+money(c-crm));
  return '<td>'+money(c)+(al.length?'<br><span class="badge warn" title="Diferencia entre el contrato del cierre y la orden de venta / monto CRM">'+escapeHtml(al.join(' · '))+'</span>':'')+'</td>';
+}
+function renderCrmPpaPanel(mostrar){
+ const el=document.getElementById('crmPpaPanel');if(!el)return;
+ el.classList.toggle('hidden',!mostrar);if(!mostrar)return;
+ const cfg=ppaConfigs().filter(c=>c.saved||c.dirty);
+ const filas=[];const usados=new Set();
+ for(const l of ppaLeads()){
+  const c=cfg.find(x=>ppaLeadDe(x)&&Number(ppaLeadDe(x).lead_id)===Number(l.lead_id))||cfg.find(x=>x.code===l.proyecto_codigo);
+  if(c)usados.add(c.code);
+  filas.push({l,c,po:c?.code||l.proyecto_codigo||null});
+ }
+ for(const c of cfg)if(!usados.has(c.code))filas.push({l:null,c,po:c.code});
+ const total=filas.reduce((s,f)=>s+(f.c&&f.c.saved&&!f.c.dirty?ppaCalc(f.c).total:0),0);
+ el.innerHTML='<div class="card-title" style="margin:0 0 6px"><h4 style="margin:0">Contratos PPA (todos los años) · venta de energía en el cierre</h4><small>'+filas.filter(f=>f.c&&f.c.saved).length+' de '+filas.length+' configurados · Ingreso Oct–Dic '+money(total)+'</small></div>'
+  +'<div class="table-wrap"><table><thead><tr><th>PO</th><th>Oportunidad</th><th>Cierre CRM</th><th>Monto CRM</th><th>kWh / año</th><th>Tarifa</th><th>Ingreso mensual</th><th>Inicio operación</th><th>Ingreso Oct–Dic</th><th>Estado</th><th></th></tr></thead><tbody>'
+  +filas.map(f=>{const k=f.c?ppaCalc(f.c):null;const nm=f.l?f.l.nombre:(STATE.names?.[f.po]||projectInfo(f.po).proyecto_nombre||'');
+   const est=!f.c?'<span class="badge warn">Falta configurar</span>':f.c.dirty?'<span class="badge warn">Sin guardar</span>':'<span class="badge ok">En el cierre ✓</span>';
+   const ini=k?(k.ini==='2027-01'?'2027 o después':['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][Number(k.ini.slice(5))-1]+' '+k.ini.slice(0,4)):'—';
+   return '<tr><td>'+escapeHtml(f.po||'Sin PO')+'</td><td style="white-space:normal;max-width:300px">'+escapeHtml(nm||'')+'</td><td>'+escapeHtml(f.l?.fecha_cierre||'—')+'</td><td>'+(f.l?money(montoVentaCrm(f.l)):'—')+'</td><td>'+(k&&k.kwh?k.kwh.toLocaleString('es-EC'):'—')+'</td><td>'+(k&&k.tar?'$'+k.tar:'—')+'</td><td><b>'+(k?money(k.mensual):'—')+'</b></td><td>'+ini+'</td><td>'+(k?money(k.total):'—')+'</td><td>'+est+'</td><td><button class="btn-secondary" onclick="configurarPpaDesdeCrm('+(f.l?Number(f.l.lead_id):'null')+',\''+escapeHtml(f.po||'')+'\')">'+(f.c?'Editar':'Configurar')+'</button></td></tr>';}).join('')
+  +'</tbody></table></div>';
+}
+function configurarPpaDesdeCrm(leadId,po){
+ let code=po;
+ if(!code){const sug=ppaConfigs().find(c=>!ppaLeadDe(c))?.code||'';code=(prompt('Esta oportunidad no tiene PO en Odoo. Escribe la PO del PPA'+(sug?' (la '+sug+' es un PPA sin oportunidad vinculada)':'')+':',sug)||'').match(/\d{3,4}/)?.[0];if(!code)return;}
+ if(!ppaConfigs().some(c=>c.code===code))STATE.ppaDraft[code]={disponibilidad:95,inicio:'2026-10',lead_id:leadId||''};
+ else if(leadId&&!ppaConfigs().find(c=>c.code===code).lead_id){const a=ppaConfigs().find(c=>c.code===code);STATE.ppaDraft[code]={kwh_anual:a.kwh_anual,disponibilidad:a.disponibilidad,tarifa:a.tarifa,inicio:a.inicio,mensual_manual:a.mensual_manual,costo_mensual:a.costo_mensual,lead_id:leadId};}
+ renderPpa();irAPpa();
 }
 function setCrmMes(m){document.getElementById('crmMes').value=m;renderCrm();}
 function setCrmTipo(t){document.getElementById('crmTipo').value=t;renderCrm();}
@@ -2397,6 +2426,7 @@ function renderCrm(){
  const guardados=new Set((STATE.savedSims||[]).map(x=>x.proyecto_codigo));
  const rows=(STATE.crm||[]).map(l=>{const codeSim=l.proyecto_codigo||('CRM-'+l.lead_id);return {...l,codeSim,sim:guardados.has(codeSim)};})
   .map(l=>({...l,...tipoCrm(l)}))
+  .map(l=>{if(l.proyecto_codigo)return l;const c=ppaConfigs().find(c=>Number(c.lead_id)===Number(l.lead_id));return c?{...l,proyecto_codigo:c.code,poDesdePpa:true}:l;})
   .filter(l=>(anio==='ALL'||String(l.fecha_cierre||'').startsWith(anio))&&(est==='ALL'||(est==='SIM'?l.sim:!l.sim))&&(!q||[l.nombre,l.cliente,l.proyecto_codigo,l.ordenes_venta,l.vendedor,l.tipo].join(' ').toLowerCase().includes(q)))
   .sort((a,b)=>String(b.fecha_cierre).localeCompare(String(a.fecha_cierre)));
  // Resumen por tipo (con los demás filtros aplicados) y selector
@@ -2417,11 +2447,12 @@ function renderCrm(){
  selT.innerHTML='<option value="ALL">Todos los tipos</option>'+tipos.map(t=>'<option'+(t===tipoSel?' selected':'')+'>'+escapeHtml(t)+'</option>').join('');
  document.getElementById('crmTipos').innerHTML=tipos.filter(t=>porTipo.has(t)).map(t=>{const g=porTipo.get(t);return '<button class="btn-secondary" style="'+(t===tipoSel?'outline:2px solid #2b72cf;':'')+(t==='Sin tipo'?'border-color:#e0a400;':'')+'" onclick="setCrmTipo(\''+escapeHtml(t)+'\')" title="Filtrar por '+escapeHtml(t)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.m)+'</button>';}).join('')+(tipoSel!=='ALL'?'<button class="btn-secondary" onclick="setCrmTipo(\'ALL\')">✕ Quitar filtro</button>':'')+(tipoSel==='PPA'?'<button class="btn-primary" onclick="irAPpa()">Contratos PPA en el cierre →</button>':'');
  const rowsT=rowsDelTipo.filter(l=>mesSel==='ALL'||mesDe(l)===mesSel);
+ renderCrmPpaPanel(tipoSel==='PPA');
  body.innerHTML=rowsT.map(l=>{
   const ing=l.proyecto_codigo?projectRealAtCutoff(l.proyecto_codigo).income:null;
   const tipoHtml='<span class="badge'+(l.tipo==='Sin tipo'?' warn':l.tipo==='Residencial'?'':' ok')+'" title="'+escapeHtml(l.fuente)+'">'+escapeHtml(l.tipo)+(l.fuente.startsWith('Segmento')?' *':'')+'</span>';
-  const estado=l.sim?'<span class="badge ok">En el cierre ✓</span>':!l.proyecto_codigo?'<span class="badge warn">Sin PO en Odoo</span>':'<span class="badge">Sin simular</span>';
-  return '<tr><td>'+escapeHtml(l.fecha_cierre||'—')+'</td><td>'+tipoHtml+'</td><td style="white-space:normal;max-width:280px">'+escapeHtml(l.nombre||'')+'</td><td style="white-space:normal;max-width:220px">'+escapeHtml(l.cliente||'')+'</td><td>'+money(l.monto_esperado)+'</td><td>'+(l.monto_ov?money(l.monto_ov)+(number(l.monto_esperado)>0&&number(l.monto_ov)<number(l.monto_esperado)*0.05?'<br><span class="badge danger" title="La orden de venta en Odoo no refleja el contrato">OV mal cargada</span>':''):'—')+'</td>'+celdaContratoCrm(l)+'<td>'+escapeHtml(l.proyecto_codigo||'—')+'</td><td>'+(ing===null?'—':money(ing))+'</td><td>'+estado+'</td><td><button class="btn-secondary" onclick="simularVentaCrm('+Number(l.lead_id)+')">'+(l.sim?'Editar':'Simular')+'</button></td></tr>';
+  const estado=ppaCodigos().has(l.proyecto_codigo)?'<span class="badge ok">PPA en el cierre ✓</span>':l.sim?'<span class="badge ok">En el cierre ✓</span>':!l.proyecto_codigo?'<span class="badge warn">Sin PO en Odoo</span>':'<span class="badge">Sin simular</span>';
+  return '<tr><td>'+escapeHtml(l.fecha_cierre||'—')+'</td><td>'+tipoHtml+'</td><td style="white-space:normal;max-width:280px">'+escapeHtml(l.nombre||'')+'</td><td style="white-space:normal;max-width:220px">'+escapeHtml(l.cliente||'')+'</td><td>'+money(l.monto_esperado)+'</td><td>'+(l.monto_ov?money(l.monto_ov)+(number(l.monto_esperado)>0&&number(l.monto_ov)<number(l.monto_esperado)*0.05?'<br><span class="badge danger" title="La orden de venta en Odoo no refleja el contrato">OV mal cargada</span>':''):'—')+'</td>'+celdaContratoCrm(l)+'<td>'+escapeHtml(l.proyecto_codigo||'—')+'</td><td>'+(ing===null?'—':money(ing))+'</td><td>'+estado+'</td><td>'+(l.tipo==='PPA'?'<button class="btn-secondary" onclick="configurarPpaDesdeCrm('+Number(l.lead_id)+',\''+escapeHtml(l.proyecto_codigo||'')+'\')">'+(ppaCodigos().has(l.proyecto_codigo)?'Editar PPA':'Configurar PPA')+'</button>':'<button class="btn-secondary" onclick="simularVentaCrm('+Number(l.lead_id)+')">'+(l.sim?'Editar':'Simular')+'</button>')+'</td></tr>';
  }).join('')||'<tr><td colspan="11">'+(STATE.crmError?'No se pudo cargar: '+escapeHtml(STATE.crmError):(STATE.crm||[]).length?'Sin ventas para este filtro.':'Aún no hay datos: pulsa "Actualizar datos" para traer el CRM de Odoo.')+'</td></tr>';
  const tot=rowsT.reduce((s,l)=>s+montoVentaCrm(l),0),sinTipo=rows.filter(l=>l.tipo==='Sin tipo').length;
  document.getElementById('crmNota').textContent=rowsT.length+' ventas · '+money(tot)+' (orden de venta o monto CRM) · '+rowsT.filter(l=>l.sim).length+' ya en el cierre · '+rowsT.filter(l=>!l.proyecto_codigo).length+' sin PO vinculada.'+(sinTipo?' '+sinTipo+' venta(s) sin Tipo de Oportunidad en Odoo: pide a comercial llenarlo. * = tomado de Segmento de Mercado.':'');
@@ -3698,6 +3729,9 @@ function ppaConfigs(){
  for(const [code,d] of Object.entries(STATE.ppaDraft))m.set(code,{...(m.get(code)||{code,ids:[],meses:[]}),...d,code,dirty:true});
  return [...m.values()].sort((a,b)=>a.code.localeCompare(b.code));
 }
+function ppaLeads(){return (STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='PPA');}
+// Oportunidad del CRM del PPA: la elegida en el PPA o, si no, la que Odoo ya vincula a esa PO.
+function ppaLeadDe(c){const id=c.lead_id!==undefined&&c.lead_id!==''&&c.lead_id!==null?Number(c.lead_id):null;return id?ppaLeads().find(l=>Number(l.lead_id)===id)||null:ppaLeads().find(l=>l.proyecto_codigo===c.code)||null;}
 function ppaCalc(c){
  const kwh=number(c.kwh_anual),disp=c.disponibilidad===undefined||c.disponibilidad===null||c.disponibilidad===''?95:number(c.disponibilidad),tar=number(c.tarifa);
  const calc=kwh*disp/100*tar/12;
@@ -3728,11 +3762,12 @@ function renderPpa(){
    +'<td><select class="fav-in" style="width:140px" onchange="ppaEditar(\''+code+'\',\'inicio\',this.value)">'+opcionesMes+'</select></td>'
    +'<td>'+inp(c.code,'mensual_manual',k.mensual?k.mensual.toFixed(2):'','type="number" min="0" step="0.01" style="width:110px"')+(k.manual?'<button class="fav-hoy" title="Volver al cálculo" onclick="ppaEditar(\''+code+'\',\'mensual_manual\',\'\')">↺</button>':'')+'</td>'
    +'<td>'+inp(c.code,'costo_mensual',c.costo_mensual??'','type="number" min="0" step="0.01" style="width:100px"')+'</td>'
+   +'<td>'+(()=>{const ld=ppaLeadDe(c);return '<select class="fav-in" style="width:230px;text-align:left" onchange="ppaEditar(\''+code+'\',\'lead_id\',this.value)"><option value="">— sin vincular —</option>'+ppaLeads().map(l=>'<option value="'+l.lead_id+'"'+(ld&&Number(ld.lead_id)===Number(l.lead_id)?' selected':'')+'>'+escapeHtml(String(l.nombre||'').slice(0,42)+(l.proyecto_codigo?' · PO '+l.proyecto_codigo:''))+'</option>').join('')+'</select>';})()+'</td>'
    +'<td>'+(k.meses.length?k.meses.map(m=>['Oct','Nov','Dic'][Number(m.slice(5))-10]).join(', '):'—')+'</td>'
    +'<td><b>'+money(k.total)+'</b>'+(k.costo?'<br><small class="report-note">costo '+money(k.costo*k.meses.length)+'</small>':'')+'</td>'
    +'<td class="fav-alert" style="min-width:200px">'+estado+(avisos.length?'<div style="margin-top:4px">'+avisos.join(' ')+'</div>':'')+'</td>'
    +'<td style="white-space:nowrap">'+(c.dirty?'<button class="btn-primary" onclick="ppaGuardar(\''+code+'\')">Guardar</button> ':'')+'<button class="btn-secondary" title="Quitar del cierre" onclick="ppaEliminar(\''+code+'\')">🗑</button></td></tr>';
- }).join('')||'<tr><td colspan="11">Aún no hay contratos PPA. Escribe la PO y pulsa “+ Agregar PPA”.</td></tr>';
+ }).join('')||'<tr><td colspan="12">Aún no hay contratos PPA. Escribe la PO y pulsa “+ Agregar PPA”.</td></tr>';
  const guardados=cs.filter(c=>c.saved&&!c.dirty);
  document.getElementById('ppaResumen').textContent=guardados.length+' PPA en el cierre · Ingreso Oct–Dic: '+money(guardados.reduce((s,c)=>s+ppaCalc(c).total,0));
 }
@@ -3744,10 +3779,10 @@ function ppaNuevo(){
 }
 function ppaEditar(code,campo,valor){
  const actual=ppaConfigs().find(c=>c.code===code)||{};
- const base={kwh_anual:actual.kwh_anual,disponibilidad:actual.disponibilidad,tarifa:actual.tarifa,inicio:actual.inicio,mensual_manual:actual.mensual_manual,costo_mensual:actual.costo_mensual};
- if(campo!=='inicio'&&valor!==''&&(!Number.isFinite(Number(valor))||Number(valor)<0)){toast('Escribe un número positivo.');renderPpa();return;}
+ const base={kwh_anual:actual.kwh_anual,disponibilidad:actual.disponibilidad,tarifa:actual.tarifa,inicio:actual.inicio,mensual_manual:actual.mensual_manual,costo_mensual:actual.costo_mensual,lead_id:actual.lead_id};
+ if(campo!=='inicio'&&campo!=='lead_id'&&valor!==''&&(!Number.isFinite(Number(valor))||Number(valor)<0)){toast('Escribe un número positivo.');renderPpa();return;}
  if(campo==='disponibilidad'&&Number(valor)>100){toast('La disponibilidad no puede pasar de 100%.');renderPpa();return;}
- const v=campo==='inicio'?valor:(valor===''?'':Number(valor));
+ const v=campo==='inicio'?valor:campo==='lead_id'?(valor===''?'':Number(valor)):(valor===''?'':Number(valor));
  const nuevo={...base,[campo]:v};
  if(['kwh_anual','disponibilidad','tarifa'].includes(campo))nuevo.mensual_manual='';
  STATE.ppaDraft[code]=nuevo;setTimeout(renderPpa,0); // diferido: no redibujar mientras el navegador procesa el cambio de foco
@@ -3760,7 +3795,7 @@ async function ppaGuardar(code){
  try{
   const {data:{user}}=await sb.auth.getUser();
   if(c.ids.length){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).in('id',c.ids);if(del.error)throw del.error;}
-  const detalle={kwh_anual:k.kwh||null,disponibilidad:k.disp,tarifa:k.tar||null,inicio:k.ini,mensual_manual:k.manual?k.mensual:'',costo_mensual:k.costo||'',ingreso_mensual_calculado:Number(k.calc.toFixed(2))};
+  const detalle={kwh_anual:k.kwh||null,disponibilidad:k.disp,tarifa:k.tar||null,inicio:k.ini,mensual_manual:k.manual?k.mensual:'',costo_mensual:k.costo||'',ingreso_mensual_calculado:Number(k.calc.toFixed(2)),lead_id:ppaLeadDe(c)?.lead_id||''};
   const filas=(k.meses.length?k.meses:[]).map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code,mes:m+'-01',ingreso:Number(k.mensual.toFixed(2)),costo:Number(k.costo.toFixed(2)),fuente_ref:'PPA:'+code,fecha_corte:'2026-09-30',detalle}));
   if(!filas.length){toast('La PO '+code+' inicia después de 2026: no hay nada que sumar al cierre.');}
   else{const ins=await sb.from('forecast_movimientos').insert(filas);if(ins.error)throw ins.error;}
