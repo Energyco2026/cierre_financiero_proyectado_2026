@@ -1494,6 +1494,7 @@ tbody tr:hover{
                   <label>Hasta <input type="date" id="pygTo" class="filter-input" onchange="usarRangoPyg()"></label>
                   <button class="btn-secondary" onclick="expandirPyg()">Desplegar cuentas</button>
                   <button class="btn-secondary" onclick="STATE.pygExpanded.clear();renderPygTable()">Contraer cuentas</button>
+                  <button class="btn-secondary" id="btnSinAnalitica" onclick="descargarSinAnalitica()" title="Descarga en Excel las líneas contables del período elegido que no tienen analítica en Odoo">⬇ Movimientos sin analítica</button>
                 </div>
                 <div class="table-wrap"><table class="pyg-matrix"><thead id="pygHead"></thead><tbody id="pygBody"></tbody></table></div>
                 <p id="pygNote" class="report-note"></p>
@@ -3457,6 +3458,57 @@ function renderForecastReports(){renderConsolidated();renderExpensePlan();render
 function resetForecast(){STATE.expensePlan={};renderForecastReports();toast('Se restauraron los valores del Excel. Los proyectos guardados se mantienen; quítalos con 🗑.');}
 
 function nombreAnalitica(name){const code=String(name||'').match(/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i)?.[1];const n=code&&STATE.names[code];return n&&!String(name).toUpperCase().includes(String(n).toUpperCase())?n:'';}
+function lineasSinAnalitica(){
+ return pygRows().filter(r=>String(r.analitica_clave||'SIN_ANALITICA')==='SIN_ANALITICA'&&!(r.analitica_ids||[]).length);
+}
+function cargarSheetJS(){
+ if(window.XLSX)return Promise.resolve(window.XLSX);
+ return new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';sc.onload=()=>ok(window.XLSX);sc.onerror=()=>ko(new Error('No se pudo cargar el generador de Excel'));document.head.appendChild(sc);});
+}
+async function descargarSinAnalitica(){
+ const btn=document.getElementById('btnSinAnalitica');
+ const filas=lineasSinAnalitica().slice().sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||String(a.move_name||'').localeCompare(String(b.move_name||'')));
+ if(!filas.length){toast('No hay movimientos sin analítica en el período elegido.');return;}
+ const textoBtn=btn.textContent;btn.disabled=true;btn.textContent='Generando…';
+ try{
+  const X=await cargarSheetJS();
+  const odoo='https://semgroup.odoo.com/mail/view?model=account.move&res_id=';
+  const det=filas.map(r=>({
+   'Asiento':r.move_name||'','Fecha':r.fecha?new Date(r.fecha+'T00:00:00'):'','Mes':String(r.fecha||'').slice(0,7),
+   'Cuenta':r.cuenta_codigo||'','Nombre de la cuenta':r.cuenta_nombre||'','Proveedor / cliente':r.partner_nombre||'',
+   'Referencia':r.ref||'','Débito':number(r.debito),'Crédito':number(r.credito),'Saldo (débito − crédito)':number(r.debito)-number(r.credito),
+   'Estado':r.estado_move||'','Abrir en Odoo':r.odoo_move_id?'Ver asiento':'','Analítica correcta (llenar)':'','Comentario':'',
+   'ID línea Odoo':r.odoo_move_line_id||'','ID asiento Odoo':r.odoo_move_id||''
+  }));
+  const ws=X.utils.json_to_sheet(det,{cellDates:true});
+  filas.forEach((r,i)=>{if(!r.odoo_move_id)return;const ref=X.utils.encode_cell({r:i+1,c:11});if(ws[ref])ws[ref].l={Target:odoo+r.odoo_move_id};});
+  for(let i=1;i<=filas.length;i++){const f=ws[X.utils.encode_cell({r:i,c:1})];if(f)f.z='dd/mm/yyyy';for(const c of [7,8,9]){const m=ws[X.utils.encode_cell({r:i,c})];if(m)m.z='#,##0.00';}}
+  ws['!cols']=[14,11,9,10,34,34,26,12,12,14,9,11,26,26,12,12].map(w=>({wch:w}));
+  ws['!autofilter']={ref:X.utils.encode_range({s:{r:0,c:0},e:{r:filas.length,c:15}})};
+  const grupos=new Map();
+  for(const r of filas){const k=(r.cuenta_codigo||'')+'|'+(r.partner_nombre||'(sin proveedor)');const g=grupos.get(k)||{'Cuenta':r.cuenta_codigo||'','Nombre de la cuenta':r.cuenta_nombre||'','Proveedor / cliente':r.partner_nombre||'(sin proveedor)','Líneas':0,'Saldo':0};g['Líneas']++;g['Saldo']+=number(r.debito)-number(r.credito);grupos.set(k,g);}
+  const res=[...grupos.values()].sort((a,b)=>Math.abs(b['Saldo'])-Math.abs(a['Saldo']));
+  const ws2=X.utils.json_to_sheet(res);ws2['!cols']=[10,34,40,8,16].map(w=>({wch:w}));
+  for(let i=1;i<=res.length;i++){const m=ws2[X.utils.encode_cell({r:i,c:4})];if(m)m.z='#,##0.00';}
+  const per=pygPeriod(),total=filas.reduce((a,r)=>a+number(r.debito)-number(r.credito),0);
+  const ws3=X.utils.aoa_to_sheet([
+   ['Movimientos contables sin analítica — ENERGYCONTROL'],
+   ['Período',(per.from||'')+' a '+(per.to||'')+(per.months&&per.months.length?' (meses: '+per.months.join(', ')+')':'')],
+   ['Generado',new Date().toLocaleString('es-EC')],
+   ['Líneas',filas.length],['Asientos',new Set(filas.map(r=>r.odoo_move_id)).size],['Saldo total',Math.round(total*100)/100],
+   [],
+   ['Qué hacer'],
+   ['1. En la hoja "Sin analítica", llenar la columna "Analítica correcta" (ej. 1727 - EPC ECUAHIELO) o "Gasto general" si no es de un proyecto.'],
+   ['2. Con "Ver asiento" se abre el asiento en Odoo para corregir la distribución analítica.'],
+   ['3. La hoja "Resumen" agrupa por cuenta y proveedor: si un proveedor siempre va al mismo proyecto, conviene crear un modelo de distribución analítica en Odoo.'],
+   ['4. Después de corregir en Odoo, pulsar "Actualizar datos" en el dashboard; estas líneas pasan a su analítica.']
+  ]);ws3['!cols']=[{wch:22},{wch:110}];
+  const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws3,'Instrucciones');X.utils.book_append_sheet(wb,ws,'Sin analítica');X.utils.book_append_sheet(wb,ws2,'Resumen');
+  X.writeFile(wb,'Movimientos_sin_analitica_'+(per.from||'')+'_a_'+(per.to||'')+'.xlsx');
+  toast(filas.length+' líneas sin analítica descargadas.');
+ }catch(e){toast('No se pudo generar el Excel: '+e.message);}
+ finally{btn.disabled=false;btn.textContent=textoBtn;}
+}
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  {const seen=new Map();for(const r of rows){const ids=String(r.analitica_clave||"SIN_ANALITICA").split(","),nm=(r.analitica_nombre||"Sin analítica").split(" | ");ids.forEach((id,i)=>{if(!seen.has(id))seen.set(id,nm[i]||nm[0]);});}
@@ -3468,6 +3520,7 @@ function renderPygTable(){
  const selectedIds=new Set(cols.map(c=>c.id));
  rows=rows.filter(r=>String(r.analitica_clave||"SIN_ANALITICA").split(",").some(id=>selectedIds.has(id)));
  STATE.pygColumns=cols;STATE.pygReportRows=rows;STATE.pygReportFilters={search,project,period};
+ {const n=lineasSinAnalitica().length,bt=document.getElementById('btnSinAnalitica');if(bt)bt.textContent='⬇ Movimientos sin analítica ('+n.toLocaleString('es-EC')+')';}
  document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto / cuenta contable</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+(nombreAnalitica(g.name)?'<br><small>'+escapeHtml(nombreAnalitica(g.name))+'</small>':'')+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
  STATE.pygRowSpecs=[];
  function row(label,subset,type,style,toggle,level,group=null,account=null){
