@@ -925,7 +925,7 @@ tbody tr:hover{
             </button>
 
             <button class="menu-btn" onclick="abrirTab('costos',this)">
-                ▤ Costos SharePoint
+                ▤ Presupuesto vs Ejecución
             </button>
 
             <button class="menu-btn" onclick="abrirTab('calidad',this)">
@@ -1338,7 +1338,7 @@ tbody tr:hover{
                     data-tab="costos"
                     onclick="abrirTab('costos',this)">
 
-                    Detalle costos SharePoint
+                    Presupuesto vs Ejecución
 
                 </button>
 
@@ -1472,8 +1472,16 @@ tbody tr:hover{
             <div
                 id="tab-costos"
                 class="tab-content hidden">
-                <div id="costsSummary" class="report-note"></div>
                 <div id="syncReport" class="sync-report hidden" role="status"></div>
+                <h3>Presupuesto vs Ejecución por proyecto</h3>
+                <p class="report-note">Presupuesto aterrizado (Excel de Control Operativo en SharePoint) contra lo ejecutado en Odoo y lo comprometido en órdenes de compra. Pulsa ▸ para ver los rubros. "Total en OC emitidas" es el valor completo de las órdenes de compra (incluye lo ya facturado), no el saldo abierto.</p>
+                <div class="table-wrap"><table>
+                  <thead><tr><th>Proyecto</th><th>Contrato (OV Odoo)</th><th>Contrato (SharePoint)</th><th>Pres. aterrizado</th><th>Ejecutado real</th><th>Total en OC emitidas</th><th>Por ejecutar</th><th>% ejecutado</th><th>Avance físico</th><th>Estado</th></tr></thead>
+                  <tbody id="pveBody"></tbody>
+                </table></div>
+                <p id="pveNota" class="report-note"></p>
+                <details class="report-note" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">Detalle de ítems del Excel de COSTOS (SharePoint)</summary>
+                <div id="costsSummary" class="report-note"></div>
 
                 <div class="filters-row">
 
@@ -1511,6 +1519,7 @@ tbody tr:hover{
                     </table>
 
                 </div>
+                </details>
 
             </div>
 
@@ -1992,9 +2001,15 @@ async function loadData(){
             throw costsRes.error;
 
 
+        try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
+        try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("presupuesto_categoria_vs_comprometido",["proyecto","id"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
         STATE.projects =
             (projectsRes.data || []).map(p=>{const n=STATE.names[p.proyecto_codigo];return n&&(!p.proyecto_nombre||/^\s*(P\s*O?\s*)?\d{3,4}/i.test(p.proyecto_nombre))?{...p,proyecto_nombre:n}:p;});
+        // Contrato: orden de venta confirmada en Odoo (sin IVA); si no existe, el del Excel de SharePoint.
+        {const vistos=new Set(STATE.projects.map(p=>p.proyecto_codigo));
+         for(const code of Object.keys(STATE.contratosOdoo||{}))if(!vistos.has(code)&&STATE.contratosOdoo[code]>0)STATE.projects.push({proyecto_codigo:code,proyecto_nombre:STATE.names[code]||code,monto_contrato:0});
+         STATE.projects=STATE.projects.map(p=>{const sp=number(p.monto_contrato),ov=number(STATE.contratosOdoo?.[p.proyecto_codigo]);return {...p,contrato_sp:sp,contrato_odoo:ov,monto_contrato:ov>0?ov:sp,contrato_fuente:ov>0?'OV Odoo':(sp>0?'SharePoint':'')};});}
 
         STATE.monthly =
             monthlyRes.data || [];
@@ -2196,7 +2211,29 @@ function filteredProjects(){
    MAIN RENDER
 ========================================================= */
 
+function renderPve(){
+ const body=document.getElementById('pveBody');if(!body)return;
+ STATE.pveOpen??=new Set();
+ const rows=(STATE.pve||[]).slice().sort((a,b)=>String(a.proyecto).localeCompare(String(b.proyecto)));
+ const pct=(a,b)=>b>0?a/b:null;
+ body.innerHTML=rows.map(r=>{
+  const code=r.proyecto,ater=number(r.presupuesto_aterrizado),real=number(r.real_ejecutado),comp=number(r.comprometido),porEj=ater-real,p=pct(real,ater);
+  const ov=number(STATE.contratosOdoo?.[code]),sp=number(r.monto_contrato),avance=r.avance_fisico==null?null:number(r.avance_fisico)/100;
+  const estado=!ater?'<span class="badge danger">Sin presupuesto</span>':real>ater?'<span class="badge danger">Sobre presupuesto</span>':(avance!==null&&p!==null&&p-avance>0.10)?'<span class="badge warn">Costo adelantado al avance</span>':'<span class="badge ok">En rango</span>';
+  const abierto=STATE.pveOpen.has(code);
+  let html='<tr><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button></td><td>'+(ov?money(ov):'—')+'</td><td>'+(sp?money(sp):'—')+'</td><td>'+money(ater)+'</td><td>'+money(real)+'</td><td>'+money(comp)+'</td><td class="'+(porEj<0?'money-negative':'')+'">'+money(porEj)+'</td><td>'+(p===null?'—':percent(p))+'</td><td>'+(avance===null?'—':percent(avance))+'</td><td>'+estado+'</td></tr>';
+  if(abierto){
+   html+=(STATE.pveCat||[]).filter(c=>c.proyecto===code).sort((a,b)=>String(a.rubro).localeCompare(String(b.rubro))).map(c=>{const a=number(c.presupuesto_aterrizado),re=number(c.presupuesto_real),co=number(c.comprometido),pe=a-re;
+    return '<tr style="background:#fafcff"><td style="padding-left:34px">'+escapeHtml(c.rubro||'')+'</td><td></td><td></td><td>'+money(a)+'</td><td>'+money(re)+'</td><td>'+money(co)+'</td><td class="'+(pe<0?'money-negative':'')+'">'+money(pe)+'</td><td>'+(a>0?percent(re/a):'—')+'</td><td></td><td></td></tr>';}).join('')||'<tr><td colspan="10" style="padding-left:34px">Sin rubros cargados.</td></tr>';
+  }
+  return html;
+ }).join('')||'<tr><td colspan="10">'+(STATE.pveError?'No se pudo cargar: '+escapeHtml(STATE.pveError):'Sin proyectos con presupuesto.')+'</td></tr>';
+ const t=rows.reduce((s,r)=>({a:s.a+number(r.presupuesto_aterrizado),r:s.r+number(r.real_ejecutado),c:s.c+number(r.comprometido)}),{a:0,r:0,c:0});
+ document.getElementById('pveNota').textContent=rows.length+' proyectos · Presupuesto '+money(t.a)+' · Ejecutado '+money(t.r)+' · Total en OC '+money(t.c)+' · Por ejecutar '+money(t.a-t.r)+'. "Costo adelantado al avance": el % ejecutado supera en más de 10 puntos al avance físico.';
+}
+function togglePve(code){STATE.pveOpen.has(code)?STATE.pveOpen.delete(code):STATE.pveOpen.add(code);renderPve();}
 function renderAll(){
+    renderPve();
 
     renderKPIs();
 
@@ -3808,7 +3845,7 @@ function renderSyncResults(){
  el.replaceChildren();
  for(const item of STATE.syncResults){
   const line=document.createElement("div");
-  line.textContent=(item.ok?"✓ ":"⚠ ")+item.name+": "+item.message;
+  line.textContent=(item.omitida?"– ":item.ok?"✓ ":"⚠ ")+item.name+": "+item.message;if(item.omitida)line.style.color="var(--muted)";
   el.appendChild(line);
  }
 }
@@ -3817,7 +3854,8 @@ async function actualizarTodo(){
  btn.disabled=true; STATE.syncResults=[];
  try{
   btn.textContent="Actualizando Odoo...";
-  try{await invokeSync("forecast-sync-odoo");STATE.syncResults.push({name:"Odoo",ok:true,message:"Actualizado"});}
+  try{const od=await invokeSync("forecast-sync-odoo");STATE.syncResults.push({name:"Odoo",ok:true,message:"P&G actualizado ("+od.lineas_odoo+" líneas)"});
+   const c=od.contratos||{};STATE.syncResults.push(c.ok?{name:"Contratos (órdenes de venta)",ok:true,message:c.analiticas_con_contrato+" analíticas con contrato · "+c.ordenes_sin_analitica+" órdenes sin analítica"+(c.ordenes_sin_analitica?" (ej.: "+(c.ejemplo_sin_analitica||[]).slice(0,5).join(", ")+")":"")}:{name:"Contratos (órdenes de venta)",ok:false,message:c.error||"Sin respuesta"});}
   catch(error){STATE.syncResults.push({name:"Odoo",ok:false,message:error.message});}
   btn.textContent="Buscando proyectos SharePoint...";
   try{
@@ -3829,7 +3867,7 @@ async function actualizarTodo(){
     try{
      const out=await invokeSync("sharepoint-sync-costos",{project:folder.name});
      STATE.syncResults.push({name:folder.name,ok:true,message:out.filas_limpias+" ítems de COSTOS"});
-    }catch(error){STATE.syncResults.push({name:folder.name,ok:false,message:error.message});}
+    }catch(error){const utilitaria=/no se encontr[oó] la carpeta control|no se pudo extraer c[oó]digo/i.test(error.message);STATE.syncResults.push({name:folder.name,ok:utilitaria,omitida:utilitaria,message:utilitaria?"Omitida (no es carpeta de proyecto)":error.message});}
     renderSyncResults();
    }
   }catch(error){STATE.syncResults.push({name:"SharePoint",ok:false,message:error.message});}
@@ -3838,8 +3876,8 @@ async function actualizarTodo(){
   await loadData();
   const failures=STATE.syncResults.filter(r=>!r.ok).length;
   document.getElementById("dotOdoo").className=STATE.syncResults.find(r=>r.name==="Odoo")?.ok?"dot ok":"dot warn";
-  document.getElementById("dotSharePoint").className=STATE.syncResults.some(r=>r.name!=="Odoo"&&!r.ok)?"dot warn":"dot ok";
-  toast(failures?"Actualización con "+failures+" observaciones. Consulta Costos SharePoint.":"Actualización completa.");
+  document.getElementById("dotSharePoint").className=STATE.syncResults.some(r=>!["Odoo","Contratos (órdenes de venta)"].includes(r.name)&&!r.ok)?"dot warn":"dot ok";
+  toast(failures?"Actualización con "+failures+" observaciones. Revisa la pestaña Presupuesto vs Ejecución.":"Actualización completa.");
  }finally{btn.disabled=false;btn.textContent="↻ Actualizar datos";}
 }
 
