@@ -1480,7 +1480,7 @@ tbody tr:hover{
                   <tbody id="pveBody"></tbody>
                 </table></div>
                 <p id="pveNota" class="report-note"></p>
-                <details class="report-note" style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">Detalle de ítems del Excel de COSTOS (SharePoint)</summary>
+                <details open style="margin-top:18px"><summary style="cursor:pointer;font-weight:700">Detalle de ítems del Excel de COSTOS (SharePoint)</summary>
                 <div id="costsSummary" class="report-note"></div>
 
                 <div class="filters-row">
@@ -2006,10 +2006,10 @@ async function loadData(){
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
         STATE.projects =
             (projectsRes.data || []).map(p=>{const n=STATE.names[p.proyecto_codigo];return n&&(!p.proyecto_nombre||/^\s*(P\s*O?\s*)?\d{3,4}/i.test(p.proyecto_nombre))?{...p,proyecto_nombre:n}:p;});
-        // Contrato: orden de venta confirmada en Odoo (sin IVA); si no existe, el del Excel de SharePoint.
+        // Contrato: el del Control Operativo (SharePoint); si el proyecto no lo tiene, la orden de venta confirmada de Odoo (sin IVA).
         {const vistos=new Set(STATE.projects.map(p=>p.proyecto_codigo));
          for(const code of Object.keys(STATE.contratosOdoo||{}))if(!vistos.has(code)&&STATE.contratosOdoo[code]>0)STATE.projects.push({proyecto_codigo:code,proyecto_nombre:STATE.names[code]||code,monto_contrato:0});
-         STATE.projects=STATE.projects.map(p=>{const sp=number(p.monto_contrato),ov=number(STATE.contratosOdoo?.[p.proyecto_codigo]);return {...p,contrato_sp:sp,contrato_odoo:ov,monto_contrato:ov>0?ov:sp,contrato_fuente:ov>0?'OV Odoo':(sp>0?'SharePoint':'')};});}
+         STATE.projects=STATE.projects.map(p=>{const sp=number(p.monto_contrato),ov=number(STATE.contratosOdoo?.[p.proyecto_codigo]);return {...p,contrato_sp:sp,contrato_odoo:ov,monto_contrato:sp>0?sp:ov,contrato_fuente:sp>0?'SharePoint':(ov>0?'OV Odoo':''),contrato_dif:sp>0&&ov>0?ov-sp:null};});}
 
         STATE.monthly =
             monthlyRes.data || [];
@@ -2220,8 +2220,10 @@ function renderPve(){
   const code=r.proyecto,ater=number(r.presupuesto_aterrizado),real=number(r.real_ejecutado),comp=number(r.comprometido),porEj=ater-real,p=pct(real,ater);
   const ov=number(STATE.contratosOdoo?.[code]),sp=number(r.monto_contrato),avance=r.avance_fisico==null?null:number(r.avance_fisico)/100;
   const estado=!ater?'<span class="badge danger">Sin presupuesto</span>':real>ater?'<span class="badge danger">Sobre presupuesto</span>':(avance!==null&&p!==null&&p-avance>0.10)?'<span class="badge warn">Costo adelantado al avance</span>':'<span class="badge ok">En rango</span>';
+  const difOv=ov&&sp?ov-sp:null;
+  const alertaOv=difOv!==null&&Math.abs(difOv)>Math.max(1,sp*0.01)?' <span class="badge warn" title="Orden de venta Odoo '+money(ov)+' vs SharePoint '+money(sp)+'">OV ≠ contrato</span>':(sp&&!ov?' <span class="badge warn">Sin OV en Odoo</span>':'');
   const abierto=STATE.pveOpen.has(code);
-  let html='<tr><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button></td><td>'+(ov?money(ov):'—')+'</td><td>'+(sp?money(sp):'—')+'</td><td>'+money(ater)+'</td><td>'+money(real)+'</td><td>'+money(comp)+'</td><td class="'+(porEj<0?'money-negative':'')+'">'+money(porEj)+'</td><td>'+(p===null?'—':percent(p))+'</td><td>'+(avance===null?'—':percent(avance))+'</td><td>'+estado+'</td></tr>';
+  let html='<tr><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button></td><td>'+(ov?money(ov):'—')+'</td><td>'+(sp?money(sp):'—')+'</td><td>'+money(ater)+'</td><td>'+money(real)+'</td><td>'+money(comp)+'</td><td class="'+(porEj<0?'money-negative':'')+'">'+money(porEj)+'</td><td>'+(p===null?'—':percent(p))+'</td><td>'+(avance===null?'—':percent(avance))+'</td><td>'+estado+alertaOv+'</td></tr>';
   if(abierto){
    html+=(STATE.pveCat||[]).filter(c=>c.proyecto===code).sort((a,b)=>String(a.rubro).localeCompare(String(b.rubro))).map(c=>{const a=number(c.presupuesto_aterrizado),re=number(c.presupuesto_real),co=number(c.comprometido),pe=a-re;
     return '<tr style="background:#fafcff"><td style="padding-left:34px">'+escapeHtml(c.rubro||'')+'</td><td></td><td></td><td>'+money(a)+'</td><td>'+money(re)+'</td><td>'+money(co)+'</td><td class="'+(pe<0?'money-negative':'')+'">'+money(pe)+'</td><td>'+(a>0?percent(re/a):'—')+'</td><td></td><td></td></tr>';}).join('')||'<tr><td colspan="10" style="padding-left:34px">Sin rubros cargados.</td></tr>';
@@ -3419,147 +3421,35 @@ function renderMovimientos(){
 
 /* SHAREPOINT COSTS */
 function renderCosts(){
-
-    const search =
-        (
-            document
-            .getElementById(
-                "buscarCosto"
-            )
-            .value
-            || ""
-        )
-        .toLowerCase();
-
-
-    const project =
-        selectedProject();
-
-
-    const rows =
-        STATE.costs
-        .filter(row => {
-
-            if(
-                project !== "ALL"
-                &&
-                row.proyecto_codigo
-                !== project
-            )
-                return false;
-
-
-            const text =
-                (
-                    (
-                        row.categoria
-                        || ""
-                    )
-                    + " "
-                    + (
-                        row.item_descripcion
-                        || ""
-                    )
-                    + " "
-                    + (
-                        row.proveedor
-                        || ""
-                    )
-                )
-                .toLowerCase();
-
-
-            return !search
-                || text.includes(
-                    search
-                );
-
-        });
-
-
-    document.getElementById("costsSummary").textContent = new Set(rows.map(r=>r.proyecto_codigo)).size + " proyectos con datos · " + rows.length + " ítems";
-    const body = document.getElementById("costsBody");
-
-
-    body.innerHTML = "";
-
-
-    rows.forEach(row => {
-
-        const landed =
-            number(
-                row.presupuesto_aterrizado
-            );
-
-
-        const executed =
-            number(
-                row.ejecutado_real
-            );
-
-
-        const costProgress =
-            landed
-            ? executed / landed
-            : null;
-
-
-        body.insertAdjacentHTML(
-            "beforeend",
-            `
-            <tr>
-
-                <td>
-                    ${row.proyecto_codigo || ""}
-                </td>
-
-                <td>
-                    ${row.categoria || ""}
-                </td>
-
-                <td>
-                    ${row.item_descripcion || ""}
-                </td>
-
-                <td>
-                    ${row.proveedor || ""}
-                </td>
-
-                <td>
-                    ${money(row.presupuesto_inicial)}
-                </td>
-
-                <td>
-                    ${money(row.presupuesto_aterrizado)}
-                </td>
-
-                <td>
-                    ${money(row.ejecutado_real)}
-                </td>
-
-                <td>
-                    ${
-                        costProgress === null
-                        ? "—"
-                        : percent(costProgress)
-                    }
-                </td>
-
-                <td>
-                    ${money(row.por_ejecutar)}
-                </td>
-
-                <td>
-                    ${money(row.diferencia_real_plan)}
-                </td>
-
-            </tr>
-            `
-        );
-
-    });
-
+ const search=(document.getElementById("buscarCosto").value||"").toLowerCase();
+ const project=selectedProject();
+ STATE.costsOpen??=new Set();
+ const rows=STATE.costs.filter(row=>{
+  if(project!=="ALL"&&row.proyecto_codigo!==project)return false;
+  const text=((row.categoria||"")+" "+(row.item_descripcion||"")+" "+(row.proveedor||"")+" "+(row.proyecto_codigo||"")+" "+(row.proyecto_carpeta||"")).toLowerCase();
+  return !search||text.includes(search);
+ });
+ const grupos=new Map();
+ for(const r of rows){const k=r.proyecto_codigo||"SIN_PROYECTO";if(!grupos.has(k))grupos.set(k,[]);grupos.get(k).push(r);}
+ document.getElementById("costsSummary").textContent=grupos.size+" proyectos · "+rows.length+" ítems. Pulsa ▸ en la PO para ver sus ítems.";
+ const sum=(list,f)=>list.reduce((s,r)=>s+number(r[f]),0);
+ const celdas=(ini,ater,ej,porEj,dif)=>'<td>'+money(ini)+'</td><td>'+money(ater)+'</td><td>'+money(ej)+'</td><td>'+(ater?percent(ej/ater):'—')+'</td><td class="'+(porEj<0?'money-negative':'')+'">'+money(porEj)+'</td><td class="'+(dif<0?'money-negative':'')+'">'+money(dif)+'</td>';
+ const abrirTodo=!!search;
+ document.getElementById("costsBody").innerHTML=[...grupos.entries()].sort((x,y)=>x[0].localeCompare(y[0])).map(([code,list])=>{
+  const abierto=abrirTodo||STATE.costsOpen.has(code);
+  const nombre=STATE.names?.[code]||list[0].proyecto_carpeta||"";
+  let html='<tr style="background:#f1f5fb"><td colspan="4"><button class="pyg-toggle" onclick="toggleCostos(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+nombre)+'</span> <small class="report-note">('+list.length+' ítems)</small></button></td>'+celdas(sum(list,'presupuesto_inicial'),sum(list,'presupuesto_aterrizado'),sum(list,'ejecutado_real'),sum(list,'por_ejecutar'),sum(list,'diferencia_real_plan'))+'</tr>';
+  if(abierto){
+   const porCat=new Map();for(const r of list){const c=r.categoria||"Sin categoría";if(!porCat.has(c))porCat.set(c,[]);porCat.get(c).push(r);}
+   for(const [cat,items] of porCat){
+    html+='<tr><td></td><td colspan="3" style="font-weight:700">'+escapeHtml(cat)+'</td>'+celdas(sum(items,'presupuesto_inicial'),sum(items,'presupuesto_aterrizado'),sum(items,'ejecutado_real'),sum(items,'por_ejecutar'),sum(items,'diferencia_real_plan'))+'</tr>';
+    html+=items.map(r=>'<tr><td></td><td></td><td style="white-space:normal;max-width:320px">'+escapeHtml(r.item_descripcion||"")+'</td><td>'+escapeHtml(r.proveedor||"")+'</td>'+celdas(number(r.presupuesto_inicial),number(r.presupuesto_aterrizado),number(r.ejecutado_real),number(r.por_ejecutar),number(r.diferencia_real_plan))+'</tr>').join('');
+   }
+  }
+  return html;
+ }).join('')||'<tr><td colspan="10">Sin ítems para este filtro.</td></tr>';
 }
+function toggleCostos(code){STATE.costsOpen.has(code)?STATE.costsOpen.delete(code):STATE.costsOpen.add(code);renderCosts();}
 
 
 /* =========================================================
