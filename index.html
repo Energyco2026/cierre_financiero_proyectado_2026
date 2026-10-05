@@ -905,7 +905,23 @@ tbody tr:hover{
 .ledger-msg.warn{background:#fff6e6;color:#8a5300}
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
-<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.closing-cell{background:#e7edff!important;font-weight:700}.consolidated-matrix .pyg-benefit{border-top:12px solid white}.consolidated-matrix .pyg-toggle{border:0;background:transparent;color:inherit;font-weight:inherit;text-align:left}.table-wrap input{max-width:190px;padding:7px;border:1px solid #d7dee9;border-radius:6px}</style></head>
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}
+.fav-wrap{max-height:70vh}
+.fav-table{font-size:12.5px}
+.fav-table th,.fav-table td{white-space:nowrap}
+.fav-table thead th{position:sticky;top:0;z-index:2}
+.fav-table thead tr:nth-child(2) th{top:34px}
+.fav-table .fav-grp{text-align:center;border-bottom:2px solid #c9d6ea}
+.fav-sticky{position:sticky;left:0;background:#fff;z-index:1;min-width:210px;max-width:260px;white-space:normal!important}
+.fav-table thead .fav-sticky{z-index:3;background:inherit}
+.fav-in{width:92px;padding:5px 6px;border:1px solid #b9c7dc;border-radius:6px;font:inherit;text-align:right;background:#fffbea}
+.fav-in.eac{width:120px}
+.fav-in:focus{outline:2px solid #2b72cf;background:#fff}
+.fav-edit-h{background:#fff4c2!important}
+.fav-hoy{border:0;background:none;color:#2b72cf;cursor:pointer;font-size:11px;padding:0 0 0 4px}
+.fav-table tfoot td{font-weight:700;background:#f1f5fb;position:sticky;bottom:0}
+.fav-alert{white-space:normal!important;min-width:300px}
+.fav-table td{vertical-align:middle;padding-top:6px;padding-bottom:6px}.closing-cell{background:#e7edff!important;font-weight:700}.consolidated-matrix .pyg-benefit{border-top:12px solid white}.consolidated-matrix .pyg-toggle{border:0;background:transparent;color:inherit;font-weight:inherit;text-align:left}.table-wrap input{max-width:190px;padding:7px;border:1px solid #d7dee9;border-radius:6px}</style></head>
 
 <body>
 
@@ -941,7 +957,7 @@ tbody tr:hover{
             ENERGYCONTROL
         </div>
 
-        <div class="menu"><button class="menu-btn" onclick="abrirTab('consolidado',this)">P&G consolidado</button><button class="menu-btn" onclick="abrirTab('fijos',this)">Gastos fijos</button><button class="menu-btn" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
+        <div class="menu"><button class="menu-btn" onclick="abrirTab('consolidado',this)">P&G consolidado</button><button class="menu-btn" onclick="abrirTab('fijos',this)">Gastos fijos</button><button class="menu-btn" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button><button class="menu-btn" onclick="abrirTab('forecastav',this)">Forecast por avance</button>
             <button class="menu-btn active" onclick="abrirTab('proyectos',this)">
                 ▣ Resumen
             </button>
@@ -1328,6 +1344,7 @@ tbody tr:hover{
             <div class="tabs"><button class="tab-btn" data-tab="consolidado" onclick="abrirTab('consolidado',this)">P&G consolidado</button>
 <button class="tab-btn" data-tab="fijos" onclick="abrirTab('fijos',this)">Gastos fijos</button>
 <button class="tab-btn" data-tab="proyeccion" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
+<button class="tab-btn" data-tab="forecastav" onclick="abrirTab('forecastav',this)">Forecast por avance</button>
 
                 <button
                     class="tab-btn active"
@@ -1466,6 +1483,25 @@ tbody tr:hover{
 
 
             <!-- PYG -->
+            <div id="tab-forecastav" class="tab-content hidden">
+                <div class="card-title"><h3>Forecast por avance · cierre 2026</h3><small id="favResumen"></small></div>
+                <p class="report-note">Edita las celdas amarillas: <b>avance al 31-dic</b> (lo que te dice el administrador) y <b>costo total del proyecto</b>. Se guarda solo y pasa al P&G consolidado. <b>Le toca a 2026</b> = contrato × avance − reconocido hasta 2025. <b>Falta Oct–Dic</b> = le toca a 2026 − registrado ene–sep (negativo = reversa). Si el costo total supera el contrato, la pérdida se reconoce completa (NIIF 15). Comparte datos con el simulador: no se duplica.</p>
+                <div class="filters-row">
+                  <input id="buscarFav" class="filter-input search" placeholder="Buscar proyecto..." oninput="renderForecastAvance()">
+                  <select id="favFiltro" onchange="renderForecastAvance()" aria-label="Filtrar"><option value="ALL">Todos los proyectos</option><option value="PEND">Sin guardar</option><option value="SAVED">Guardados en el cierre</option><option value="ALERT">Con alertas</option></select>
+                  <button id="favGuardarTodos" class="btn-primary" onclick="guardarTodosFav()">Guardar todos en el cierre</button>
+                </div>
+                <div class="table-wrap fav-wrap"><table class="fav-table">
+                  <thead>
+                    <tr><th rowspan="2" class="fav-sticky">Proyecto</th><th rowspan="2">Contrato</th><th colspan="2" class="fav-grp">Avance físico</th><th rowspan="2" title="Costo total que tendrá el proyecto al terminar">Costo total proyecto ✎</th><th rowspan="2">Margen</th><th colspan="5" class="fav-grp">Ingreso</th><th colspan="5" class="fav-grp">Costo</th><th rowspan="2" title="Ingreso que falta − costo que falta, Oct–Dic">Efecto en resultado Oct–Dic</th><th rowspan="2">Estado</th><th rowspan="2"></th></tr>
+                    <tr><th>Hoy (Excel)</th><th class="fav-edit-h">Al 31-dic ✎</th><th>Acumulado al 31-dic</th><th>Reconocido hasta 2025</th><th>Le toca a 2026</th><th>Registrado ene–sep</th><th>Falta Oct–Dic</th><th>Acumulado al 31-dic</th><th>Reconocido hasta 2025</th><th>Le toca a 2026</th><th>Registrado ene–sep</th><th>Falta Oct–Dic</th></tr>
+                  </thead>
+                  <tbody id="favBody"></tbody>
+                  <tfoot id="favFoot"></tfoot>
+                </table></div>
+                <p id="favNota" class="report-note"></p>
+            </div>
+
             <div id="tab-crm" class="tab-content hidden">
                 <h3>Ventas ganadas en el CRM</h3>
                 <p class="report-note">Oportunidades en etapa ganada en Odoo. La PO se toma de la orden de venta vinculada a la oportunidad. Pulsa <b>Simular</b> para llevarla al cierre 2026.</p>
@@ -2361,6 +2397,7 @@ function renderAll(){
     renderConsolidated();
     renderExpensePlan();
     renderClosingForecast();
+    renderForecastAvance();
 
 }
 
@@ -3509,6 +3546,123 @@ async function descargarSinAnalitica(){
  }catch(e){toast('No se pudo generar el Excel: '+e.message);}
  finally{btn.disabled=false;btn.textContent=textoBtn;}
 }
+/* ========= FORECAST POR AVANCE ========= */
+STATE.favEdits=STATE.favEdits||{};STATE.favSaving=STATE.favSaving||new Set();STATE.favTimers=STATE.favTimers||{};
+function favCodes(){
+ return simProjectCodes().filter(c=>!String(c).startsWith('CRM-')).filter(c=>number(projectInfo(c).monto_contrato)>0||(STATE.savedSims||[]).some(s=>s.proyecto_codigo===c));
+}
+function favReal(code){
+ if(STATE.favCacheRef!==STATE.analytic){STATE.favCacheRef=STATE.analytic;STATE.favCache={};}
+ return STATE.favCache[code]??=({hasta:projectRealAtCutoff(code),desde:projectRealAfterCutoff(code)});
+}
+function eacSugerido(code){
+ const pres=presupuestoProyecto(code)||0;
+ const realOc=(STATE.pveCat||[]).filter(c=>String(c.proyecto)===String(code)).reduce((a,c)=>a+number(c.presupuesto_real)+number(c.comprometido),0);
+ if(realOc>pres)return {v:realOc,fuente:'Facturado + OC abiertas en Odoo ('+money(realOc)+'), que ya supera el presupuesto aterrizado ('+money(pres)+')'};
+ return {v:pres,fuente:pres?'Presupuesto aterrizado del Excel de SharePoint':'Sin presupuesto: escribe el costo total'};
+}
+function favFila(code){
+ const p=projectInfo(code),saved=(STATE.savedSims||[]).find(s=>s.proyecto_codigo===code),ed=STATE.favEdits[code]||{};
+ const C=saved&&number(saved.monto_contrato)>0?number(saved.monto_contrato):number(p.monto_contrato);
+ const hoy=p.avance_fisico==null?null:number(p.avance_fisico);
+ const sug=eacSugerido(code);
+ const savedA=saved?number(saved.avance_acumulado):null;
+ const savedEac=saved?(number(saved.detalle?.costo_proyecto_eac)||(savedA>0?number(saved.detalle?.costo_total_estimado)/(savedA/100):0)):0;
+ const a=ed.avance!==undefined?ed.avance:(saved?savedA:(hoy??0));
+ const E=ed.eac!==undefined?ed.eac:(savedEac||sug.v);
+ const eacFuente=ed.eac!==undefined||savedEac?'Escrito por ti'+(sug.v?' · sugerido: '+money(sug.v):''):sug.fuente;
+ const ing=recPrevio(code,'ingreso'),cos=recPrevio(code,'costo'),rr=favReal(code),real=rr.hasta,post=rr.desde;
+ const f=a/100,perdida=Math.max(E-C,0);
+ const ingAcum=C*f,cosAcum=E*f+perdida*(1-f);
+ const ing2026=ingAcum-ing.total,cos2026=cosAcum-cos.total;
+ const ingFalta=ing2026-real.income,cosFalta=cos2026-real.cost;
+ const al=[];
+ if(!(C>0))al.push(['danger','Falta contrato']);
+ if(!(E>0))al.push(['danger','Falta costo total']);
+ if(a<0||a>100)al.push(['danger','Avance fuera de 0–100']);
+ if(C>0&&E>C)al.push(['danger','Pérdida: el costo total supera el contrato en '+money(E-C)+'; se reconoce completa']);
+ if(hoy!==null&&a<hoy-0.01)al.push(['warn','Avance al 31-dic menor que el de hoy ('+percentPoints(hoy)+')']);
+ if(ingFalta<-1)al.push(['warn','Reversa de ingreso: se facturó/reconoció más que el avance']);
+ if(sug.v>(presupuestoProyecto(code)||0)&&(presupuestoProyecto(code)||0)>0)al.push(['warn','Facturado + OC supera el presupuesto']);
+ if(ing.saldo>0)al.push(['warn','Saldo de reconocimiento por reversar en CxC: '+money(ing.saldo)]);
+ const nota=(Math.abs(post.income)>1||Math.abs(post.cost)>1)?'Odoo ya registró desde octubre: ingreso '+money(post.income)+' · costo '+money(post.cost)+'. Falta registrar hasta el 31-dic: ingreso '+money(ingFalta-post.income)+' · costo '+money(cosFalta-post.cost)+'.':'';
+ return {code,nombre:p.proyecto_nombre||STATE.names[code]||'',C,hoy,a,E,eacFuente,margen:C>0&&E>0?(C-E)/C:null,
+  ingAcum,ingPrevio:ing.total,ing2026,ingReg:real.income,ingFalta,cosAcum,cosPrevio:cos.total,cos2026,cosReg:real.cost,cosFalta,
+  efecto:ingFalta-cosFalta,res2026:ing2026-cos2026,saved,dirty:!!STATE.favEdits[code],saving:STATE.favSaving.has(code),
+  ingSaldo:ing.saldo,cosSaldo:cos.saldo,al,nota,valido:C>0&&E>0&&a>=0&&a<=100};
+}
+function renderForecastAvance(){
+ const body=document.getElementById('favBody');if(!body)return;
+ const q=(document.getElementById('buscarFav').value||'').toLowerCase(),flt=document.getElementById('favFiltro').value;
+ let filas=favCodes().map(favFila);
+ const todas=filas;
+ filas=filas.filter(r=>(!q||(r.code+' '+r.nombre).toLowerCase().includes(q))&&(flt==='ALL'||(flt==='PEND'&&(!r.saved||r.dirty))||(flt==='SAVED'&&r.saved&&!r.dirty)||(flt==='ALERT'&&r.al.length)));
+ const m=v=>'<td class="'+(v<-0.005?'money-negative':'')+'">'+money(v)+'</td>';
+ const mb=v=>'<td class="'+(v<-0.005?'money-negative':'')+'"><b>'+money(v)+'</b></td>';
+ body.innerHTML=filas.map(r=>{
+  const c=escapeHtml(r.code);
+  const estado=r.saving?'<span class="badge">Guardando…</span>':r.dirty?'<span class="badge warn">Sin guardar</span>':r.saved?'<span class="badge ok" title="Guardado '+escapeHtml(String(r.saved.actualizado_en||r.saved.creado_en||'').slice(0,16).replace('T',' '))+'">En el cierre ✓</span>':'<span class="badge">No está en el cierre</span>';
+  const alertas=r.al.map(([t,x])=>'<span class="badge '+t+'">'+escapeHtml(x)+'</span>').join(' ')+(r.nota?'<div class="report-note" style="margin:4px 0 0">'+escapeHtml(r.nota)+'</div>':'');
+  return '<tr>'
+   +'<td class="fav-sticky"><b>'+c+'</b> '+escapeHtml(r.nombre)+'</td>'
+   +'<td>'+money(r.C)+'</td>'
+   +'<td>'+(r.hoy===null?'—':percentPoints(r.hoy))+'</td>'
+   +'<td><input class="fav-in" type="number" min="0" max="100" step="0.01" value="'+(Math.round(r.a*100)/100)+'" aria-label="Avance al 31 de diciembre PO '+c+'" onchange="favEditar(\''+c+'\',\'avance\',this.value)">%'+(r.hoy!==null&&Math.abs(r.a-r.hoy)>0.005?'<button class="fav-hoy" title="Volver al avance de hoy" onclick="favEditar(\''+c+'\',\'avance\','+r.hoy+')">↺ hoy</button>':'')+'</td>'
+   +'<td><input class="fav-in eac" type="number" min="0" step="0.01" value="'+(Math.round(r.E*100)/100)+'" title="'+escapeHtml(r.eacFuente)+'" aria-label="Costo total del proyecto PO '+c+'" onchange="favEditar(\''+c+'\',\'eac\',this.value)"></td>'
+   +'<td class="'+(r.margen!==null&&r.margen<0?'money-negative':'')+'">'+(r.margen===null?'—':percent(r.margen))+'</td>'
+   +m(r.ingAcum)+m(r.ingPrevio)+m(r.ing2026)+m(r.ingReg)+mb(r.ingFalta)
+   +m(r.cosAcum)+m(r.cosPrevio)+m(r.cos2026)+m(r.cosReg)+mb(r.cosFalta)
+   +'<td class="'+(r.efecto<0?'money-negative':'')+'" style="font-weight:700">'+money(r.efecto)+'</td>'
+   +'<td class="fav-alert">'+estado+(alertas?'<div style="margin-top:4px">'+alertas+'</div>':'')+'</td>'
+   +'<td>'+(r.saved?'<button class="btn-secondary" title="Quitar del cierre" onclick="eliminarSimulacion(\''+r.saved.id+'\',\''+c+'\')">🗑</button>':'')+'</td>'
+   +'</tr>';
+ }).join('')||'<tr><td colspan="20">Sin proyectos para este filtro.</td></tr>';
+ const T=k=>filas.reduce((s,r)=>s+r[k],0);
+ document.getElementById('favFoot').innerHTML='<tr><td class="fav-sticky">Total ('+filas.length+')</td><td>'+money(T('C'))+'</td><td></td><td></td><td>'+money(T('E'))+'</td><td>'+(T('C')?percent((T('C')-T('E'))/T('C')):'—')+'</td>'
+  +['ingAcum','ingPrevio','ing2026','ingReg','ingFalta','cosAcum','cosPrevio','cos2026','cosReg','cosFalta','efecto'].map(k=>'<td class="'+(T(k)<0?'money-negative':'')+'">'+money(T(k))+'</td>').join('')+'<td></td><td></td></tr>';
+ const enCierre=todas.filter(r=>r.saved&&!r.dirty),pend=todas.filter(r=>!r.saved||r.dirty);
+ document.getElementById('favResumen').textContent=enCierre.length+' de '+todas.length+' proyectos en el cierre · Efecto Oct–Dic guardado: '+money(enCierre.reduce((s,r)=>s+r.efecto,0));
+ document.getElementById('favNota').textContent=pend.length?pend.length+' proyecto(s) aún no están en el cierre: sus números se muestran pero no suman en el P&G consolidado hasta guardarlos (al editar se guardan solos).':'Todos los proyectos están guardados en el cierre.';
+ document.getElementById('favGuardarTodos').disabled=!pend.some(r=>r.valido)||STATE.favSaving.size>0;
+}
+function favEditar(code,campo,valor){
+ const v=valor===''?NaN:Number(valor);
+ if(!Number.isFinite(v)||v<0||(campo==='avance'&&v>100)){toast(campo==='avance'?'El avance debe estar entre 0 y 100.':'El costo total debe ser un número positivo.');renderForecastAvance();return;}
+ STATE.favEdits[code]={...(STATE.favEdits[code]||{}),[campo]:v};
+ renderForecastAvance();
+ clearTimeout(STATE.favTimers[code]);STATE.favTimers[code]=setTimeout(()=>guardarFav(code),700);
+}
+async function guardarFav(code,silencioso){
+ if(STATE.favSaving.has(code)){STATE.favTimers[code]=setTimeout(()=>guardarFav(code,silencioso),500);return false;}
+ const r=favFila(code);
+ if(!r.valido){if(!silencioso)toast('PO '+code+': completa contrato, costo total y avance (0–100) para guardarla.');return false;}
+ if(!STATE.escenarioBaseId){toast('No se encontró el escenario Base en Supabase.');return false;}
+ STATE.favSaving.add(code);renderForecastAvance();
+ try{
+  const {data:{user}}=await sb.auth.getUser();
+  const previo=r.saved;
+  if(previo){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).eq('id',previo.id);if(del.error)throw del.error;}
+  const ins=await sb.from('forecast_movimientos').insert({
+   escenario_id:STATE.escenarioBaseId,tipo:'proyecto',proyecto_codigo:code,concepto:'Forecast por avance PO '+code,
+   mes:previo?String(previo.mes).slice(0,10):'2026-12-01',
+   avance_acumulado:Number(r.a.toFixed(2)),monto_contrato:r.C,ingreso_reconocido_previo:r.ingPrevio,costo_reconocido_previo:r.cosPrevio,
+   ingreso:Number(r.ingFalta.toFixed(2)),costo:Number(r.cosFalta.toFixed(2)),nota:previo?.nota||null,fecha_corte:'2026-09-30',
+   detalle:{origen:'forecast_por_avance',costo_total_estimado:Number(r.cosAcum.toFixed(2)),costo_proyecto_eac:Number(r.E.toFixed(2)),avance_hoy:r.hoy,ingreso_neto_2026:r.ingReg,costo_neto_2026:r.cosReg,saldo_ingreso_por_reversar:r.ingSaldo,saldo_costo_por_reversar:r.cosSaldo}
+  });
+  if(ins.error)throw ins.error;
+  delete STATE.favEdits[code];
+  await cargarForecastGuardado();
+  return true;
+ }catch(e){toast('PO '+code+' no se guardó: '+e.message);await cargarForecastGuardado();return false;}
+ finally{STATE.favSaving.delete(code);renderForecastAvance();renderForecastReports();renderProjects();}
+}
+async function guardarTodosFav(){
+ const pend=favCodes().map(favFila).filter(r=>(!r.saved||r.dirty)&&r.valido);
+ if(!pend.length){toast('No hay proyectos pendientes de guardar.');return;}
+ if(!confirm('Se guardarán '+pend.length+' proyecto(s) en el cierre 2026 con el avance y costo total que ves en la tabla. ¿Continuar?'))return;
+ let ok=0;for(const r of pend){if(await guardarFav(r.code,true))ok++;}
+ toast(ok+' de '+pend.length+' proyectos guardados en el cierre.');
+}
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  {const seen=new Map();for(const r of rows){const ids=String(r.analitica_clave||"SIN_ANALITICA").split(","),nm=(r.analitica_nombre||"Sin analítica").split(" | ");ids.forEach((id,i)=>{if(!seen.has(id))seen.set(id,nm[i]||nm[0]);});}
@@ -4124,7 +4278,7 @@ async function guardarSimulacion(){
    detalle:{costo_total_estimado:s.costoTotal,ingreso_neto_2026:s.ing2026,costo_neto_2026:s.cost2026,saldo_ingreso_por_reversar:s.ingSaldo,saldo_costo_por_reversar:s.cosSaldo}
   });
   if(ins.error)throw ins.error;
-  await cargarForecastGuardado();renderProjects();renderForecastReports();renderCrm();
+  await cargarForecastGuardado();renderProjects();renderForecastReports();renderCrm();renderForecastAvance();
   toast('Guardado PO '+s.code+'. Ya está en el P&G consolidado.');cerrarSimulador();
  }catch(e){toast('No se guardó: '+e.message);}
  finally{btn.disabled=false;btn.textContent='Guardar en el cierre 2026';}
@@ -4134,7 +4288,7 @@ async function eliminarSimulacion(id,code){
  const {data:{user}}=await sb.auth.getUser();
  const r=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).eq('id',id);
  if(r.error){toast('No se pudo quitar: '+r.error.message);return;}
- await cargarForecastGuardado();renderProjects();renderForecastReports();toast('Se quitó la PO '+code+' del cierre.');
+ await cargarForecastGuardado();renderProjects();renderForecastReports();renderForecastAvance();toast('Se quitó la PO '+code+' del cierre.');
 }
 
 /* =========================================================
