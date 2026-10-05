@@ -874,6 +874,23 @@ tbody tr:hover{
 .ms-panel input[type=checkbox]{min-width:0!important;width:auto;margin:0}
 .ms-panel label{justify-content:flex-start}
 .ms-panel input[type=search]{min-width:0!important;width:100%;margin-bottom:6px;padding:8px;border:1px solid var(--line);border-radius:8px}
+
+.sim-step{display:grid;grid-template-columns:30px 1fr;gap:10px;margin-bottom:16px}
+.sim-step label{display:block;font-weight:700;font-size:13px;margin-bottom:6px;color:var(--text)}
+.sim-step input{width:100%}
+.sim-num{width:28px;height:28px;border-radius:50%;background:var(--purple);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+.sim-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.sim-chips button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 10px;font-size:12px}
+.sim-chips button:hover{border-color:var(--purple);color:var(--purple)}
+.sim-result{background:#f5f4ff;border-radius:16px;padding:16px;margin-top:8px}
+.sim-result-title{font-size:12px;color:#66627d;font-weight:700;margin-bottom:10px}
+.sim-result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sim-result-grid span{display:block;font-size:11px;color:#66627d}
+.sim-result-grid strong{font-size:17px}
+.sim-result-foot{margin-top:10px;font-size:12px;color:#66627d}
+.sim-alerta{font-size:12px;color:#a76400;margin:10px 0}
+.sim-detalle{margin-top:6px;font-size:12px}
+.sim-detalle summary{cursor:pointer;color:var(--blue);font-weight:700;margin-bottom:6px}
 </style>
 <style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.closing-cell{background:#e7edff!important;font-weight:700}.consolidated-matrix .pyg-benefit{border-top:12px solid white}.consolidated-matrix .pyg-toggle{border:0;background:transparent;color:inherit;font-weight:inherit;text-align:left}.table-wrap input{max-width:190px;padding:7px;border:1px solid #d7dee9;border-radius:6px}</style></head>
 
@@ -918,6 +935,10 @@ tbody tr:hover{
 
             <button class="menu-btn" onclick="abrirTab('proyectos',this)">
                 ◈ Proyectos
+            </button>
+
+            <button class="menu-btn" onclick="abrirTab('crm',this)">
+                ◎ Ventas CRM
             </button>
 
             <button class="menu-btn" onclick="abrirTab('pyg',this)">
@@ -1323,6 +1344,8 @@ tbody tr:hover{
                 </button>
 
 
+                <button class="tab-btn" data-tab="crm" onclick="abrirTab('crm',this)">Ventas CRM</button>
+
                 <button
                     class="tab-btn"
                     data-tab="pyg"
@@ -1448,6 +1471,21 @@ tbody tr:hover{
 
 
             <!-- PYG -->
+            <div id="tab-crm" class="tab-content hidden">
+                <h3>Ventas ganadas en el CRM</h3>
+                <p class="report-note">Oportunidades en etapa ganada en Odoo. La PO se toma de la orden de venta vinculada a la oportunidad. Pulsa <b>Simular</b> para llevarla al cierre 2026.</p>
+                <div class="filters-row">
+                  <input id="buscarCrm" class="filter-input search" placeholder="Buscar oportunidad, cliente o PO..." oninput="renderCrm()">
+                  <select id="crmAnio" onchange="renderCrm()" aria-label="Año de cierre"><option value="2026">Cerradas en 2026</option><option value="2025">Cerradas en 2025</option><option value="ALL">Todas</option></select>
+                  <select id="crmEstado" onchange="renderCrm()" aria-label="Estado"><option value="ALL">Todos los estados</option><option value="PEND">Sin simular</option><option value="SIM">Ya en el cierre</option></select>
+                </div>
+                <div class="table-wrap"><table>
+                  <thead><tr><th>Fecha cierre</th><th>Oportunidad</th><th>Cliente</th><th>Monto CRM</th><th>Orden de venta (sin IVA)</th><th>PO</th><th>Ingreso 2026 en Odoo</th><th>Estado</th><th></th></tr></thead>
+                  <tbody id="crmBody"></tbody>
+                </table></div>
+                <p id="crmNota" class="report-note"></p>
+            </div>
+
             <div id="tab-pyg" class="tab-content hidden">
                 <div class="card-title"><h3>Estado de pérdidas y ganancias por analítica</h3><small id="pygPeriod"></small></div>
                 <div class="filters-row">
@@ -1603,40 +1641,61 @@ tbody tr:hover{
 
 <aside id="simDrawer" class="sim-drawer hidden" aria-labelledby="simTitle">
  <div class="sim-head">
-  <div><small>FORECAST · ESCENARIO BASE</small><h2 id="simTitle">Simular proyecto</h2></div>
+  <div><small>RECONOCIMIENTO POR AVANCE · CIERRE 2026</small><h2 id="simTitle">Simular proyecto</h2></div>
   <button class="close-btn" onclick="cerrarSimulador()" aria-label="Cerrar simulador">✕</button>
  </div>
+ <div class="sim-field"><label for="simProyecto">Proyecto o venta</label><select id="simProyecto" onchange="cargarProyectoSimulador()"></select></div>
 
- <div class="sim-field"><label for="simProyecto">Proyecto</label><select id="simProyecto" onchange="cargarProyectoSimulador()"></select></div>
+ <div class="sim-step"><span class="sim-num">1</span><div>
+  <label for="simContratoInput">¿Cuánto vale el contrato? <small>(sin IVA)</small></label>
+  <input id="simContratoInput" type="number" min="0" step="0.01" class="filter-input" oninput="actualizarSimulacion()">
+  <small id="simContratoNota" class="report-note"></small>
+ </div></div>
 
- <div class="sim-field"><label for="simContratoInput">Contrato sin IVA</label><input id="simContratoInput" type="number" min="0" step="0.01" class="filter-input" oninput="actualizarSimulacion()"><small id="simContratoNota" class="report-note"></small></div>
+ <div class="sim-step"><span class="sim-num">2</span><div>
+  <label for="simAvance">¿Qué % de la obra estará terminado al 31 de diciembre? <strong id="simAvanceLabel"></strong></label>
+  <input id="simAvance" type="number" min="0" max="100" step="0.1" class="filter-input" oninput="actualizarSimulacion()">
+  <div class="sim-chips"><button type="button" onclick="ponerAvance('actual')">Avance actual</button><button type="button" onclick="ponerAvance(10)">+10 puntos</button><button type="button" onclick="ponerAvance(100)">Terminado (100%)</button></div>
+  <small id="simAvanceNota" class="report-note"></small>
+ </div></div>
 
- <div class="sim-field"><label for="simAvance">% de avance acumulado al 31-dic <strong id="simAvanceLabel">0%</strong></label><input id="simAvance" type="number" min="0" max="100" step="0.1" class="filter-input" oninput="actualizarSimulacion()"><small id="simAvanceNota" class="report-note"></small></div>
+ <div class="sim-step"><span class="sim-num">3</span><div>
+  <label for="simCostoTotal">¿Cuánto habrá costado la obra hasta esa fecha? <small>(costo total acumulado)</small></label>
+  <input id="simCostoTotal" type="number" min="0" step="0.01" class="filter-input" oninput="actualizarSimulacion()">
+  <div class="sim-chips"><button type="button" id="simUsarPresupuesto" onclick="usarPresupuestoCosto()">Presupuesto × % avance</button></div>
+  <small id="simCostoNota" class="report-note"></small>
+ </div></div>
 
- <div class="sim-field"><label for="simCostoTotal">Costo total acumulado del proyecto al 31-dic</label><input id="simCostoTotal" type="number" min="0" step="0.01" class="filter-input" oninput="actualizarSimulacion()"><small id="simCostoNota" class="report-note"></small></div>
-
- <div class="sim-field"><label for="simForecastMonth">Mes en que se registra</label><select id="simForecastMonth" onchange="actualizarSimulacion()"><option value="2026-10-01">Octubre</option><option value="2026-11-01">Noviembre</option><option value="2026-12-01" selected>Diciembre</option></select></div>
-
- <div class="sim-field"><label for="simNota">Nota (sustento)</label><input id="simNota" type="text" maxlength="300" class="filter-input" placeholder="Ej.: avance según informe de obra 30-sep"></div>
-
- <div class="sim-summary">
-  <div class="sim-row"><span>Ingreso acumulado al 31-dic (contrato × %)</span><strong id="simIngAcum">$0</strong></div>
-  <div class="sim-row"><span>(−) Reconocido antes de 2026</span><strong id="simIngPrevio">$0</strong></div>
-  <div class="sim-row"><span>(−) Ingreso neto 2026 en Odoo (ene–sep)</span><strong id="simIng2026">$0</strong></div>
-  <div class="sim-row"><span><b>Ingreso a registrar Oct–Dic</b></span><strong id="simIngPend">$0</strong></div>
-  <div class="sim-row"><span>(−) Costo reconocido antes de 2026</span><strong id="simCostPrevio">$0</strong></div>
-  <div class="sim-row"><span>(−) Costo neto 2026 en Odoo (ene–sep)</span><strong id="simCost2026">$0</strong></div>
-  <div class="sim-row"><span><b>Costo a registrar Oct–Dic</b></span><strong id="simCostPend">$0</strong></div>
-  <div class="sim-row"><span>Efecto en utilidad 2026</span><strong id="simEfecto">$0</strong></div>
-  <div class="sim-row"><span>Margen acumulado del proyecto</span><strong id="simMargen">—</strong></div>
+ <div class="sim-result">
+  <div class="sim-result-title">Lo que este proyecto suma al cierre 2026</div>
+  <div class="sim-result-grid">
+   <div><span>Ingreso</span><strong id="simIngPend">$0</strong></div>
+   <div><span>Costo</span><strong id="simCostPend">$0</strong></div>
+   <div><span>Utilidad</span><strong id="simEfecto">$0</strong></div>
+  </div>
+  <div class="sim-result-foot">Margen del proyecto: <strong id="simMargen">—</strong></div>
  </div>
- <p id="simAlerta" class="report-note"></p>
+ <p id="simAlerta" class="sim-alerta"></p>
+
+ <details class="sim-detalle"><summary>Ver cómo se calcula</summary>
+  <div class="sim-row"><span>Ingreso que corresponde al avance (contrato × %)</span><strong id="simIngAcum">$0</strong></div>
+  <div class="sim-row"><span>− Ya reconocido en años anteriores</span><strong id="simIngPrevio">$0</strong></div>
+  <div class="sim-row"><span>− Ya registrado en Odoo en 2026 (ene–sep)</span><strong id="simIng2026">$0</strong></div>
+  <div class="sim-row"><span>= Ingreso que falta registrar</span><strong id="simIngPend2">$0</strong></div>
+  <div class="sim-row"><span>Costo acumulado esperado</span><strong id="simCostTotalEco">$0</strong></div>
+  <div class="sim-row"><span>− Costo reconocido en años anteriores</span><strong id="simCostPrevio">$0</strong></div>
+  <div class="sim-row"><span>− Costo registrado en Odoo en 2026 (ene–sep)</span><strong id="simCost2026">$0</strong></div>
+  <div class="sim-row"><span>= Costo que falta registrar</span><strong id="simCostPend2">$0</strong></div>
+  <p class="report-note">Si sale negativo, ya se reconoció más de lo que corresponde al avance: lo pendiente es una reversa.</p>
+ </details>
+
+ <div class="sim-field" style="margin-top:14px"><label for="simForecastMonth">Mes en que se registra</label><select id="simForecastMonth" onchange="actualizarSimulacion()"><option value="2026-10-01">Octubre</option><option value="2026-11-01">Noviembre</option><option value="2026-12-01" selected>Diciembre</option></select></div>
+ <div class="sim-field"><label for="simNota">Nota (sustento)</label><input id="simNota" type="text" maxlength="300" class="filter-input" placeholder="Ej.: avance según informe de obra 30-sep"></div>
 
  <div class="sim-actions">
   <button class="btn-secondary" onclick="cargarProyectoSimulador()">Restaurar valores</button>
   <button id="simGuardar" class="btn-primary" onclick="guardarSimulacion()">Guardar en el cierre 2026</button>
  </div>
- <p class="report-note">Un valor negativo en "a registrar" es una reversa pendiente: el reconocimiento anterior ya cubre más de lo que corresponde al avance. Se guarda en Supabase; volver a guardar el mismo proyecto reemplaza la versión anterior y la deja en el historial.</p>
 </aside>
 
 
@@ -2003,6 +2062,7 @@ async function loadData(){
 
         try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
         try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("presupuesto_categoria_vs_comprometido",["proyecto","id"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
+        try{const cr=await readAll("forecast_crm_ventas",["lead_id"]);STATE.crm=cr.data||[];}catch(e){STATE.crm=[];STATE.crmError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
         STATE.projects =
             (projectsRes.data || []).map(p=>{const n=STATE.names[p.proyecto_codigo];return n&&(!p.proyecto_nombre||/^\s*(P\s*O?\s*)?\d{3,4}/i.test(p.proyecto_nombre))?{...p,proyecto_nombre:n}:p;});
@@ -2234,7 +2294,30 @@ function renderPve(){
  document.getElementById('pveNota').textContent=rows.length+' proyectos · Presupuesto '+money(t.a)+' · Ejecutado '+money(t.r)+' · Total en OC '+money(t.c)+' · Por ejecutar '+money(t.a-t.r)+'. "Costo adelantado al avance": el % ejecutado supera en más de 10 puntos al avance físico.';
 }
 function togglePve(code){STATE.pveOpen.has(code)?STATE.pveOpen.delete(code):STATE.pveOpen.add(code);renderPve();}
+function renderCrm(){
+ const body=document.getElementById('crmBody');if(!body)return;
+ const q=(document.getElementById('buscarCrm').value||'').toLowerCase(),anio=document.getElementById('crmAnio').value,est=document.getElementById('crmEstado').value;
+ const guardados=new Set((STATE.savedSims||[]).map(x=>x.proyecto_codigo));
+ const rows=(STATE.crm||[]).map(l=>{const codeSim=l.proyecto_codigo||('CRM-'+l.lead_id);return {...l,codeSim,sim:guardados.has(codeSim)};})
+  .filter(l=>(anio==='ALL'||String(l.fecha_cierre||'').startsWith(anio))&&(est==='ALL'||(est==='SIM'?l.sim:!l.sim))&&(!q||[l.nombre,l.cliente,l.proyecto_codigo,l.ordenes_venta,l.vendedor].join(' ').toLowerCase().includes(q)))
+  .sort((a,b)=>String(b.fecha_cierre).localeCompare(String(a.fecha_cierre)));
+ body.innerHTML=rows.map(l=>{
+  const ing=l.proyecto_codigo?projectRealAtCutoff(l.proyecto_codigo).income:null;
+  const estado=l.sim?'<span class="badge ok">En el cierre ✓</span>':!l.proyecto_codigo?'<span class="badge warn">Sin PO en Odoo</span>':'<span class="badge">Sin simular</span>';
+  return '<tr><td>'+escapeHtml(l.fecha_cierre||'—')+'</td><td style="white-space:normal;max-width:280px">'+escapeHtml(l.nombre||'')+'</td><td style="white-space:normal;max-width:220px">'+escapeHtml(l.cliente||'')+'</td><td>'+money(l.monto_esperado)+'</td><td>'+(l.monto_ov?money(l.monto_ov):'—')+'</td><td>'+escapeHtml(l.proyecto_codigo||'—')+'</td><td>'+(ing===null?'—':money(ing))+'</td><td>'+estado+'</td><td><button class="btn-secondary" onclick="simularVentaCrm('+Number(l.lead_id)+')">'+(l.sim?'Editar':'Simular')+'</button></td></tr>';
+ }).join('')||'<tr><td colspan="9">'+(STATE.crmError?'No se pudo cargar: '+escapeHtml(STATE.crmError):(STATE.crm||[]).length?'Sin ventas para este filtro.':'Aún no hay datos: pulsa "Actualizar datos" para traer el CRM de Odoo.')+'</td></tr>';
+ const tot=rows.reduce((s,l)=>s+number(l.monto_ov||l.monto_esperado),0);
+ document.getElementById('crmNota').textContent=rows.length+' ventas · '+money(tot)+' (orden de venta o monto CRM) · '+rows.filter(l=>l.sim).length+' ya en el cierre · '+rows.filter(l=>!l.proyecto_codigo).length+' sin PO vinculada.';
+}
+function simularVentaCrm(leadId){
+ const l=(STATE.crm||[]).find(x=>Number(x.lead_id)===Number(leadId));if(!l)return;
+ const code=l.proyecto_codigo||('CRM-'+l.lead_id);
+ STATE.extraSimCodes??=new Set();STATE.extraSimCodes.add(code);
+ STATE.contratoCrm??={};if(l.proyecto_codigo)STATE.contratoCrm[code]=number(l.monto_ov)||number(l.monto_esperado);
+ editarSimulacion(code);
+}
 function renderAll(){
+    renderCrm();
     renderPve();
 
     renderKPIs();
@@ -3745,6 +3828,7 @@ async function actualizarTodo(){
  try{
   btn.textContent="Actualizando Odoo...";
   try{const od=await invokeSync("forecast-sync-odoo");STATE.syncResults.push({name:"Odoo",ok:true,message:"P&G actualizado ("+od.lineas_odoo+" líneas)"});
+   const k=od.crm||{};STATE.syncResults.push(k.ok?{name:"Ventas CRM",ok:true,message:k.ganadas+" oportunidades ganadas · "+k.con_po+" con PO vinculada"}:{name:"Ventas CRM",ok:false,message:k.error||"Sin respuesta"});
    const c=od.contratos||{};STATE.syncResults.push(c.ok?{name:"Contratos (órdenes de venta)",ok:true,message:c.analiticas_con_contrato+" analíticas con contrato · "+c.ordenes_sin_analitica+" órdenes sin analítica"+(c.ordenes_sin_analitica?" (ej.: "+(c.ejemplo_sin_analitica||[]).slice(0,5).join(", ")+")":"")}:{name:"Contratos (órdenes de venta)",ok:false,message:c.error||"Sin respuesta"});}
   catch(error){STATE.syncResults.push({name:"Odoo",ok:false,message:error.message});}
   btn.textContent="Buscando proyectos SharePoint...";
@@ -3766,7 +3850,7 @@ async function actualizarTodo(){
   await loadData();
   const failures=STATE.syncResults.filter(r=>!r.ok).length;
   document.getElementById("dotOdoo").className=STATE.syncResults.find(r=>r.name==="Odoo")?.ok?"dot ok":"dot warn";
-  document.getElementById("dotSharePoint").className=STATE.syncResults.some(r=>!["Odoo","Contratos (órdenes de venta)"].includes(r.name)&&!r.ok)?"dot warn":"dot ok";
+  document.getElementById("dotSharePoint").className=STATE.syncResults.some(r=>!["Odoo","Contratos (órdenes de venta)","Ventas CRM"].includes(r.name)&&!r.ok)?"dot warn":"dot ok";
   toast(failures?"Actualización con "+failures+" observaciones. Revisa la pestaña Presupuesto vs Ejecución.":"Actualización completa.");
  }finally{btn.disabled=false;btn.textContent="↻ Actualizar datos";}
 }
@@ -3813,13 +3897,18 @@ function recPrevio(code,tipo){
  return {total:rows.reduce((s,r)=>s+number(r.reconocido),0),saldo:rows.reduce((s,r)=>s+number(r.saldo_por_reversar),0),docs:rows.length};
 }
 function simProjectCodes(){
- const codes=new Set();
- for(const p of STATE.projects)if(number(p.monto_contrato)>0)codes.add(p.proyecto_codigo);
+ const codes=new Set(STATE.extraSimCodes||[]);
+ for(const p of STATE.projects)if(number(p.contrato_sp)>0)codes.add(p.proyecto_codigo);
  for(const r of STATE.recPrevio||[])if(r.proyecto_codigo!=='SIN_PROYECTO')codes.add(r.proyecto_codigo);
  for(const s of STATE.savedSims||[])codes.add(s.proyecto_codigo);
  return [...codes].sort();
 }
-function projectInfo(code){const p=STATE.projects.find(p=>p.proyecto_codigo===code)||{proyecto_codigo:code};return p.proyecto_nombre?p:{...p,proyecto_nombre:STATE.names[code]||''};}
+function projectInfo(code){
+ if(String(code).startsWith('CRM-')){const l=(STATE.crm||[]).find(x=>'CRM-'+x.lead_id===code)||{};return {proyecto_codigo:code,proyecto_nombre:(l.nombre||'Venta CRM')+(l.cliente?' · '+l.cliente:''),monto_contrato:number(l.monto_ov)||number(l.monto_esperado),avance_fisico:null};}
+ let p=STATE.projects.find(p=>p.proyecto_codigo===code)||{proyecto_codigo:code};
+ if(!p.proyecto_nombre)p={...p,proyecto_nombre:STATE.names[code]||''};
+ const ov=STATE.contratoCrm?.[code];if(!(number(p.monto_contrato)>0)&&ov)p={...p,monto_contrato:ov};
+ return p;}
 function currentSimProject(){const code=document.getElementById('simProyecto').value;return code?projectInfo(code):null;}
 function llenarSelectorSimulador(preferido){
  const sel=document.getElementById('simProyecto');
@@ -3839,10 +3928,10 @@ function cargarProyectoSimulador(){
  const code=p.proyecto_codigo,saved=(STATE.savedSims||[]).find(s=>s.proyecto_codigo===code);
  const contrato=saved?number(saved.monto_contrato):number(p.monto_contrato);
  const avance=saved?number(saved.avance_acumulado):number(p.avance_fisico);
- const aterrizado=(STATE.costs||[]).filter(c=>c.proyecto_codigo===code).reduce((s,c)=>s+number(c.presupuesto_aterrizado),0);
+ const aterrizado=presupuestoProyecto(code);
  const costoTotal=saved?number(saved.detalle?.costo_total_estimado):(aterrizado>0?aterrizado*avance/100:'');
  document.getElementById('simContratoInput').value=contrato||'';
- document.getElementById('simContratoNota').textContent=number(p.monto_contrato)>0?'Fuente: contrato del proyecto ('+money(p.monto_contrato)+').':'Este proyecto no tiene contrato cargado: ingrésalo sin IVA.';
+ document.getElementById('simContratoNota').textContent=String(code).startsWith('CRM-')?'Tomado de la venta del CRM (orden de venta o ingreso esperado). Confírmalo.':number(p.contrato_sp)>0?'Del Control Operativo (SharePoint).':number(p.monto_contrato)>0?'De la orden de venta en Odoo.':'Sin contrato cargado: escríbelo sin IVA.';
  document.getElementById('simAvance').value=avance||'';
  document.getElementById('simAvanceNota').textContent=p.avance_fisico!=null?'Avance físico registrado en control de obra: '+percentPoints(p.avance_fisico)+'.':'Sin avance registrado en control de obra.';
  document.getElementById('simCostoTotal').value=costoTotal===''?'':number(costoTotal).toFixed(2);
@@ -3870,7 +3959,7 @@ function actualizarSimulacion(){
  const set=(id,v,neg)=>{const el=document.getElementById(id);el.textContent=money(v);el.style.color=neg&&v<0?'var(--red)':'';};
  document.getElementById('simAvanceLabel').textContent=percentPoints(s.avance);
  set('simIngAcum',s.ingAcum);set('simIngPrevio',s.ingPrevio);set('simIng2026',s.ing2026);set('simIngPend',s.ingPend,true);
- set('simCostPrevio',s.cosPrevio);set('simCost2026',s.cost2026);set('simCostPend',s.costPend,true);
+ set('simCostPrevio',s.cosPrevio);set('simCost2026',s.cost2026);set('simCostPend',s.costPend,true);set('simIngPend2',s.ingPend,true);set('simCostPend2',s.costPend,true);set('simCostTotalEco',s.costoTotal);
  const ef=document.getElementById('simEfecto');ef.textContent=money(s.ingPend-s.costPend);ef.style.color=s.ingPend-s.costPend>=0?'var(--green)':'var(--red)';
  const mg=document.getElementById('simMargen');mg.textContent=s.margen===null?'—':percent(s.margen);mg.style.color=s.margen!==null&&s.margen<0?'var(--red)':'';
  const alertas=[];
@@ -3880,6 +3969,17 @@ function actualizarSimulacion(){
  if(s.ingSaldo>0)alertas.push('Saldo de reconocimiento de ingreso aún sin reversar en CxC: '+money(s.ingSaldo)+'.');
  if(s.margen!==null&&s.margen<0)alertas.push('El costo acumulado supera al ingreso acumulado: el proyecto cerraría en pérdida.');
  document.getElementById('simAlerta').textContent=alertas.join(' ');
+}
+function ponerAvance(v){
+ const p=currentSimProject(),el=document.getElementById('simAvance');
+ if(v==='actual')el.value=number(p?.avance_fisico);else if(v===100)el.value=100;else el.value=Math.min(100,number(el.value)+v);
+ actualizarSimulacion();
+}
+function presupuestoProyecto(code){return (STATE.costs||[]).filter(c=>c.proyecto_codigo===code).reduce((s,c)=>s+number(c.presupuesto_aterrizado),0)||number((STATE.pve||[]).find(r=>r.proyecto===code)?.presupuesto_aterrizado);}
+function usarPresupuestoCosto(){
+ const p=currentSimProject();if(!p)return;const ater=presupuestoProyecto(p.proyecto_codigo);
+ if(!ater){toast('Este proyecto no tiene presupuesto en SharePoint: escribe el costo esperado.');return;}
+ document.getElementById('simCostoTotal').value=(ater*number(document.getElementById('simAvance').value)/100).toFixed(2);actualizarSimulacion();
 }
 async function guardarSimulacion(){
  const s=calcularSimulacion();if(!s)return;
@@ -3897,7 +3997,7 @@ async function guardarSimulacion(){
    detalle:{costo_total_estimado:s.costoTotal,ingreso_neto_2026:s.ing2026,costo_neto_2026:s.cost2026,saldo_ingreso_por_reversar:s.ingSaldo,saldo_costo_por_reversar:s.cosSaldo}
   });
   if(ins.error)throw ins.error;
-  await cargarForecastGuardado();renderProjects();renderForecastReports();
+  await cargarForecastGuardado();renderProjects();renderForecastReports();renderCrm();
   toast('Guardado PO '+s.code+'. Ya está en el P&G consolidado.');cerrarSimulador();
  }catch(e){toast('No se guardó: '+e.message);}
  finally{btn.disabled=false;btn.textContent='Guardar en el cierre 2026';}
