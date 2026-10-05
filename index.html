@@ -2289,7 +2289,7 @@ function renderPve(){
   const code=r.proyecto,cats=(STATE.pveCat||[]).filter(c=>c.proyecto===code).map(c=>({c,...calcRubro(c)}));
   const t=cats.reduce((a,x)=>{for(const k of Object.keys(a))a[k]+=x[k];return a;},{p:0,oc:0,re:0,abierta:0,sinOc:0,porEj:0,sobre:0});
   for(const k of Object.keys(G))G[k]+=t[k];
-  const avance=r.avance_fisico==null?null:number(r.avance_fisico)/100,pctRe=t.p?t.re/t.p:null;
+  const pAv=(STATE.projects||[]).find(x=>String(x.proyecto_codigo)===String(code)),avRaw=pAv?.avance_fisico??r.avance_fisico,avance=avRaw==null?null:number(avRaw)/100,pctRe=t.p?t.re/t.p:null;
   const sinClas=cats.filter(x=>/sin clasificar/i.test(x.c.rubro||'')).reduce((a,x)=>a+x.re+x.abierta,0);
   const sp=number(r.monto_contrato),ov=number(STATE.contratosOdoo?.[code]);
   const est=[];
@@ -3145,9 +3145,9 @@ function renderProjects(){
                 </td>
 
                 <td>
-                    <strong>
+                    <strong title="Fuente: ${escapeHtml(p.avance_fuente||'sin dato')}${p.avance_fuente==='Excel PORTADA'&&p.avance_control_operaciones!=null?' · Control de Operaciones: '+number(p.avance_control_operaciones).toFixed(1)+'%':''}">
                         ${progress.toFixed(1)}%
-                    </strong>
+                    </strong>${p.avance_fuente==='Control de Operaciones'?'<small class="report-note" title="Aún no se lee del Excel; pulsa Actualizar datos"> *</small>':''}
 
                     <div class="mini-progress">
                         <div style="
@@ -3880,7 +3880,7 @@ async function actualizarTodo(){
     const folder=folders[i]; btn.textContent="SharePoint "+(i+1)+" / "+folders.length;
     try{
      const out=await invokeSync("sharepoint-sync-costos",{project:folder.name});
-     STATE.syncResults.push({name:folder.name,ok:true,message:out.filas_limpias+" ítems de COSTOS"});
+     STATE.syncResults.push({name:folder.name,ok:true,message:out.filas_limpias+" ítems de COSTOS"+(out.avance?.proyecto!=null?" · avance "+String(out.avance.proyecto).replace(".",",")+"%":" · sin % de avance en PORTADA")});
     }catch(error){const utilitaria=/no se encontr[oó] la carpeta control|no se pudo extraer c[oó]digo/i.test(error.message);STATE.syncResults.push({name:folder.name,ok:utilitaria,omitida:utilitaria,message:utilitaria?"Omitida (no es carpeta de proyecto)":error.message});}
     renderSyncResults();
    }
@@ -3973,7 +3973,7 @@ function cargarProyectoSimulador(){
  document.getElementById('simContratoInput').value=contrato||'';
  document.getElementById('simContratoNota').textContent=String(code).startsWith('CRM-')?'Tomado de la venta del CRM (orden de venta o ingreso esperado). Confírmalo.':number(p.contrato_sp)>0?'Del Control Operativo (SharePoint).':number(p.monto_contrato)>0?'De la orden de venta en Odoo.':'Sin contrato cargado: escríbelo sin IVA.';
  document.getElementById('simAvance').value=avance||'';
- document.getElementById('simAvanceNota').textContent=p.avance_fisico!=null?'Avance físico registrado en control de obra: '+percentPoints(p.avance_fisico)+'.':'Sin avance registrado en control de obra.';
+ document.getElementById('simAvanceNota').textContent=p.avance_fisico!=null?'Avance físico ('+(p.avance_fuente==='Excel PORTADA'?'Excel SharePoint, hoja PORTADA':'Control de Operaciones')+'): '+percentPoints(p.avance_fisico)+'.':'Sin avance registrado.';
  document.getElementById('simCostoTotal').value=costoTotal===''?'':number(costoTotal).toFixed(2);
  document.getElementById('simCostoNota').textContent=aterrizado>0?'Sugerido: presupuesto aterrizado SharePoint '+money(aterrizado)+' × % de avance. Ajústalo si conoces el costo real esperado.':'Sin presupuesto SharePoint: ingresa el costo total esperado al 31-dic.';
  document.getElementById('simForecastMonth').value=saved?String(saved.mes).slice(0,10):'2026-12-01';
