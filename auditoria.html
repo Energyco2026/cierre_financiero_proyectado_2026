@@ -1100,23 +1100,38 @@ function renderAuditoria(){
   const r=audResumen(tipo);
   const est=!r?'error':r.estado==='error'?'error':r.cantidad?(audAlertas(tipo).some(a=>a.severidad==='alta')?'alta':'alerta'):'ok';
   const n=!r?'—':r.estado==='error'?'No se pudo revisar':r.cantidad.toLocaleString('es-EC');
-  const sub=!r?'Sin ejecutar':r.estado==='error'?'':(r.cantidad?(tipo==='roles'?'mes(es)':money(r.monto)):'✓ Todo en orden');
+  const sub=!r?'Sin ejecutar':r.estado==='error'?'':(r.cantidad?(tipo==='roles'?(number(r.monto)?money(r.monto)+' por pagar':'rol(es) pendiente(s)'):money(r.monto)):'✓ Todo en orden');
   const nota=r&&r.mensaje&&(r.estado==='error'||['balance','transitorias','anticipos_proveedores','sin_retencion','roles'].includes(tipo))?`<div class="e">${escapeHtml(r.mensaje)}</div>`:'';
   return `<button class="aud-card ${est}${STATE.audSel===tipo?' sel':''}" onclick="audSeleccionar('${tipo}')"><div class="t">${titulo}</div><div class="n"${r&&r.estado==='error'?' style="font-size:15px"':''}>${n}</div><div class="m">${sub}</div>${r&&r.cantidad?`<div class="q">${que}</div>`:''}${nota}</button>`;
  }).join('');
  renderAuditoriaDetalle();
 }
-function audSeleccionar(tipo){STATE.audSel=STATE.audSel===tipo?null:tipo;renderAuditoria();if(STATE.audSel)setTimeout(()=>document.getElementById('audDetalle')?.scrollIntoView({behavior:'smooth',block:'start'}),30);}
+function audSeleccionar(tipo){STATE.audSel=STATE.audSel===tipo?null:tipo;STATE.audPag=0;STATE.audBuscar='';renderAuditoria();if(STATE.audSel)setTimeout(()=>document.getElementById('audDetalle')?.scrollIntoView({behavior:'smooth',block:'start'}),30);}
+function audFilaHtml(a){return `<tr><td><span class="badge ${a.severidad==='alta'?'danger':'warn'}">${a.severidad==='alta'?'Alta':'Media'}</span></td><td>${escapeHtml(a.referencia||'')}</td><td>${escapeHtml(String(a.fecha||'').slice(0,10))}</td><td>${escapeHtml(a.tercero||'')}</td><td>${escapeHtml(a.cuenta||'')}</td><td class="num">${a.monto==null?'':money(a.monto)}</td><td class="det">${audDetalleTexto(a)}</td><td>${a.odoo_id&&a.odoo_model?`<a href="${ODOO}${encodeURIComponent(a.odoo_model)}&res_id=${encodeURIComponent(a.odoo_id)}" target="_blank" rel="noopener">Abrir en Odoo ↗</a>`:''}</td></tr>`;}
+const AUD_POR_PAG=500;
+function audFiltradas(tipo){
+ const q=String(STATE.audBuscar||'').trim().toLowerCase();
+ let f=audAlertas(tipo).slice().sort((a,b)=>(a.severidad==='alta'?0:1)-(b.severidad==='alta'?0:1)||String(a.fecha||'').localeCompare(String(b.fecha||'')));
+ if(q)f=f.filter(a=>`${a.referencia||''} ${a.tercero||''} ${a.cuenta||''} ${audDetalleTexto(a).replace(/<[^>]+>/g,'')}`.toLowerCase().includes(q));
+ return f;
+}
+function audIrPagina(n){STATE.audPag=n;renderAuditoriaDetalle();document.getElementById('audDetalle')?.scrollIntoView({behavior:'smooth',block:'start'});}
+function audBuscarCambio(v){STATE.audBuscar=v;STATE.audPag=0;renderAuditoriaTabla();}
 function renderAuditoriaDetalle(){
  const el=document.getElementById('audDetalle'),tipo=STATE.audSel;
  if(!tipo){el.innerHTML='';return;}
- const def=AUD_TIPOS.find(t=>t[0]===tipo);
- const filas=audAlertas(tipo).slice().sort((a,b)=>(a.severidad==='alta'?0:1)-(b.severidad==='alta'?0:1)||String(a.fecha||'').localeCompare(String(b.fecha||'')));
- const max=500;
- el.innerHTML=`<div class="card-title" style="margin-top:6px"><h3>${def[1]} · ${filas.length.toLocaleString('es-EC')}</h3><small>${def[2]} <button class="btn-secondary" onclick="descargarAuditoria('${tipo}')">⬇ Excel de este control</button></small></div>`+
- (filas.length?`<div class="table-wrap"><table class="aud-table"><thead><tr><th>Prioridad</th><th>Referencia</th><th>Fecha</th><th>Tercero</th><th>Cuenta / diario</th><th class="num">Monto</th><th>Detalle</th><th></th></tr></thead><tbody>`+
- filas.slice(0,max).map(a=>`<tr><td><span class="badge ${a.severidad==='alta'?'danger':'warn'}">${a.severidad==='alta'?'Alta':'Media'}</span></td><td>${escapeHtml(a.referencia||'')}</td><td>${escapeHtml(String(a.fecha||'').slice(0,10))}</td><td>${escapeHtml(a.tercero||'')}</td><td>${escapeHtml(a.cuenta||'')}</td><td class="num">${a.monto==null?'':money(a.monto)}</td><td class="det">${audDetalleTexto(a)}</td><td>${a.odoo_id&&a.odoo_model?`<a href="${ODOO}${encodeURIComponent(a.odoo_model)}&res_id=${encodeURIComponent(a.odoo_id)}" target="_blank" rel="noopener">Abrir en Odoo ↗</a>`:''}</td></tr>`).join('')+
- `</tbody></table></div>${filas.length>max?`<p class="report-note">Se muestran ${max} de ${filas.length}. Descarga el Excel para verlas todas.</p>`:''}`:'<p class="report-note">Sin alertas en este control.</p>');
+ const def=AUD_TIPOS.find(t=>t[0]===tipo),total=audAlertas(tipo).length;
+ el.innerHTML=`<div class="card-title" style="margin-top:6px"><h3>${def[1]} · ${total.toLocaleString('es-EC')}</h3><small>${def[2]} <button class="btn-secondary" onclick="descargarAuditoria('${tipo}')">⬇ Excel de este control</button></small></div>`+
+ (total?`<div style="margin:8px 0"><input id="audBuscar" type="search" placeholder="Buscar por tercero, empleado, cuenta, referencia…" value="${escapeHtml(STATE.audBuscar||'')}" oninput="audBuscarCambio(this.value)" style="width:100%;max-width:420px;padding:8px 10px;border:1px solid #d6dde8;border-radius:8px"></div><div id="audTabla"></div>`:'<p class="report-note">Sin alertas en este control.</p>');
+ if(total)renderAuditoriaTabla();
+}
+function renderAuditoriaTabla(){
+ const box=document.getElementById('audTabla'),tipo=STATE.audSel;if(!box||!tipo)return;
+ const filas=audFiltradas(tipo),paginas=Math.max(1,Math.ceil(filas.length/AUD_POR_PAG));
+ let pag=Math.min(Math.max(0,STATE.audPag||0),paginas-1);STATE.audPag=pag;
+ const ini=pag*AUD_POR_PAG,vis=filas.slice(ini,ini+AUD_POR_PAG);
+ const nav=paginas>1?`<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0"><button class="btn-secondary" ${pag===0?'disabled':''} onclick="audIrPagina(${pag-1})">◀ Anterior</button><span class="report-note" style="margin:0">Filas ${(ini+1).toLocaleString('es-EC')}–${(ini+vis.length).toLocaleString('es-EC')} de ${filas.length.toLocaleString('es-EC')} · Página ${pag+1} de ${paginas}</span><button class="btn-secondary" ${pag>=paginas-1?'disabled':''} onclick="audIrPagina(${pag+1})">Siguiente ▶</button></div>`:`<p class="report-note">${filas.length.toLocaleString('es-EC')} fila(s)</p>`;
+ box.innerHTML=filas.length?nav+`<div class="table-wrap"><table class="aud-table"><thead><tr><th>Prioridad</th><th>Referencia</th><th>Fecha</th><th>${tipo==='roles'?'Empleado':'Tercero'}</th><th>${tipo==='roles'?'Rol / estado':'Cuenta / diario'}</th><th class="num">${tipo==='roles'?'Neto a pagar':'Monto'}</th><th>Detalle</th><th></th></tr></thead><tbody>`+vis.map(audFilaHtml).join('')+`</tbody></table></div>`+nav:'<p class="report-note">Nada coincide con la búsqueda.</p>';
 }
 async function invokeSync(name,body={}){
  const {data:{session},error}=await sb.auth.getSession();
