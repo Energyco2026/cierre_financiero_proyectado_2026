@@ -560,6 +560,10 @@ tbody tr:hover{
     background:#f8fbff;
 }
 
+.go-links{display:inline-flex;gap:5px;margin-left:6px;vertical-align:middle}
+.go-link{font-size:10.5px;font-weight:700;color:var(--blue);background:var(--blueSoft);border-radius:999px;padding:2px 8px;text-decoration:none;white-space:nowrap;cursor:pointer}
+.go-link:hover{background:#d6e8ff}
+.go-link.sp{color:#03787c;background:#e3f5f5}
 .project-name{
     font-weight:700;
     color:#183c68;
@@ -1021,7 +1025,7 @@ tbody tr:hover{
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 23:55</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-oct-2026 08:30</div>
 
         </div>
 
@@ -1663,7 +1667,7 @@ tbody tr:hover{
  <div class="card-title"><h3 id="movementsTitle">Movimientos contables</h3><button class="close-btn" onclick="document.getElementById('pygMovimientos').close()" aria-label="Cerrar movimientos">✕</button></div>
  <p id="movementsContext" class="report-note"></p>
  <label>Buscar movimiento <input id="buscarMovimiento" class="filter-input search" placeholder="Asiento, cuenta, tercero o referencia..." oninput="STATE.pygDrill.page=0;renderMovimientos()"></label>
- <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Asiento / documento</th><th>Cuenta contable</th><th>Tercero</th><th>Referencia</th><th>Analítica</th><th>Debe de la línea</th><th>Haber de la línea</th><th>% asignado</th><th>Importe analítico</th></tr></thead><tbody id="movementsBody"></tbody></table></div>
+ <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Asiento / documento</th><th>Cuenta contable</th><th>Tercero</th><th>Referencia</th><th>Analítica</th><th>Debe de la línea</th><th>Haber de la línea</th><th>% asignado</th><th>Importe analítico</th><th></th></tr></thead><tbody id="movementsBody"></tbody></table></div>
  <div class="card-title"><p id="movementsSummary" class="report-note"></p><div><button id="movementsPrev" class="btn-secondary" onclick="STATE.pygDrill.page--;renderMovimientos()">Anterior</button> <button id="movementsNext" class="btn-secondary" onclick="STATE.pygDrill.page++;renderMovimientos()">Siguiente</button></div></div>
  <p class="report-note">Debe y haber corresponden a la línea completa de Odoo. El importe analítico incorpora el porcentaje asignado. Los ingresos se presentan con signo positivo; las devoluciones mantienen su signo.</p>
 </dialog>
@@ -2088,7 +2092,7 @@ async function loadData(){
             throw costsRes.error;
 
 
-        try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
+        try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};STATE.anaContrato={};STATE._anaMap=null;for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;if(r.analitica_id&&!STATE.anaContrato[r.proyecto_codigo])STATE.anaContrato[r.proyecto_codigo]=r.analitica_id;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
         try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("forecast_pve_sharepoint",["proyecto","familia"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
         try{const cr=await readAll("forecast_crm_ventas",["lead_id"]);STATE.crm=cr.data||[];}catch(e){STATE.crm=[];STATE.crmError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
@@ -2344,7 +2348,7 @@ function renderPve(){
   if(ov&&sp&&Math.abs(ov-sp)>Math.max(1,sp*0.01))est.push('<span class="badge warn">OV ≠ contrato</span>');
   if(!est.length)est.push('<span class="badge ok">En rango</span>');
   const abierto=STATE.pveOpen.has(code);
-  let html='<tr style="background:#f1f5fb"><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button></td>'+celdas(t,'<td>'+(pctRe===null?'—':percent(pctRe))+' / '+(avance===null?'—':percent(avance))+'</td><td style="white-space:normal;min-width:200px">'+est.join(' ')+'</td>')+'</tr>';
+  let html='<tr style="background:#f1f5fb"><td><button class="pyg-toggle" onclick="togglePve(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+(STATE.names[code]||r.proyecto_nombre||''))+'</span></button>'+linksProyecto(code)+'</td>'+celdas(t,'<td>'+(pctRe===null?'—':percent(pctRe))+' / '+(avance===null?'—':percent(avance))+'</td><td style="white-space:normal;min-width:200px">'+est.join(' ')+'</td>')+'</tr>';
   if(abierto){
    html+=cats.sort((a,b)=>b.p-a.p).map(x=>{
     const fk=code+'|'+x.c.familia,fa=STATE.pveOpen.has(fk),items=(STATE.costs||[]).filter(i=>i.proyecto_codigo===code&&familiaCosto(i.categoria)===x.c.familia&&number(i.presupuesto_aterrizado)!==0);
@@ -3282,7 +3286,7 @@ function renderProjects(){
                         ${p.proyecto_codigo}
                         -
                         ${p.proyecto_nombre || ""}
-                    </div>
+                    </div>${linksProyecto(p.proyecto_codigo)}
                 </td>
 
                 <td>${(()=>{const t=tipoProyecto(p.proyecto_codigo);return '<span class="badge'+(t==='Sin tipo'||t==='Residencial'?'':' ok')+'">'+escapeHtml(t)+'</span>';})()}</td>
@@ -3706,7 +3710,7 @@ function renderForecastAvance(){
   const estado=r.saving?'<span class="badge">Guardando…</span>':r.dirty?'<span class="badge warn">Sin guardar</span>':r.saved?'<span class="badge ok" title="Guardado '+escapeHtml(String(r.saved.actualizado_en||r.saved.creado_en||'').slice(0,16).replace('T',' '))+'">En el cierre ✓</span>':'<span class="badge">No está en el cierre</span>';
   const alertas=r.al.map(([t,x])=>'<span class="badge '+t+'">'+escapeHtml(x)+'</span>').join(' ')+(r.nota?'<div class="report-note" style="margin:4px 0 0">'+escapeHtml(r.nota)+'</div>':'');
   return '<tr>'
-   +'<td class="fav-sticky"><b>'+c+'</b> '+escapeHtml(r.nombre)+'</td>'
+   +'<td class="fav-sticky"><b>'+c+'</b> '+escapeHtml(r.nombre)+linksProyecto(c)+'</td>'
    +'<td>'+money(r.C)+'</td>'
    +'<td>'+(r.hoy===null?'—':percentPoints(r.hoy))+'</td>'
    +'<td><input class="fav-in" type="number" min="0" max="100" step="0.01" value="'+(Math.round(r.a*100)/100)+'" aria-label="Avance al 31 de diciembre PO '+c+'" onchange="favEditar(\''+c+'\',\'avance\',this.value)">%'+(r.hoy!==null&&Math.abs(r.a-r.hoy)>0.005?'<button class="fav-hoy" title="Volver al avance de hoy" onclick="favEditar(\''+c+'\',\'avance\','+r.hoy+')">↺ hoy</button>':'')+'</td>'
@@ -3938,7 +3942,7 @@ function renderMovimientos(){
  const pages=Math.max(1,Math.ceil(rows.length/100));drill.page=Math.max(0,Math.min(drill.page,pages-1));
  const pageRows=rows.slice(drill.page*100,(drill.page+1)*100);
  const amount=r=>pygType(r)==="income"?-number(r.saldo_analitico):number(r.saldo_analitico);
- document.getElementById("movementsBody").innerHTML=pageRows.length?pageRows.map(r=>'<tr>'+[r.fecha,r.move_name,(r.cuenta_codigo||"")+" "+(r.cuenta_nombre||""),r.partner_nombre,r.ref,r.analitica_nombre,money(r.debito),money(r.credito),percent(r.porcentaje_analitico),money(amount(r))].map(v=>'<td>'+escapeHtml(v||"—")+'</td>').join("")+'</tr>').join(""):'<tr><td colspan="10">No hay movimientos para esta selección.</td></tr>';
+ document.getElementById("movementsBody").innerHTML=pageRows.length?pageRows.map(r=>'<tr>'+[r.fecha,r.move_name,(r.cuenta_codigo||"")+" "+(r.cuenta_nombre||""),r.partner_nombre,r.ref,r.analitica_nombre,money(r.debito),money(r.credito),percent(r.porcentaje_analitico),money(amount(r))].map(v=>'<td>'+escapeHtml(v||"—")+'</td>').join("")+'<td>'+(r.odoo_move_id?'<a class="go-link" href="https://semgroup.odoo.com/mail/view?model=account.move&res_id='+encodeURIComponent(r.odoo_move_id)+'" target="_blank" rel="noopener" title="Abrir el asiento en Odoo">Odoo ↗</a>':'')+'</td></tr>').join(""):'<tr><td colspan="11">No hay movimientos para esta selección.</td></tr>';
  const income=rows.filter(r=>pygType(r)==="income").reduce((sum,r)=>sum-number(r.saldo_analitico),0);
  const expense=rows.filter(r=>pygType(r)==="expense").reduce((sum,r)=>sum+number(r.saldo_analitico),0);
  document.getElementById("movementsSummary").textContent=rows.length+" movimientos · Página "+(drill.page+1)+" de "+pages+" · Ingresos "+money(income)+" · Egresos "+money(expense)+" · Beneficio "+money(income-expense);
@@ -3965,7 +3969,7 @@ function renderCosts(){
  document.getElementById("costsBody").innerHTML=[...grupos.entries()].sort((x,y)=>x[0].localeCompare(y[0])).map(([code,list])=>{
   const abierto=abrirTodo||STATE.costsOpen.has(code);
   const nombre=STATE.names?.[code]||list[0].proyecto_carpeta||"";
-  let html='<tr style="background:#f1f5fb"><td colspan="4"><button class="pyg-toggle" onclick="toggleCostos(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+nombre)+'</span> <small class="report-note">('+list.length+' ítems)</small></button></td>'+celdas(sum(list,'presupuesto_inicial'),sum(list,'presupuesto_aterrizado'),sum(list,'ejecutado_real'),sum(list,'por_ejecutar'),sum(list,'diferencia_real_plan'))+'</tr>';
+  let html='<tr style="background:#f1f5fb"><td colspan="4"><button class="pyg-toggle" onclick="toggleCostos(\''+escapeHtml(code)+'\')" aria-expanded="'+abierto+'">'+(abierto?'▾ ':'▸ ')+'<span class="project-name">'+escapeHtml(code+' - '+nombre)+'</span> <small class="report-note">('+list.length+' ítems)</small></button>'+linksProyecto(code)+'</td>'+celdas(sum(list,'presupuesto_inicial'),sum(list,'presupuesto_aterrizado'),sum(list,'ejecutado_real'),sum(list,'por_ejecutar'),sum(list,'diferencia_real_plan'))+'</tr>';
   if(abierto){
    const porCat=new Map();for(const r of list){const c=r.categoria||"Sin categoría";if(!porCat.has(c))porCat.set(c,[]);porCat.get(c).push(r);}
    for(const [cat,items] of porCat){
@@ -4232,6 +4236,39 @@ function abrirTab(name,button){
    UPDATE ODOO + SHAREPOINT
 ========================================================= */
 
+
+/* =========================================================
+   IR DIRECTO A ODOO / SHAREPOINT
+========================================================= */
+function analiticaDe(code){
+ if(!STATE._anaMap){
+  const m={};
+  for(const r of STATE.analytic||[]){if(!r.analitica_id)continue;const c=String(r.analitica_nombre||'').match(/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i)?.[1];if(c&&!m[c])m[c]=r.analitica_id;}
+  STATE._anaMap={...m,...(STATE.anaContrato||{})};
+ }
+ return STATE._anaMap[code]||null;
+}
+function archivoSpDe(code){return (STATE.costs||[]).find(r=>String(r.proyecto_codigo)===String(code)&&r.archivo_id)?.archivo_id||null;}
+function linksProyecto(code){
+ code=String(code||'');
+ const id=analiticaDe(code);
+ const o=id?'<a class="go-link" href="https://semgroup.odoo.com/mail/view?model=account.analytic.account&res_id='+encodeURIComponent(id)+'" target="_blank" rel="noopener" title="Abrir la cuenta analítica del proyecto en Odoo" onclick="event.stopPropagation()">Odoo ↗</a>':'';
+ const sp=/^\d{3,4}$/.test(code)?'<a class="go-link sp" href="#" title="Abrir el Control Operativo del proyecto en SharePoint" onclick="abrirSharePoint(event,\''+code+'\')">SharePoint ↗</a>':'';
+ return o||sp?'<span class="go-links">'+o+sp+'</span>':'';
+}
+async function abrirSharePoint(ev,code){
+ ev.preventDefault();ev.stopPropagation();
+ const cache=STATE.spUrls||(STATE.spUrls={});
+ if(cache[code]){window.open(cache[code],'_blank','noopener');return;}
+ const w=window.open('','_blank');
+ try{w&&w.document.write('<p style="font-family:sans-serif;padding:20px">Abriendo SharePoint del proyecto '+code+'…</p>');}catch(_){}
+ try{
+  const d=await invokeSync('sharepoint-abrir',{proyecto_codigo:code,archivo_id:archivoSpDe(code)||''});
+  cache[code]=d.url;
+  if(w&&!w.closed)w.location.href=d.url;else window.open(d.url,'_blank','noopener');
+  if(!d.archivo_url)toast('Se abrió la carpeta del proyecto '+code+' (no se encontró su archivo de control).');
+ }catch(e){if(w&&!w.closed)w.close();toast('No se pudo abrir SharePoint: '+e.message);}
+}
 async function invokeSync(name,body={}){
  const {data:{session},error}=await sb.auth.getSession();
  if(error || !session) throw new Error("Inicia sesión para actualizar.");
