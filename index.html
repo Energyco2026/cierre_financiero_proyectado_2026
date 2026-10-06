@@ -906,6 +906,7 @@ tbody tr:hover{
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
 <style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}
+#projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
 .fav-table th,.fav-table td{white-space:nowrap}
@@ -1020,7 +1021,7 @@ tbody tr:hover{
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 15:30</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 21:20</div>
 
         </div>
 
@@ -1430,7 +1431,9 @@ tbody tr:hover{
                         placeholder="Buscar proyecto..."
                         oninput="renderProjects()">
 
-                    <select id="alcanceProyectos" onchange="renderProjects()" aria-label="Qué proyectos mostrar"><option value="CONTRATO">Con valor de contrato</option><option value="MOV">Con movimiento 2026</option><option value="ALL">Todas las analíticas</option></select>
+                    <select id="alcanceProyectos" onchange="renderProjects()" aria-label="Qué proyectos mostrar"><option value="PROY">Proyectos (contrato ≥ $5.000)</option><option value="CONTRATO">Cualquier contrato &gt; $0</option><option value="MOV">Con movimiento 2026</option><option value="ALL">Todas las analíticas</option></select>
+                    <select id="tipoProyectos" onchange="renderProjects()" aria-label="Tipo de proyecto"><option value="ALL">Todos los tipos</option><option>Industrial</option><option>Comercial</option><option>PPA</option><option>Sector Público</option><option>Residencial</option><option value="Sin tipo">Sin tipo en CRM</option></select>
+                    <select id="vistaProyectos" onchange="renderProjects()" aria-label="Columnas"><option value="RES">Vista resumida</option><option value="DET">Vista detallada</option></select>
                     <select
                         id="filtroEstado"
                         onchange="renderProjects()">
@@ -1454,31 +1457,15 @@ tbody tr:hover{
 
                 <div class="table-wrap">
 
-                    <table>
-
-                        <thead>
-                            <tr>
-                                <th>Proyecto</th>
-                                <th>Avance físico</th>
-                                <th>Contrato</th>
-                                <th>Ingreso Odoo</th>
-                                <th>Ingreso según avance</th>
-                                <th>Pendiente reconocer</th>
-                                <th>Costo Odoo</th>
-                                <th>Costo operativo SP</th>
-                                <th>Diferencia costo</th>
-                                <th>Por ejecutar SP</th>
-                                <th>Resultado real</th>
-                                <th>Margen real</th>
-                                <th>Estado</th>
-                            </tr>
-                        </thead>
-
+                    <table id="projectsTable" class="vista-res">
+                        <thead><tr><th>Proyecto</th><th>Tipo</th><th>Avance físico</th><th>Contrato</th><th>Ingreso Odoo</th><th class="col-det">Ingreso según avance</th><th>Pendiente reconocer</th><th>Costo Odoo</th><th class="col-det">Costo operativo SP</th><th class="col-det">Diferencia costo</th><th class="col-det">Por ejecutar SP</th><th>Resultado real</th><th>Margen real</th><th>Estado</th></tr></thead>
                         <tbody id="projectsBody"></tbody>
+
 
                     </table>
 
                 </div>
+                <p id="projectsNota" class="report-note"></p>
 
             </div>
 
@@ -3199,6 +3186,11 @@ function renderProjects(){
 
             const conMovimiento=[p.monto_contrato,p.ingresos_odoo,p.costo_directo_odoo,p.ejecutado_operativo,p.por_ejecutar_operativo].some(v=>Math.abs(number(v))>0.005)||(STATE.savedSims||[]).some(x=>x.proyecto_codigo===p.proyecto_codigo);
             const alcance=document.getElementById("alcanceProyectos").value;
+            if(alcance==="PROY"&&!(number(p.monto_contrato)>=5000))
+                return false;
+            const tipoSel=document.getElementById("tipoProyectos").value;
+            if(tipoSel!=="ALL"&&tipoProyecto(p.proyecto_codigo)!==tipoSel)
+                return false;
             if(alcance==="CONTRATO"&&!(number(p.monto_contrato)>0))
                 return false;
             if(alcance==="MOV"&&!conMovimiento)
@@ -3223,13 +3215,10 @@ function renderProjects(){
         });
 
 
-    const body =
-        document
-        .getElementById(
-            "projectsBody"
-        );
-
-
+    rows.sort((a,b)=>number(b.monto_contrato)-number(a.monto_contrato)||String(a.proyecto_codigo).localeCompare(String(b.proyecto_codigo)));
+    document.getElementById("projectsTable").className=document.getElementById("vistaProyectos").value==="DET"?"":"vista-res";
+    document.getElementById("projectsNota").textContent=rows.length+" proyectos · Contrato "+money(rows.reduce((a,p)=>a+number(p.monto_contrato),0))+" · Ingreso Odoo "+money(rows.reduce((a,p)=>a+number(p.ingresos_odoo),0))+" · Resultado "+money(rows.reduce((a,p)=>a+number(p.resultado_odoo),0))+". Ordenado por contrato, de mayor a menor.";
+    const body=document.getElementById("projectsBody");
     body.innerHTML = "";
 
 
@@ -3324,6 +3313,7 @@ function renderProjects(){
                     </div>
                 </td>
 
+                <td>${(()=>{const t=tipoProyecto(p.proyecto_codigo);return '<span class="badge'+(t==='Sin tipo'||t==='Residencial'?'':' ok')+'">'+escapeHtml(t)+'</span>';})()}</td>
                 <td>
                     <strong title="Fuente: ${escapeHtml(p.avance_fuente||'sin dato')}${p.avance_fuente==='Excel PORTADA'&&p.avance_control_operaciones!=null?' · Control de Operaciones: '+number(p.avance_control_operaciones).toFixed(1)+'%':''}">
                         ${progress.toFixed(1)}%
@@ -3349,7 +3339,7 @@ function renderProjects(){
                     ${money(income)}
                 </td>
 
-                <td>
+                <td class="col-det">
                     ${money(theoretical)}
                 </td>
 
@@ -3367,11 +3357,11 @@ function renderProjects(){
                     ${money(odooCost)}
                 </td>
 
-                <td>
+                <td class="col-det">
                     ${money(spCost)}
                 </td>
 
-                <td class="
+                <td class="col-det
                     ${
                         Math.abs(costDiff)
                         > 1
@@ -3382,7 +3372,7 @@ function renderProjects(){
                     ${money(costDiff)}
                 </td>
 
-                <td>
+                <td class="col-det">
                     ${money(
                         p.por_ejecutar_operativo
                     )}
@@ -4402,6 +4392,12 @@ function simProjectCodes(){
  for(const r of STATE.recPrevio||[])if(r.proyecto_codigo!=='SIN_PROYECTO')codes.add(r.proyecto_codigo);
  for(const s of STATE.savedSims||[])codes.add(s.proyecto_codigo);
  return [...codes].sort();
+}
+// Tipo del proyecto según el CRM (Tipo de Oportunidad) de la venta vinculada a la PO; PPA registrados cuentan como PPA.
+function tipoProyecto(code){
+ if(ppaCodigos().has(String(code)))return 'PPA';
+ const l=(STATE.crm||[]).find(x=>String(x.proyecto_codigo)===String(code))||(STATE.crm||[]).find(x=>ppaConfigs().some(c=>c.code===String(code)&&Number(c.lead_id)===Number(x.lead_id)));
+ return l?tipoCrm(l).tipo:'Sin tipo';
 }
 function projectInfo(code){
  if(String(code).startsWith('CRM-')){const l=(STATE.crm||[]).find(x=>'CRM-'+x.lead_id===code)||{};return {proyecto_codigo:code,proyecto_nombre:(l.nombre||'Venta CRM')+(l.cliente?' · '+l.cliente:''),monto_contrato:number(l.monto_ov)||number(l.monto_esperado),avance_fisico:null};}
