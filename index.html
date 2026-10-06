@@ -1021,7 +1021,7 @@ tbody tr:hover{
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 21:30</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 21:45</div>
 
         </div>
 
@@ -3080,52 +3080,28 @@ function renderRecognition(){
    PROJECT TABLE
 ========================================================= */
 
-function projectStatus(p){
-
-    const incomePending =
-        number(
-            p.ingreso_pendiente_reconocimiento
-        );
-
-
-    const spCost =
-        number(
-            p.ejecutado_operativo
-        );
-
-
-    const odooCost =
-        number(
-            p.costo_directo_odoo
-        );
-
-
-    const diffPct =
-        spCost
-        ? Math.abs(
-            odooCost
-            - spCost
-          )
-          / spCost
-        : (
-            odooCost
-            ? 1
-            : 0
-        );
-
-
-    if(
-        incomePending > 0
-        ||
-        diffPct > .05
-    )
-        return "REVISAR";
-
-
-    return "OK";
-
+// Diagnóstico por proyecto: qué está mal y dónde revisarlo (sin usar el "Ejecutado real" del Excel, que trae el presupuesto).
+function diagnosticoProyecto(p){
+ const code=String(p.proyecto_codigo),C=number(p.monto_contrato),hoy=p.avance_fisico==null?null:number(p.avance_fisico);
+ if(ppaCodigos().has(code))return {pend:null,items:[{t:'ok',x:'PPA: ingreso por venta de energía',tab:'forecastav',d:'Forecast por avance → Contratos PPA'}]};
+ const ing=recPrevio(code,'ingreso'),real=favReal(code).hasta;
+ const pend=hoy===null||!(C>0)?null:C*hoy/100-ing.total-real.income;
+ const tol=Math.max(1000,C*0.01),items=[];
+ if(pend!==null&&pend>tol)items.push({t:'warn',x:'Falta reconocer '+money(pend),tab:'forecastav',d:'Forecast por avance: contrato × avance − reconocido 2025 − registrado 2026'});
+ if(pend!==null&&pend<-tol)items.push({t:'danger',x:'Reconocido de más '+money(-pend)+' (reversa)',tab:'forecastav',d:'Forecast por avance: se facturó/reconoció más que el avance'});
+ const cats=(STATE.pveCat||[]).filter(c=>String(c.proyecto)===code);
+ if(cats.length){const pres=cats.reduce((a,c)=>a+number(c.presupuesto_aterrizado),0),usado=cats.reduce((a,c)=>a+number(c.presupuesto_real)+number(c.comprometido),0);
+  if(pres>0&&usado>pres*1.02)items.push({t:'danger',x:'Real + OC supera el presupuesto en '+money(usado-pres),tab:'costos',d:'Presupuesto vs Ejecución: abre la PO y mira qué rubro se pasa'});
+  if(!(pres>0)&&usado>0)items.push({t:'warn',x:'Sin presupuesto en el Excel',tab:'costos',d:'Presupuesto vs Ejecución: el Excel de COSTOS no tiene presupuesto aterrizado'});}
+ if((hoy===null||hoy===0)&&(number(p.costo_directo_odoo)>0||number(p.ingresos_odoo)>0)&&C>0)items.push({t:'warn',x:'Sin % de avance',tab:null,d:'Excel de SharePoint, hoja PORTADA: falta "% Avance Proyecto"'});
+ return {pend,items};
 }
-
+function projectStatus(p){return diagnosticoProyecto(p).items.some(i=>i.t!=='ok')?'REVISAR':'OK';}
+function celdaDiagnostico(p){
+ const d=diagnosticoProyecto(p);
+ if(!d.items.length)return '<span class="badge ok">OK</span>';
+ return d.items.map(i=>'<button class="badge '+(i.t==='ok'?'ok':i.t)+'" style="border:0;cursor:'+(i.tab?'pointer':'default')+';margin:2px 2px 2px 0;text-align:left" title="Dónde revisar: '+escapeHtml(i.d)+'"'+(i.tab?' onclick="abrirTab(\''+i.tab+'\')"':'')+'>'+escapeHtml(i.x)+(i.tab?' →':'')+'</button>').join('');
+}
 
 function renderProjects(){
 
@@ -3293,12 +3269,7 @@ function renderProjects(){
 
 
         const pending =
-            simulation
-            ? simulation.ingreso
-              - income
-            : number(
-                p.ingreso_pendiente_reconocimiento
-              );
+            diagnosticoProyecto(p).pend ?? 0; // contrato × avance − reconocido hasta 2025 − registrado 2026
 
 
         body.insertAdjacentHTML(
@@ -3405,21 +3376,7 @@ function renderProjects(){
                     }
                 </td>
 
-                <td>
-                    ${
-                        status === "OK"
-                        ? `
-                            <span class="badge ok">
-                                OK
-                            </span>
-                          `
-                        : `
-                            <span class="badge warn">
-                                Revisar
-                            </span>
-                          `
-                    }
-                </td>
+                <td style="white-space:normal;min-width:230px">${celdaDiagnostico(p)}</td>
 
             </tr>
             `
