@@ -855,6 +855,15 @@ tbody tr:hover{
 .movements-dialog{width:min(1400px,96vw);max-height:92vh;border:1px solid var(--line);border-radius:16px;padding:20px}
 .movements-dialog::backdrop{background:rgba(5,18,34,.5)}
 .movements-dialog .table-wrap{margin-top:14px;max-height:55vh}
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+.gen-grid label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:4px}
+.gen-cols{display:grid;grid-template-columns:minmax(220px,300px) 1fr;gap:16px;align-items:start}
+.gen-cols textarea{width:100%;min-height:340px;font-family:monospace;font-size:12px;border:1px solid var(--line);border-radius:10px;padding:8px;box-sizing:border-box}
+.gen-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:12px 0}
+.gen-kpis div{border:1px solid var(--line);border-radius:12px;padding:10px}
+.gen-kpis small{display:block;color:var(--muted);font-size:11px}
+.gen-kpis b{font-size:16px}
+@media(max-width:760px){.gen-cols{grid-template-columns:1fr}}
 .energy-logo{display:block;width:100%;height:auto;object-fit:contain}
 .login-brand{margin-bottom:20px}
 .sidebar .brand{background:white;border-radius:12px;padding:12px;margin-bottom:14px}
@@ -1675,6 +1684,29 @@ td.fav-com-td{white-space:normal!important}
  <p class="report-note">Debe y haber corresponden a la línea completa de Odoo. El importe analítico incorpora el porcentaje asignado. Los ingresos se presentan con signo positivo; las devoluciones mantienen su signo.</p>
 </dialog>
 
+<dialog id="ppaGenDialog" class="movements-dialog" aria-labelledby="ppaGenTitle">
+ <div class="card-title"><h3 id="ppaGenTitle">Generación del PPA</h3><button class="close-btn" onclick="document.getElementById('ppaGenDialog').close()" aria-label="Cerrar generación">✕</button></div>
+ <p class="report-note" style="margin-top:0">Ingreso mensual = kWh del año de contrato × disponibilidad × tarifa ÷ 12. El año 1 del contrato empieza en el mes de inicio de operación (no en enero).</p>
+ <div class="gen-grid">
+  <label>Tarifa ($/kWh)<input id="genTarifa" class="filter-input" type="number" min="0" step="0.0001" oninput="genRender()"></label>
+  <label>Disponibilidad (%)<input id="genDisp" class="filter-input" type="number" min="0" max="100" step="0.1" oninput="genRender()"></label>
+  <label>Plazo del contrato (años)<input id="genPlazo" class="filter-input" type="number" min="1" max="40" step="1" oninput="genRender()"></label>
+  <label>Inicio de operación<input id="genInicio" class="filter-input" type="month" oninput="genRender()"></label>
+ </div>
+ <div class="gen-cols">
+  <div><label class="report-note" style="margin:0 0 4px;display:block">Generación anual (kWh) · un año por línea. Puedes pegar la columna desde Excel.</label><textarea id="genTexto" oninput="genRender()" spellcheck="false"></textarea></div>
+  <div>
+   <div id="genKpis" class="gen-kpis"></div>
+   <div id="genAvisos"></div>
+   <h4 style="margin:12px 0 4px">Ingreso por año calendario</h4>
+   <div class="table-wrap" style="max-height:200px"><table><thead><tr><th>Año</th><th>Meses</th><th>kWh facturables</th><th>Ingreso</th></tr></thead><tbody id="genCal"></tbody></table></div>
+   <h4 style="margin:12px 0 4px">Detalle por año de contrato</h4>
+   <div class="table-wrap" style="max-height:260px"><table><thead><tr><th>Año</th><th>Período</th><th>kWh generados</th><th>kWh facturables</th><th>Ingreso mensual</th><th>Ingreso anual</th></tr></thead><tbody id="genBody"></tbody></table></div>
+  </div>
+ </div>
+ <div class="card-title" style="margin-top:14px"><small id="genPie" class="report-note"></small><div><button class="btn-secondary" onclick="document.getElementById('ppaGenDialog').close()">Cancelar</button> <button class="btn-primary" onclick="genGuardar()">Guardar en el cierre</button></div></div>
+</dialog>
+
 <!-- SIMULATOR -->
 
 <div
@@ -2464,8 +2496,8 @@ function configurarPpaDesdeCrm(leadId,po){
  let code=po;
  if(!code){const sug=ppaConfigs().find(c=>!ppaLeadDe(c))?.code||'';code=(prompt('Esta oportunidad no tiene PO en Odoo. Escribe la PO del PPA'+(sug?' (la '+sug+' es un PPA sin oportunidad vinculada)':'')+':',sug)||'').match(/\d{3,4}/)?.[0];if(!code)return;}
  if(!ppaConfigs().some(c=>c.code===code))STATE.ppaDraft[code]={disponibilidad:95,inicio:'2026-10',lead_id:leadId||''};
- else if(leadId&&!ppaConfigs().find(c=>c.code===code).lead_id){const a=ppaConfigs().find(c=>c.code===code);STATE.ppaDraft[code]={kwh_anual:a.kwh_anual,disponibilidad:a.disponibilidad,tarifa:a.tarifa,inicio:a.inicio,mensual_manual:a.mensual_manual,costo_mensual:a.costo_mensual,lead_id:leadId};}
- renderPpa();irAPpa();
+ else if(leadId&&!ppaConfigs().find(c=>c.code===code).lead_id){const a=ppaConfigs().find(c=>c.code===code);STATE.ppaDraft[code]={kwh_anual:a.kwh_anual,disponibilidad:a.disponibilidad,tarifa:a.tarifa,inicio:a.inicio,mensual_manual:a.mensual_manual,costo_mensual:a.costo_mensual,lead_id:leadId,generacion:a.generacion,plazo:a.plazo};}
+ renderPpa();abrirGenPpa(code);
 }
 function setCrmTipo(t){document.getElementById('crmTipo').value=t;renderCrm();}
 function renderCrm(){
@@ -3750,7 +3782,8 @@ function ppaLeads(){return (STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='PPA');}
 // Oportunidad del CRM del PPA: la elegida en el PPA o, si no, la que Odoo ya vincula a esa PO.
 function ppaLeadDe(c){const id=c.lead_id!==undefined&&c.lead_id!==''&&c.lead_id!==null?Number(c.lead_id):null;return id?ppaLeads().find(l=>Number(l.lead_id)===id)||null:ppaLeads().find(l=>l.proyecto_codigo===c.code)||null;}
 function ppaCalc(c){
- const kwh=number(c.kwh_anual),disp=c.disponibilidad===undefined||c.disponibilidad===null||c.disponibilidad===''?95:number(c.disponibilidad),tar=number(c.tarifa);
+ const gen=Array.isArray(c.generacion)&&c.generacion.length?c.generacion.map(number):null;
+ const kwh=gen?gen[0]:number(c.kwh_anual),disp=c.disponibilidad===undefined||c.disponibilidad===null||c.disponibilidad===''?95:number(c.disponibilidad),tar=number(c.tarifa);
  const calc=kwh*disp/100*tar/12;
  const manual=c.mensual_manual!==undefined&&c.mensual_manual!==null&&c.mensual_manual!=='';
  const mensual=manual?number(c.mensual_manual):calc;
@@ -3766,7 +3799,8 @@ function renderPpa(){
  const inp=(code,campo,val,attrs)=>'<input class="fav-in" '+attrs+' value="'+escapeHtml(val===undefined||val===null?'':String(val))+'" onchange="ppaEditar(\''+escapeHtml(code)+'\',\''+campo+'\',this.value)">';
  body.innerHTML=cs.map(c=>{
   const k=ppaCalc(c),code=escapeHtml(c.code);
-  const opcionesMes=['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01'].map(m=>'<option value="'+m+'"'+(m===k.ini?' selected':'')+'>'+(m==='2027-01'?'2027 o después':['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][Number(m.slice(5))-1]+' 2026')+'</option>').join('');
+  const mesesOpc=['2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01'];if(!mesesOpc.includes(k.ini))mesesOpc.push(k.ini);
+  const opcionesMes=mesesOpc.map(m=>'<option value="'+m+'"'+(m===k.ini?' selected':'')+'>'+(m==='2027-01'?'2027 o después':['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][Number(m.slice(5))-1]+' '+m.slice(0,4))+'</option>').join('');
   const estado=c.dirty?'<span class="badge warn">Sin guardar</span>':'<span class="badge ok">En el cierre ✓</span>';
   const avisos=[];
   if(!k.mensual)avisos.push('<span class="badge danger">Falta kWh, tarifa o ingreso mensual</span>');
@@ -3783,7 +3817,7 @@ function renderPpa(){
    +'<td>'+(k.meses.length?k.meses.map(m=>['Oct','Nov','Dic'][Number(m.slice(5))-10]).join(', '):'—')+'</td>'
    +'<td><b>'+money(k.total)+'</b>'+(k.costo?'<br><small class="report-note">costo '+money(k.costo*k.meses.length)+'</small>':'')+'</td>'
    +'<td class="fav-alert" style="min-width:200px">'+estado+(avisos.length?'<div style="margin-top:4px">'+avisos.join(' ')+'</div>':'')+'</td>'
-   +'<td style="white-space:nowrap">'+(c.dirty?'<button class="btn-primary" onclick="ppaGuardar(\''+code+'\')">Guardar</button> ':'')+'<button class="btn-secondary" title="Quitar del cierre" onclick="ppaEliminar(\''+code+'\')">🗑</button></td></tr>';
+   +'<td style="white-space:nowrap"><button class="btn-secondary" title="Tabla de generación" onclick="abrirGenPpa(\''+code+'\')">📈 Generación</button> '+(c.dirty?'<button class="btn-primary" onclick="ppaGuardar(\''+code+'\')">Guardar</button> ':'')+'<button class="btn-secondary" title="Quitar del cierre" onclick="ppaEliminar(\''+code+'\')">🗑</button></td></tr>';
  }).join('')||'<tr><td colspan="12">Aún no hay contratos PPA. Escribe la PO y pulsa “+ Agregar PPA”.</td></tr>';
  const guardados=cs.filter(c=>c.saved&&!c.dirty);
  document.getElementById('ppaResumen').textContent=guardados.length+' PPA en el cierre · Ingreso Oct–Dic: '+money(guardados.reduce((s,c)=>s+ppaCalc(c).total,0));
@@ -3796,12 +3830,13 @@ function ppaNuevo(){
 }
 function ppaEditar(code,campo,valor){
  const actual=ppaConfigs().find(c=>c.code===code)||{};
- const base={kwh_anual:actual.kwh_anual,disponibilidad:actual.disponibilidad,tarifa:actual.tarifa,inicio:actual.inicio,mensual_manual:actual.mensual_manual,costo_mensual:actual.costo_mensual,lead_id:actual.lead_id};
+ const base={kwh_anual:actual.kwh_anual,disponibilidad:actual.disponibilidad,tarifa:actual.tarifa,inicio:actual.inicio,mensual_manual:actual.mensual_manual,costo_mensual:actual.costo_mensual,lead_id:actual.lead_id,generacion:actual.generacion,plazo:actual.plazo};
  if(campo!=='inicio'&&campo!=='lead_id'&&valor!==''&&(!Number.isFinite(Number(valor))||Number(valor)<0)){toast('Escribe un número positivo.');renderPpa();return;}
  if(campo==='disponibilidad'&&Number(valor)>100){toast('La disponibilidad no puede pasar de 100%.');renderPpa();return;}
  const v=campo==='inicio'?valor:campo==='lead_id'?(valor===''?'':Number(valor)):(valor===''?'':Number(valor));
  const nuevo={...base,[campo]:v};
  if(['kwh_anual','disponibilidad','tarifa'].includes(campo))nuevo.mensual_manual='';
+ if(campo==='kwh_anual')nuevo.generacion=null; // si cambias el kWh a mano, la tabla de generación deja de aplicar
  STATE.ppaDraft[code]=nuevo;setTimeout(renderPpa,0); // diferido: no redibujar mientras el navegador procesa el cambio de foco
 }
 async function ppaGuardar(code){
@@ -3812,13 +3847,15 @@ async function ppaGuardar(code){
  try{
   const {data:{user}}=await sb.auth.getUser();
   if(c.ids.length){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).in('id',c.ids);if(del.error)throw del.error;}
-  const detalle={kwh_anual:k.kwh||null,disponibilidad:k.disp,tarifa:k.tar||null,inicio:k.ini,mensual_manual:k.manual?k.mensual:'',costo_mensual:k.costo||'',ingreso_mensual_calculado:Number(k.calc.toFixed(2)),lead_id:ppaLeadDe(c)?.lead_id||''};
+  const detalle={kwh_anual:k.kwh||null,disponibilidad:k.disp,tarifa:k.tar||null,inicio:k.ini,mensual_manual:k.manual?k.mensual:'',costo_mensual:k.costo||'',ingreso_mensual_calculado:Number(k.calc.toFixed(2)),lead_id:ppaLeadDe(c)?.lead_id||'',generacion:Array.isArray(c.generacion)&&c.generacion.length?c.generacion.map(number):null,plazo:c.plazo||null};
   const filas=(k.meses.length?k.meses:[]).map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code,mes:m+'-01',ingreso:Number(k.mensual.toFixed(2)),costo:Number(k.costo.toFixed(2)),fuente_ref:'PPA:'+code,fecha_corte:'2026-09-30',detalle}));
-  if(!filas.length){toast('La PO '+code+' inicia después de 2026: no hay nada que sumar al cierre.');}
-  else{const ins=await sb.from('forecast_movimientos').insert(filas);if(ins.error)throw ins.error;}
+  // Si inicia después de 2026 se guarda una fila en $0 solo para conservar la configuración (tabla de generación, tarifa, plazo).
+  if(!filas.length)filas.push({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code+' (inicia después de 2026)',mes:'2026-12-01',ingreso:0,costo:0,fuente_ref:'PPA:'+code,fecha_corte:'2026-09-30',detalle});
+  const ins=await sb.from('forecast_movimientos').insert(filas);if(ins.error)throw ins.error;
+  if(!k.meses.length)toast('PO '+code+' guardada: inicia después de 2026, no suma en el cierre (queda la configuración).');
   delete STATE.ppaDraft[code];
   await cargarForecastGuardado();renderPpa();renderForecastAvance();renderForecastReports();
-  if(filas.length)toast('PPA PO '+code+' guardado: '+money(k.mensual)+' mensuales en '+filas.length+' mes(es).');
+  if(k.meses.length)toast('PPA PO '+code+' guardado: '+money(k.mensual)+' mensuales en '+filas.length+' mes(es).');
  }catch(e){toast('No se guardó el PPA '+code+': '+e.message);await cargarForecastGuardado();renderPpa();}
 }
 async function ppaEliminar(code){
@@ -3831,6 +3868,90 @@ async function ppaEliminar(code){
  delete STATE.ppaDraft[code];await cargarForecastGuardado();renderPpa();renderForecastAvance();renderForecastReports();toast('Se quitó el PPA de la PO '+code+'.');
 }
 function irAPpa(){abrirTab('forecastav');setTimeout(()=>document.getElementById('ppaSeccion')?.scrollIntoView({behavior:'smooth'}),50);}
+/* ========= PPA: tabla de generación ========= */
+// Generación base entregada por ingeniería (kWh por año de contrato). Se usa solo si la PO aún no tiene una tabla guardada.
+const PPA_GEN_BASE={
+ '2094':{tarifa:0.09,plazo:15,gen:[6937616.14,6909865.68,6882226.22,6854697.31,6827278.52,6799969.41,6772769.53,6745678.45,6718695.74,6691820.95,6665053.67,6638393.46,6611839.88,6585392.52,6559050.95,6532814.75,6506683.49,6480656.76,6454734.13,6428915.19,6403199.53,6377586.73,6352076.39,6326668.08,6301361.41,6276155.96,6251051.34,6226047.13,6201142.95,6176338.37]},
+ '1756':{tarifa:0.077,plazo:10,gen:[3732978.20,3695648.42,3680716.51,3665784.59,3650852.68,3635920.77,3620988.85,3606056.94,3591125.03,3576193.12]},
+ '2075':{tarifa:0.076,plazo:15,gen:[4132456.07,4091131.51,4074601.68,4058071.86,4041542.03,4025012.21,4008482.39,3991952.56,3975422.74,3958892.91,3942363.09,3925833.27,3909303.44,3892773.62,3876243.79]},
+ '2039':{tarifa:0.077,plazo:10,gen:[2720000,2709120,2698283,2687490,2676740,2666033,2655369,2644747,2634168,2623632]}
+};
+STATE.genPo=null;
+const MES_CORTO=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function genSumarMeses(ym,n){const y=Number(ym.slice(0,4)),m=Number(ym.slice(5))-1+n;return (y+Math.floor(m/12))+'-'+String(m%12+1).padStart(2,'0');}
+function genNombreMes(ym){return MES_CORTO[Number(ym.slice(5))-1]+' '+ym.slice(0,4);}
+// Acepta 6.937.616,14 · 6937616.14 · 2.720.000 · 2,720,000 · "Año 1  3.732.978,20"
+function genParseNum(t){
+ const m=String(t).match(/[\d][\d.,]*$/);if(!m)return null;let x=m[0];
+ if(x.includes(','))x=/^\d{1,3}(,\d{3})+$/.test(x)&&!x.includes('.')?x.replace(/,/g,''):x.replace(/\./g,'').replace(',','.');
+ else if(/^\d{1,3}(\.\d{3})+$/.test(x))x=x.replace(/\./g,'');
+ const v=Number(x);return Number.isFinite(v)?v:null;
+}
+function genLeerTabla(){
+ return String(document.getElementById('genTexto').value||'').split(/\r?\n/).map(l=>l.trim()).filter(l=>l&&!/^total/i.test(l)).map(genParseNum).filter(v=>v!==null&&v>0);
+}
+function abrirGenPpa(code){
+ const c=ppaConfigs().find(x=>x.code===code)||{code};
+ const base=PPA_GEN_BASE[code]||{};
+ const gen=Array.isArray(c.generacion)&&c.generacion.length?c.generacion.map(number):base.gen||(number(c.kwh_anual)?[number(c.kwh_anual)]:[]);
+ STATE.genPo=code;
+ document.getElementById('ppaGenTitle').textContent='Generación del PPA · PO '+code+' '+(STATE.names?.[code]||projectInfo(code).proyecto_nombre||ppaLeadDe(c)?.nombre||'');
+ document.getElementById('genTarifa').value=number(c.tarifa)||base.tarifa||'';
+ document.getElementById('genDisp').value=c.disponibilidad===undefined||c.disponibilidad===null||c.disponibilidad===''?95:number(c.disponibilidad);
+ document.getElementById('genPlazo').value=number(c.plazo)||base.plazo||gen.length||'';
+ document.getElementById('genInicio').value=c.inicio&&c.inicio!=='2027-01'?c.inicio:(c.inicio||'2026-10');
+ document.getElementById('genTexto').value=gen.map(v=>v.toLocaleString('es-EC',{minimumFractionDigits:2,maximumFractionDigits:2})).join('\n');
+ genRender();
+ document.getElementById('ppaGenDialog').showModal();
+}
+function genCalcular(){
+ const tar=number(document.getElementById('genTarifa').value),disp=number(document.getElementById('genDisp').value),plazo=Math.round(number(document.getElementById('genPlazo').value));
+ const ini=document.getElementById('genInicio').value||'2026-10';
+ const gen=genLeerTabla();
+ const anios=Math.min(plazo||gen.length,gen.length);
+ const filas=[];const cal={};
+ for(let i=0;i<anios;i++){
+  const kwhF=gen[i]*disp/100,anual=kwhF*tar;
+  filas.push({anio:i+1,desde:genSumarMeses(ini,i*12),hasta:genSumarMeses(ini,i*12+11),kwh:gen[i],kwhF,mensual:anual/12,anual});
+  for(let m=0;m<12;m++){const y=genSumarMeses(ini,i*12+m).slice(0,4);cal[y]=cal[y]||{meses:0,kwh:0,ing:0};cal[y].meses++;cal[y].kwh+=kwhF/12;cal[y].ing+=anual/12;}
+ }
+ const totalGen=filas.reduce((s,f)=>s+f.kwh,0);
+ return {tar,disp,plazo,ini,gen,anios,filas,cal,totalBruto:totalGen*tar,totalNeto:filas.reduce((s,f)=>s+f.anual,0)};
+}
+function genRender(){
+ if(!STATE.genPo)return;
+ const r=genCalcular(),c=ppaConfigs().find(x=>x.code===STATE.genPo)||{code:STATE.genPo};
+ const lead=ppaLeadDe(c),crm=lead?montoVentaCrm(lead):0;
+ const cierre=r.cal['2026']?.ing||0,dif=crm?r.totalBruto-crm:0;
+ document.getElementById('genKpis').innerHTML=
+  '<div><small>Ingreso mensual año 1</small><b>'+money(r.filas[0]?.mensual||0)+'</b></div>'
+  +'<div><small>Ingreso en el cierre 2026</small><b>'+money(cierre)+'</b><small>'+(r.cal['2026']?r.cal['2026'].meses+' mes(es)':'inicia después de 2026')+'</small></div>'
+  +'<div><small>Total contrato con disponibilidad ('+r.disp+'%)</small><b>'+money(r.totalNeto)+'</b><small>'+r.anios+' años</small></div>'
+  +'<div><small>Total contrato al 100% de generación</small><b>'+money(r.totalBruto)+'</b><small>'+(crm?'Monto CRM '+money(crm):'sin oportunidad vinculada')+'</small></div>'
+  +(crm?'<div><small>Diferencia vs CRM (al 100%)</small><b style="color:'+(Math.abs(dif)<=Math.max(5,crm*0.001)?'var(--ok,#1a7f4b)':'var(--danger,#c0392b)')+'">'+money(dif)+'</b><small>'+(crm?(dif/crm*100).toFixed(2)+'%':'')+'</small></div>':'');
+ const av=[];
+ if(!r.tar)av.push('<span class="badge danger">Falta la tarifa</span>');
+ if(!r.gen.length)av.push('<span class="badge danger">Pega la generación anual (kWh)</span>');
+ if(r.plazo&&r.gen.length&&r.gen.length<r.plazo)av.push('<span class="badge warn">La tabla tiene '+r.gen.length+' años y el plazo es '+r.plazo+': solo se calculan '+r.gen.length+'</span>');
+ if(r.plazo&&r.gen.length>r.plazo)av.push('<span class="badge">La tabla trae '+r.gen.length+' años; se usan los '+r.plazo+' del plazo</span>');
+ if(r.ini>'2026-12')av.push('<span class="badge">Inicia en '+genNombreMes(r.ini)+': no suma en el cierre 2026</span>');
+ document.getElementById('genAvisos').innerHTML=av.join(' ');
+ document.getElementById('genCal').innerHTML=Object.entries(r.cal).map(([y,v])=>'<tr'+(y==='2026'?' style="font-weight:700"':'')+'><td>'+y+'</td><td>'+v.meses+'</td><td>'+Math.round(v.kwh).toLocaleString('es-EC')+'</td><td>'+money(v.ing)+'</td></tr>').join('')||'<tr><td colspan="4">—</td></tr>';
+ document.getElementById('genBody').innerHTML=r.filas.map(f=>'<tr><td>'+f.anio+'</td><td>'+genNombreMes(f.desde)+' – '+genNombreMes(f.hasta)+'</td><td>'+f.kwh.toLocaleString('es-EC',{maximumFractionDigits:2})+'</td><td>'+f.kwhF.toLocaleString('es-EC',{maximumFractionDigits:2})+'</td><td>'+money(f.mensual)+'</td><td>'+money(f.anual)+'</td></tr>').join('')
+  +(r.filas.length?'<tr style="font-weight:700"><td colspan="2">Total</td><td>'+r.filas.reduce((s,f)=>s+f.kwh,0).toLocaleString('es-EC',{maximumFractionDigits:2})+'</td><td>'+r.filas.reduce((s,f)=>s+f.kwhF,0).toLocaleString('es-EC',{maximumFractionDigits:2})+'</td><td></td><td>'+money(r.totalNeto)+'</td></tr>':'');
+ document.getElementById('genPie').textContent=r.gen.length+' año(s) leídos de la tabla.';
+}
+async function genGuardar(){
+ const code=STATE.genPo;if(!code)return;
+ const r=genCalcular();
+ if(!r.tar||!r.gen.length){toast('Falta la tarifa o la tabla de generación.');return;}
+ if(r.disp>100){toast('La disponibilidad no puede pasar de 100%.');return;}
+ const a=ppaConfigs().find(x=>x.code===code)||{};
+ STATE.ppaDraft[code]={kwh_anual:r.gen[0],disponibilidad:r.disp,tarifa:r.tar,inicio:r.ini,mensual_manual:'',costo_mensual:a.costo_mensual??'',lead_id:a.lead_id??(ppaLeadDe(a)?.lead_id||''),generacion:r.gen.slice(0,r.anios),plazo:r.plazo||r.anios};
+ document.getElementById('ppaGenDialog').close();
+ await ppaGuardar(code);
+ if(typeof renderCrm==='function')renderCrm();
+}
 function favMargenTotal(filas){const v=filas.filter(r=>r.E>0&&r.C>0),c=v.reduce((x,r)=>x+r.C,0),e=v.reduce((x,r)=>x+r.E,0);return c?percent((c-e)/c):'—';}
 function favEditar(code,campo,valor){
  const v=valor===''?NaN:Number(valor);
