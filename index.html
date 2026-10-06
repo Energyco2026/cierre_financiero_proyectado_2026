@@ -909,18 +909,6 @@ tbody tr:hover{
 #projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
-.aud-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin:14px 0}
-.aud-card{background:var(--card);border:1px solid var(--line);border-left:5px solid #c9d2dd;border-radius:14px;padding:13px 14px;cursor:pointer;text-align:left;font:inherit;color:inherit}
-.aud-card:hover{box-shadow:var(--shadow)}
-.aud-card.sel{outline:2px solid var(--blue)}
-.aud-card.alerta{border-left-color:#e0a100}.aud-card.alta{border-left-color:#d64555}.aud-card.ok{border-left-color:#16a06a}.aud-card.error{border-left-color:#8a94a6}
-.aud-card .t{font-size:12.5px;color:var(--muted);font-weight:700}
-.aud-card .n{font-size:24px;font-weight:800;margin:4px 0 0}
-.aud-card .m{font-size:12px;color:var(--muted)}
-.aud-card .q{font-size:11.5px;margin-top:6px}
-.aud-card .e{font-size:11px;color:#8a94a6;margin-top:4px}
-.aud-table td,.aud-table th{font-size:12.5px;white-space:nowrap}
-.aud-table td.det{white-space:normal;min-width:220px}
 .fav-table th,.fav-table td{white-space:nowrap}
 .fav-table thead th{position:sticky;top:0;z-index:2}
 .fav-table thead tr:nth-child(2) th{top:34px}
@@ -970,7 +958,7 @@ tbody tr:hover{
             ENERGYCONTROL
         </div>
 
-        <div class="menu"><button class="menu-btn" onclick="abrirTab('consolidado',this)">P&G consolidado</button><button class="menu-btn" onclick="abrirTab('fijos',this)">Gastos fijos</button><button class="menu-btn" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button><button class="menu-btn" onclick="abrirTab('forecastav',this)">Forecast por avance</button><button class="menu-btn" onclick="abrirTab('auditoria',this)">Auditoría de balance</button>
+        <div class="menu"><button class="menu-btn" onclick="abrirTab('consolidado',this)">P&G consolidado</button><button class="menu-btn" onclick="abrirTab('fijos',this)">Gastos fijos</button><button class="menu-btn" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button><button class="menu-btn" onclick="abrirTab('forecastav',this)">Forecast por avance</button>
             <button class="menu-btn active" onclick="abrirTab('proyectos',this)">
                 ▣ Resumen
             </button>
@@ -1033,7 +1021,7 @@ tbody tr:hover{
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 23:30</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 23:55</div>
 
         </div>
 
@@ -1359,7 +1347,6 @@ tbody tr:hover{
 <button class="tab-btn" data-tab="fijos" onclick="abrirTab('fijos',this)">Gastos fijos</button>
 <button class="tab-btn" data-tab="proyeccion" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
 <button class="tab-btn" data-tab="forecastav" onclick="abrirTab('forecastav',this)">Forecast por avance</button>
-<button class="tab-btn" data-tab="auditoria" onclick="abrirTab('auditoria',this)">Auditoría de balance</button>
 
                 <button
                     class="tab-btn active"
@@ -1514,18 +1501,6 @@ tbody tr:hover{
                   <thead><tr><th style="min-width:200px">Proyecto</th><th class="fav-edit-h">kWh / año ✎</th><th class="fav-edit-h">Disponibilidad % ✎</th><th class="fav-edit-h">Tarifa $/kWh ✎</th><th class="fav-edit-h">Inicio de operación ✎</th><th class="fav-edit-h">Ingreso mensual ✎</th><th class="fav-edit-h" title="O&M, seguros u otros costos mensuales de la planta (opcional)">Costo mensual ✎</th><th class="fav-edit-h">Oportunidad CRM ✎</th><th>Meses en el forecast</th><th>Ingreso Oct–Dic</th><th>Estado</th><th></th></tr></thead>
                   <tbody id="ppaBody"></tbody>
                 </table></div>
-            </div>
-
-            <div id="tab-auditoria" class="tab-content hidden">
-                <div class="card-title"><h3>Auditoría de balance</h3><small id="audInfo"></small></div>
-                <p class="report-note">Alarmas operativas leídas de Odoo (solo lectura): lo que falta conciliar, cruzar, aplicar o emitir antes de cerrar el balance. Pulsa una tarjeta para ver el detalle y abrir cada documento en Odoo.</p>
-                <div class="filters-row">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:13px">Corte <input type="date" id="audCorte" class="filter-input"></label>
-                  <button id="btnAud" class="btn-primary" onclick="actualizarAuditoria()">↻ Actualizar auditoría</button>
-                  <button class="btn-secondary" id="btnAudXls" onclick="descargarAuditoria()">⬇ Descargar Excel</button>
-                </div>
-                <div id="audCards" class="aud-cards"></div>
-                <div id="audDetalle"></div>
             </div>
 
             <div id="tab-crm" class="tab-content hidden">
@@ -2115,7 +2090,6 @@ async function loadData(){
 
         try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
         try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("forecast_pve_sharepoint",["proyecto","familia"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
-        await cargarAuditoria();
         try{const cr=await readAll("forecast_crm_ventas",["lead_id"]);STATE.crm=cr.data||[];}catch(e){STATE.crm=[];STATE.crmError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
         STATE.projects =
@@ -2554,7 +2528,6 @@ function renderAll(){
     renderClosingForecast();
     renderForecastAvance();
     renderPpa();
-    try{renderAuditoria();}catch(e){console.error(e);}
 
 }
 
@@ -4259,117 +4232,6 @@ function abrirTab(name,button){
    UPDATE ODOO + SHAREPOINT
 ========================================================= */
 
-
-/* =========================================================
-   AUDITORÍA DE BALANCE (solo lectura de Odoo)
-========================================================= */
-const AUD_TIPOS=[
- ['bancos','Bancos por conciliar','Concilia el extracto en Odoo (Contabilidad → Bancos).'],
- ['transitorias','Cuentas transitorias con saldo','Cruza las partidas abiertas o reclasifícalas a su cuenta final.'],
- ['anticipos_proveedores','Anticipos a proveedores sin aplicar','Aplica el pago a la factura; si no tiene PO, pídela a compras.'],
- ['anticipos_clientes','Cobros de clientes sin aplicar','Aplica el cobro a la factura del cliente.'],
- ['facturas_por_cruzar','Facturas por cruzar','El tercero tiene un pago sin aplicar: crúzalo con la factura.'],
- ['sin_retencion','Facturas sin retención','Emite la retención (plazo SRI: 5 días desde la factura).'],
- ['roles','Roles de pago pendientes','Genera y confirma el rol del mes.'],
- ['sin_analitica','Movimientos sin analítica','Pásale el Excel a Jimena para que asigne la analítica.'],
- ['balance','Saldos con signo contrario','Revisa por qué la cuenta quedó con ese signo.']
-];
-function audHoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function audCorte(){const el=document.getElementById('audCorte');if(el&&!el.value)el.value=STATE.aud?.corte||audHoy();return el?.value||audHoy();}
-async function cargarAuditoria(){
- try{
-  const [r,a]=await Promise.all([sb.from('auditoria_resumen').select('*'),readAll('auditoria_alertas',['id'])]);
-  if(r.error)throw r.error;if(a.error)throw a.error;
-  STATE.aud={resumen:r.data||[],alertas:a.data||[],corte:(r.data||[])[0]?.corte||null,guardado:'ok',tablas:true};
- }catch(e){STATE.aud=STATE.aud?.resumen?.length?STATE.aud:{resumen:[],alertas:[],corte:null,tablas:false,errorTablas:e.message};}
-}
-function audSinAnalitica(){
- const corte=audCorte(),desde=corte.slice(0,4)+'-01-01';
- return (STATE.analytic||[]).filter(r=>String(r.fecha)>=desde&&String(r.fecha)<=corte&&String(r.analitica_clave||'SIN_ANALITICA')==='SIN_ANALITICA'&&!(r.analitica_ids||[]).length)
-  .map(r=>({tipo:'sin_analitica',severidad:'media',referencia:r.move_name||'',fecha:r.fecha,tercero:r.partner_nombre||'',cuenta:`${r.cuenta_codigo||''} ${r.cuenta_nombre||''}`.trim(),monto:number(r.debito)-number(r.credito),detalle:{ref:r.ref||null},odoo_model:r.odoo_move_id?'account.move':null,odoo_id:r.odoo_move_id||null}));
-}
-function audAlertas(tipo){return tipo==='sin_analitica'?audSinAnalitica():(STATE.aud?.alertas||[]).filter(a=>a.tipo===tipo);}
-function audResumen(tipo){
- if(tipo==='sin_analitica'){const f=audSinAnalitica();return {tipo,cantidad:f.length,monto:f.reduce((s,x)=>s+Math.abs(number(x.monto)),0),estado:f.length?'alerta':'ok',mensaje:'Líneas de resultados del año sin analítica (datos ya cargados)'};}
- return (STATE.aud?.resumen||[]).find(r=>r.tipo===tipo)||null;
-}
-function audDetalleTexto(a){
- const d=a.detalle||{},p=[];
- if(d.motivo)p.push(d.motivo);
- if(d.sin_po===true)p.push('<b>Sin PO</b>');
- if(d.po)p.push('PO: '+escapeHtml(d.po));
- if(d.dias!=null)p.push('hace '+d.dias+' días');
- if(d.pago_disponible_del_tercero)p.push('Pago disponible del tercero: '+money(d.pago_disponible_del_tercero));
- if(d.total_factura)p.push('Total factura: '+money(d.total_factura));
- if(d.partidas_abiertas)p.push(d.partidas_abiertas+' partidas abiertas');
- if(d.partida_mas_antigua)p.push('desde '+escapeHtml(String(d.partida_mas_antigua)));
- if(d.subtotal)p.push('Subtotal: '+money(d.subtotal));
- if(d.referencia)p.push('Ref: '+escapeHtml(String(d.referencia)));
- if(d.ref)p.push('Ref: '+escapeHtml(String(d.ref)));
- if(d.fuente)p.push(escapeHtml(d.fuente));
- return p.join(' · ');
-}
-function renderAuditoria(){
- const cards=document.getElementById('audCards');if(!cards)return;
- audCorte();
- const aud=STATE.aud||{resumen:[],alertas:[]};
- const info=document.getElementById('audInfo');
- const ultima=(aud.resumen||[])[0]?.sincronizado_en;
- info.innerHTML=!aud.resumen?.length?'Aún no se ha ejecutado. Pulsa <b>Actualizar auditoría</b>.':
-  `Corte ${escapeHtml(aud.corte||'')}${ultima?' · revisado '+new Date(ultima).toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'}):''}${aud.guardado&&aud.guardado!=='ok'?' · <span style="color:#a76400">resultado no guardado (faltan las tablas de auditoría en Supabase)</span>':''}`;
- cards.innerHTML=AUD_TIPOS.map(([tipo,titulo,que])=>{
-  const r=audResumen(tipo);
-  const est=!r?'error':r.estado==='error'?'error':r.cantidad?(audAlertas(tipo).some(a=>a.severidad==='alta')?'alta':'alerta'):'ok';
-  const n=!r?'—':r.estado==='error'?'No se pudo revisar':r.cantidad.toLocaleString('es-EC');
-  const sub=!r?'Sin ejecutar':r.estado==='error'?'':(r.cantidad?(tipo==='roles'?'mes(es)':money(r.monto)):'✓ Todo en orden');
-  const nota=r&&(r.estado==='error'||tipo==='balance'||tipo==='transitorias'||tipo==='anticipos_proveedores')&&r.mensaje?`<div class="e">${escapeHtml(r.mensaje)}</div>`:'';
-  return `<button class="aud-card ${est}${STATE.audSel===tipo?' sel':''}" onclick="audSeleccionar('${tipo}')"><div class="t">${titulo}</div><div class="n"${r&&r.estado==='error'?' style="font-size:15px"':''}>${n}</div><div class="m">${sub}</div>${r&&r.cantidad?`<div class="q">${que}</div>`:''}${nota}</button>`;
- }).join('');
- renderAuditoriaDetalle();
-}
-function audSeleccionar(tipo){STATE.audSel=STATE.audSel===tipo?null:tipo;renderAuditoria();if(STATE.audSel)setTimeout(()=>document.getElementById('audDetalle')?.scrollIntoView({behavior:'smooth',block:'start'}),30);}
-function renderAuditoriaDetalle(){
- const el=document.getElementById('audDetalle');const tipo=STATE.audSel;
- if(!tipo){el.innerHTML='';return;}
- const def=AUD_TIPOS.find(t=>t[0]===tipo);
- const filas=audAlertas(tipo).slice().sort((a,b)=>(a.severidad==='alta'?0:1)-(b.severidad==='alta'?0:1)||String(a.fecha||'').localeCompare(String(b.fecha||'')));
- const max=400,odoo='https://semgroup.odoo.com/mail/view?model=';
- const extra=tipo==='sin_analitica'?' <button class="btn-secondary" onclick="abrirTab(\'pyg\')">Ir a P&G por analítica para descargar</button>':'';
- el.innerHTML=`<div class="card-title" style="margin-top:6px"><h3>${def[1]} · ${filas.length.toLocaleString('es-EC')}</h3><small>${def[2]}${extra}</small></div>`+
- (filas.length?`<div class="table-wrap"><table class="aud-table"><thead><tr><th>Prioridad</th><th>Referencia</th><th>Fecha</th><th>Tercero</th><th>Cuenta / diario</th><th style="text-align:right">Monto</th><th>Detalle</th><th></th></tr></thead><tbody>`+
- filas.slice(0,max).map(a=>`<tr><td><span class="badge ${a.severidad==='alta'?'danger':'warn'}">${a.severidad==='alta'?'Alta':'Media'}</span></td><td>${escapeHtml(a.referencia||'')}</td><td>${escapeHtml(String(a.fecha||'').slice(0,10))}</td><td>${escapeHtml(a.tercero||'')}</td><td>${escapeHtml(a.cuenta||'')}</td><td style="text-align:right">${a.monto==null?'':money(a.monto)}</td><td class="det">${audDetalleTexto(a)}</td><td>${a.odoo_id&&a.odoo_model?`<a href="${odoo}${encodeURIComponent(a.odoo_model)}&res_id=${encodeURIComponent(a.odoo_id)}" target="_blank" rel="noopener">Abrir en Odoo ↗</a>`:''}</td></tr>`).join('')+
- `</tbody></table></div>${filas.length>max?`<p class="report-note">Se muestran ${max} de ${filas.length}. Descarga el Excel para verlas todas.</p>`:''}`:'<p class="report-note">Sin alertas en este control.</p>');
-}
-async function actualizarAuditoria(){
- const btn=document.getElementById('btnAud'),txt=btn.textContent;btn.disabled=true;btn.textContent='Revisando Odoo…';
- try{
-  const d=await invokeSync('auditoria-balance-odoo',{corte:audCorte()});
-  STATE.aud={resumen:d.resumen||[],alertas:d.alertas||[],corte:d.corte,guardado:d.guardado,tablas:d.guardado==='ok'};
-  renderAuditoria();
-  const errores=(d.resumen||[]).filter(r=>r.estado==='error').length;
-  toast('Auditoría actualizada al '+d.corte+(errores?` · ${errores} control(es) no se pudieron revisar (ver tarjeta)`:'')+(d.guardado!=='ok'?' · no quedó guardada (faltan tablas)':''));
- }catch(e){toast('No se pudo actualizar la auditoría: '+e.message);}
- finally{btn.disabled=false;btn.textContent=txt;}
-}
-async function descargarAuditoria(){
- const todas=AUD_TIPOS.flatMap(([t,titulo])=>audAlertas(t).map(a=>({...a,titulo})));
- if(!todas.length&&!(STATE.aud?.resumen||[]).length){toast('Primero pulsa Actualizar auditoría.');return;}
- const btn=document.getElementById('btnAudXls'),txt=btn.textContent;btn.disabled=true;btn.textContent='Generando…';
- try{
-  const X=await cargarSheetJS();const odoo='https://semgroup.odoo.com/mail/view?model=';
-  const res=AUD_TIPOS.map(([t,titulo,que])=>{const r=audResumen(t);return {'Control':titulo,'Cantidad':r?r.cantidad:'','Monto':r?number(r.monto):'','Estado':!r?'Sin ejecutar':r.estado==='error'?'No se pudo revisar':r.cantidad?'Revisar':'OK','Qué hacer':que,'Nota':r?.mensaje||''};});
-  const wb=X.utils.book_new();
-  const ws1=X.utils.json_to_sheet(res);ws1['!cols']=[38,10,14,18,60,60].map(w=>({wch:w}));X.utils.book_append_sheet(wb,ws1,'Resumen');
-  const det=todas.map(a=>({'Control':a.titulo,'Prioridad':a.severidad==='alta'?'Alta':'Media','Referencia':a.referencia||'','Fecha':String(a.fecha||'').slice(0,10),'Tercero':a.tercero||'','Cuenta / diario':a.cuenta||'','Monto':a.monto==null?'':number(a.monto),'Detalle':audDetalleTexto(a).replace(/<[^>]+>/g,''),'Abrir en Odoo':a.odoo_id?'Ver documento':'','Responsable':'','Comentario':''}));
-  const ws2=X.utils.json_to_sheet(det.length?det:[{'Control':'Sin alertas'}]);
-  todas.forEach((a,i)=>{if(!a.odoo_id||!a.odoo_model)return;const c=ws2[X.utils.encode_cell({r:i+1,c:8})];if(c)c.l={Target:odoo+a.odoo_model+'&res_id='+a.odoo_id};const m=ws2[X.utils.encode_cell({r:i+1,c:6})];if(m)m.z='#,##0.00';});
-  ws2['!cols']=[32,9,24,11,32,34,14,60,14,16,30].map(w=>({wch:w}));
-  if(det.length)ws2['!autofilter']={ref:X.utils.encode_range({s:{r:0,c:0},e:{r:det.length,c:10}})};
-  X.utils.book_append_sheet(wb,ws2,'Alertas');
-  X.writeFile(wb,'Auditoria_balance_'+audCorte()+'.xlsx');
- }catch(e){toast('No se pudo generar el Excel: '+e.message);}
- finally{btn.disabled=false;btn.textContent=txt;}
-}
 async function invokeSync(name,body={}){
  const {data:{session},error}=await sb.auth.getSession();
  if(error || !session) throw new Error("Inicia sesión para actualizar.");
