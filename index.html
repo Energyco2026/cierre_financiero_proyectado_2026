@@ -1021,7 +1021,7 @@ tbody tr:hover{
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 21:20</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 05-oct-2026 21:30</div>
 
         </div>
 
@@ -1431,7 +1431,8 @@ tbody tr:hover{
                         placeholder="Buscar proyecto..."
                         oninput="renderProjects()">
 
-                    <select id="alcanceProyectos" onchange="renderProjects()" aria-label="Qué proyectos mostrar"><option value="PROY">Proyectos (contrato ≥ $5.000)</option><option value="CONTRATO">Cualquier contrato &gt; $0</option><option value="MOV">Con movimiento 2026</option><option value="ALL">Todas las analíticas</option></select>
+                    <select id="alcanceProyectos" onchange="renderProjects()" aria-label="Qué proyectos mostrar"><option value="PROY">Proyectos con contrato desde el mínimo</option><option value="CONTRATO">Cualquier contrato &gt; $0</option><option value="MOV">Con movimiento 2026</option><option value="ALL">Todas las analíticas</option></select>
+                    <label style="display:flex;align-items:center;gap:6px;white-space:nowrap">Contrato desde $<input id="contratoMinProyectos" class="filter-input" type="number" min="0" step="1000" value="5000" style="width:110px" oninput="renderProjects()" aria-label="Contrato mínimo"></label>
                     <select id="tipoProyectos" onchange="renderProjects()" aria-label="Tipo de proyecto"><option value="ALL">Todos los tipos</option><option>Industrial</option><option>Comercial</option><option>PPA</option><option>Sector Público</option><option>Residencial</option><option value="Sin tipo">Sin tipo en CRM</option></select>
                     <select id="vistaProyectos" onchange="renderProjects()" aria-label="Columnas"><option value="RES">Vista resumida</option><option value="DET">Vista detallada</option></select>
                     <select
@@ -3186,7 +3187,7 @@ function renderProjects(){
 
             const conMovimiento=[p.monto_contrato,p.ingresos_odoo,p.costo_directo_odoo,p.ejecutado_operativo,p.por_ejecutar_operativo].some(v=>Math.abs(number(v))>0.005)||(STATE.savedSims||[]).some(x=>x.proyecto_codigo===p.proyecto_codigo);
             const alcance=document.getElementById("alcanceProyectos").value;
-            if(alcance==="PROY"&&!(number(p.monto_contrato)>=5000))
+            if(alcance==="PROY"&&!(number(p.monto_contrato)>=Math.max(0.01,number(document.getElementById("contratoMinProyectos").value))))
                 return false;
             const tipoSel=document.getElementById("tipoProyectos").value;
             if(tipoSel!=="ALL"&&tipoProyecto(p.proyecto_codigo)!==tipoSel)
