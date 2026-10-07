@@ -1059,8 +1059,8 @@ const AUD_TIPOS=[
  ['facturas_por_cruzar','Facturas por cruzar','El tercero tiene un pago sin aplicar: crúzalo con la factura.'],
  ['sin_retencion','Facturas sin retención','Emite la retención (plazo SRI: 5 días desde la factura).'],
  ['roles','Roles de pago pendientes','Genera y confirma el rol del mes.'],
- ['an_po_sin','Memo con PO y sin analítica','El memo dice a qué PO va: carga esa analítica en Odoo.'],
- ['an_po_distinta','PO del memo ≠ analítica cargada','El costo está en otra obra: corrige la analítica o el memo.'],
+ ['an_po_sin','Costo/gasto: memo con PO y sin analítica','El memo dice a qué PO va: carga esa analítica en Odoo.'],
+ ['an_po_distinta','Costo/gasto: PO del memo ≠ analítica','El costo está en otra obra: corrige la analítica o el memo.'],
  ['an_costo','Costo (501) sin analítica ni PO','Costo de obra sin proyecto: pide a operaciones la PO y asígnala.'],
  ['an_ingreso','Ingresos sin analítica','Ingreso sin proyecto: el margen por obra queda mal. Asigna la PO.'],
  ['an_incompleta','Analítica repartida ≠ 100%','La distribución no suma 100%: parte del valor queda fuera o duplicado.'],
@@ -1084,7 +1084,7 @@ function audAnalitica(){
  const porLinea=new Map();
  for(const r of filas){
   const sinAn=String(r.analitica_clave||'SIN_ANALITICA')==='SIN_ANALITICA'&&!(r.analitica_ids||[]).length;
-  const cod=String(r.cuenta_codigo||''),pos=anPOs(r.ref);
+  const cod=String(r.cuenta_codigo||''),esCG=cod.startsWith('501')||cod.startsWith('502'),pos=esCG?anPOs(r.ref):[];
   if(sinAn){
    if(pos.length)res.an_po_sin.push(anFila('an_po_sin',r,'alta','Va a PO '+pos.join(', ')));
    else if(cod.startsWith('501'))res.an_costo.push(anFila('an_costo',r,'alta','Costo sin proyecto'));
@@ -1110,7 +1110,7 @@ function audResumen(tipo){
  if(AN_TIPOS.includes(tipo)){
   if(STATE.analyticError)return {tipo,cantidad:0,monto:0,estado:'error',mensaje:STATE.analyticError};
   const all=audAnalitica(),f=all[tipo];
-  const msg={an_po_sin:'Incluye gastos 502 cuando el memo menciona una PO',an_po_distinta:'Compara el número de PO del memo con la analítica de la línea',an_costo:'Cuentas 501 del año hasta el corte',an_ingreso:'Cuentas 4 del año hasta el corte',an_incompleta:'Suma de porcentajes analíticos por línea'}[tipo];
+  const msg={an_po_sin:'Cuentas de costo (501) y gasto (502) cuyo memo menciona una PO',an_po_distinta:'Costo (501) y gasto (502): PO del memo vs analítica de la línea',an_costo:'Cuentas 501 del año hasta el corte',an_ingreso:'Cuentas 4 del año hasta el corte',an_incompleta:'Suma de porcentajes analíticos por línea'}[tipo];
   const extra=tipo==='an_costo'&&all.excluidos?` · Fuera de alarma: ${all.excluidos} líneas de gasto sin PO (${money(all.excluidosMonto)})`:'';
   return {tipo,cantidad:f.length,monto:f.reduce((s,x)=>s+Math.abs(number(x.monto)),0),estado:f.length?'alerta':'ok',mensaje:msg+extra};
  }
