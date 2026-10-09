@@ -918,7 +918,7 @@ tbody tr:hover{
 .ledger-msg.warn{background:#fff6e6;color:#8a5300}
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
-<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.consolidated-matrix td.pyg-neg{color:#c62839}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.consolidated-matrix td.pyg-neg{color:#c62839}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
 #projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
@@ -3690,7 +3690,7 @@ function pygConsolidadoModelo(){
   const fila={label:e.label,cls:e.cls||'',area:e.area||null,tipo:e.ratio?'pct':'money',nivel:0,valores,detalle:[]};
   if(e.area){
    fila.detalle=base.details.filter(d=>d.area===e.area)
-    .map(d=>({label:(d.code||'')+' '+(d.name||''),fuente:d.source||'',valores:cols.map(c=>{if(c.noDisp)return {txt:'No disponible',v:null};const v=sumaDet(d,c);return {txt:money(v),v,neg:v<-0.004};})}))
+    .map(d=>({code:d.code,area:e.area,label:(d.code||'')+' '+(d.name||''),fuente:d.source||'',valores:cols.map(c=>{if(c.noDisp)return {txt:'No disponible',v:null};const v=sumaDet(d,c);return {txt:money(v),v,neg:v<-0.004};})}))
     .filter(d=>d.valores.some(x=>x.v!==null&&Math.abs(x.v)>=0.005))
     .sort((a,b)=>String(a.label).localeCompare(String(b.label),'es',{numeric:true}));
   }
@@ -3720,19 +3720,56 @@ function filtroPygCambio(el){
  const v=el.value.trim();
  if(!v||[...document.querySelectorAll('#consolidatedPoList option')].some(o=>o.value===v)||/^\d{3,4}$/.test(v))renderConsolidated();
 }
+/* ========= P&G CONSOLIDADO: detalle de asientos con enlace a Odoo ========= */
+function lineasCeldaPyg(area,code,col){
+ const st=STATE.pygUltimo;if(!st)return [];
+ const meses=new Set(col.idx.filter(i=>st.realMode||i<9).map(i=>String(i+1).padStart(2,'0')));
+ return lineasReales(st.filtro).filter(r=>{
+  const f=String(r.fecha);
+  return f.startsWith('2026-')&&meses.has(f.slice(5,7))&&accountingBucket(r)===area&&(code===null||String(r.cuenta_codigo)===String(code));
+ }).map(r=>({...r,monto:(area==='income'?-1:1)*number(r.saldo_analitico)}));
+}
+function abrirDetallePyg(area,code,ci){
+ const st=STATE.pygUltimo,col=st?.cols[ci];if(!col)return;
+ const lineas=lineasCeldaPyg(area,code,col).sort((a,b)=>Math.abs(b.monto)-Math.abs(a.monto));
+ const total=lineas.reduce((a,r)=>a+r.monto,0),odoo='https://semgroup.odoo.com/mail/view?model=';
+ const det=code===null?null:st.filas.flatMap(f=>f.detalle).find(d=>d.area===area&&String(d.code)===String(code));
+ const titulo=(code===null?(st.filas.find(f=>f.area===area)?.label||area):(det?.label||code))+' · '+col.label;
+ const cuentaId=code!==null&&lineas.find(r=>r.cuenta_id)?.cuenta_id;
+ const MAX=400,vis=lineas.slice(0,MAX);
+ let m=document.getElementById('pygDrill');
+ if(!m){m=document.createElement('div');m.id='pygDrill';m.style.cssText='position:fixed;inset:0;background:rgba(8,40,74,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';m.onclick=e=>{if(e.target===m)cerrarDetallePyg();};document.body.appendChild(m);document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarDetallePyg();});}
+ m.innerHTML='<div style="background:#fff;border-radius:12px;max-width:1150px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
+  +'<div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start"><div style="flex:1"><h3 style="margin:0 0 4px">'+escapeHtml(titulo)+'</h3>'
+  +'<div class="report-note" style="margin:0">'+lineas.length+' línea(s) · Total '+money(total)+(st.filtro?' · Filtro: '+escapeHtml(st.filtro.label)+' (parte asignada a esa analítica)':' · Toda Energycontrol')
+  +(col.forecast&&!st.realMode?' · Solo el real ene–sep: el forecast no tiene asientos en Odoo':'')+'</div></div>'
+  +(cuentaId?'<a class="go-link" href="'+odoo+'account.account&res_id='+encodeURIComponent(cuentaId)+'" target="_blank" rel="noopener">Cuenta en Odoo ↗</a>':'')
+  +'<button class="btn-secondary" onclick="cerrarDetallePyg()">✕</button></div>'
+  +'<div style="overflow:auto;padding:0 20px 16px"><table style="width:100%"><thead><tr><th>Fecha</th><th>Asiento</th>'+(code===null?'<th>Cuenta</th>':'')+'<th>Socio</th><th>Referencia</th><th>Analítica</th><th style="text-align:right">Monto</th><th></th></tr></thead><tbody>'
+  +(vis.length?vis.map(r=>'<tr><td style="white-space:nowrap">'+escapeHtml(String(r.fecha).slice(0,10))+'</td><td style="white-space:nowrap">'+escapeHtml(r.move_name||'—')+'</td>'
+   +(code===null?'<td>'+escapeHtml((r.cuenta_codigo||'')+' '+(r.cuenta_nombre||''))+'</td>':'')
+   +'<td>'+escapeHtml(r.partner_nombre||'—')+'</td><td>'+escapeHtml(r.ref||'—')+'</td><td>'+escapeHtml(r.analitica_nombre||'—')+'</td>'
+   +'<td style="text-align:right;white-space:nowrap'+(r.monto<-0.004?';color:#c62839':'')+'">'+money(r.monto)+'</td>'
+   +'<td>'+(r.odoo_move_id?'<a class="go-link" href="'+odoo+'account.move&res_id='+encodeURIComponent(r.odoo_move_id)+'" target="_blank" rel="noopener" title="Abrir el asiento en Odoo">Odoo ↗</a>':'')+'</td></tr>').join('')
+   :'<tr><td colspan="8">No hay asientos reales para esta celda.</td></tr>')
+  +'</tbody></table>'+(lineas.length>MAX?'<p class="report-note">Se muestran las '+MAX+' líneas de mayor monto de '+lineas.length+'. Usa "Cuenta en Odoo" para ver todas.</p>':'')+'</div></div>';
+ m.style.display='flex';
+}
+function cerrarDetallePyg(){const m=document.getElementById('pygDrill');if(m)m.style.display='none';}
 function limpiarFiltroPyg(){const el=document.getElementById('consolidatedPo');if(el){el.value='';renderConsolidated();}}
 function renderConsolidated(){
  opcionesFiltroPyg();
- const {f,filtro,realMode,cols,filas}=pygConsolidadoModelo();
+ const modelo=pygConsolidadoModelo(),{f,filtro,realMode,cols,filas}=modelo;STATE.pygUltimo=modelo;
  const claseCol=c=>(c.agg?'closing-cell':c.forecast?'forecast-cell':'');
- const celda=(x,c)=>'<td class="'+claseCol(c)+(x.neg?' pyg-neg':'')+(x.na?' pyg-na':'')+'"'+(x.na?' title="El ingreso del período es cero o negativo (reversas): el margen no es interpretable."':'')+'>'+x.txt+'</td>';
+ const clic=(area,code,i)=>{const c=cols[i];if(!area||(!realMode&&c.idx.every(k=>k>=9)))return '';return ' onclick="abrirDetallePyg(\''+area+'\','+(code===null?'null':'\''+String(code).replace(/[^\w.:-]/g,'')+'\'')+','+i+')" title="Ver asientos en Odoo" style="cursor:pointer"';};
+ const celda=(x,c,ex='')=>'<td class="'+claseCol(c)+(x.neg?' pyg-neg':'')+(x.na?' pyg-na':'')+(ex?' pyg-click':'')+'"'+ex+(x.na?' title="El ingreso del período es cero o negativo (reversas): el margen no es interpretable."':'')+'>'+x.txt+'</td>';
  document.getElementById('consolidatedHead').innerHTML='<tr><th>Concepto / cuenta</th>'+cols.map(c=>'<th class="'+(c.agg?'closing-cell':'')+'">'+c.label+'<br>'+c.sub+'</th>').join('')+'</tr>';
  let html='';
  for(const fi of filas){
   const abierto=fi.area&&STATE.closingExpanded?.has(fi.area);
   const etiqueta=fi.area?'<button class="pyg-toggle" onclick="toggleClosingGroup(\''+fi.area+'\')">'+(abierto?'▾ ':'▸ ')+fi.label+'</button>':fi.label;
-  html+='<tr class="'+fi.cls+(fi.tipo==='pct'?' pyg-pct':'')+'"><th>'+etiqueta+'</th>'+fi.valores.map((x,i)=>celda(x,cols[i])).join('')+'</tr>';
-  if(abierto)html+=fi.detalle.length?fi.detalle.map(d=>'<tr><th style="padding-left:28px">'+escapeHtml(d.label)+'</th>'+d.valores.map((x,i)=>celda(x,cols[i])).join('')+'</tr>').join(''):'<tr><th style="padding-left:28px;color:var(--muted)">Sin movimientos</th>'+cols.map(c=>'<td class="'+claseCol(c)+'"></td>').join('')+'</tr>';
+  html+='<tr class="'+fi.cls+(fi.tipo==='pct'?' pyg-pct':'')+'"><th>'+etiqueta+'</th>'+fi.valores.map((x,i)=>celda(x,cols[i],fi.area&&x.v?clic(fi.area,null,i):'')).join('')+'</tr>';
+  if(abierto)html+=fi.detalle.length?fi.detalle.map(d=>'<tr><th style="padding-left:28px">'+escapeHtml(d.label)+'</th>'+d.valores.map((x,i)=>celda(x,cols[i],x.v?clic(d.area,d.code,i):'')).join('')+'</tr>').join(''):'<tr><th style="padding-left:28px;color:var(--muted)">Sin movimientos</th>'+cols.map(c=>'<td class="'+claseCol(c)+'"></td>').join('')+'</tr>';
  }
  document.getElementById('consolidatedBody').innerHTML=html;
  const alcance=filtro?'Filtro: '+filtro.label:'Toda Energycontrol';
