@@ -918,7 +918,7 @@ tbody tr:hover{
 .ledger-msg.warn{background:#fff6e6;color:#8a5300}
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
-<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.consolidated-matrix td.pyg-neg{color:#c62839}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
 #projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
@@ -1410,11 +1410,11 @@ td.fav-com-td{white-space:normal!important}
 
 <div id="tab-consolidado" class="tab-content hidden">
  <h3>P&G consolidado · Cierre 2026</h3>
- <div class="filters-row"><label>Reporte <select id="consolidatedMode" onchange="renderConsolidated()"><option value="cierre">Real + Forecast + Cierre 2026</option><option value="real">Real Odoo por mes / anual</option></select></label><button class="btn" onclick="resetForecast()">Restaurar escenario</button><button class="btn-secondary" id="btnPygXls" onclick="descargarPygConsolidado()">⬇ Descargar Excel</button></div>
+ <div class="filters-row"><label>Reporte <select id="consolidatedMode" onchange="renderConsolidated()"><option value="cierre">Real + Forecast + Cierre 2026</option><option value="real">Real Odoo por mes / anual</option></select></label><label>PO / analítica <input id="consolidatedPo" list="consolidatedPoList" class="filter-input" placeholder="Toda Energycontrol · escribe la PO" oninput="filtroPygCambio(this)" onchange="renderConsolidated()" style="min-width:300px"><datalist id="consolidatedPoList"></datalist></label><button class="btn-secondary" onclick="limpiarFiltroPyg()" title="Quitar filtro">✕</button><button class="btn" onclick="resetForecast()">Restaurar escenario</button><button class="btn-secondary" id="btnPygXls" onclick="descargarPygConsolidado()">⬇ Descargar Excel</button></div>
  <p class="report-note" id="consolidatedPeriod"></p>
  <div class="table-wrap consolidated-matrix"><table><thead id="consolidatedHead"></thead><tbody id="consolidatedBody"></tbody></table></div>
  <p id="consolidatedAllocation" class="report-note"></p>
- <p class="report-note">Toda Energycontrol, incluidas las líneas sin analítica. Cada movimiento contable se cuenta una sola vez. Despliega ingresos y cuentas de gastos con ▸. El reporte de cierre mantiene el corte septiembre; el selector mensual de la cabecera aplica al reporte Real Odoo. El forecast no incluye asientos reales de octubre a diciembre.</p>
+ <p class="report-note">Sin filtro: toda Energycontrol, incluidas las líneas sin analítica; cada movimiento contable se cuenta una sola vez. Con filtro de PO/analítica: solo la parte asignada a esa analítica. Despliega ingresos y cuentas de gastos con ▸. El reporte de cierre mantiene el corte septiembre; el selector mensual de la cabecera aplica al reporte Real Odoo. El forecast no incluye asientos reales de octubre a diciembre.</p>
 </div>
 <div id="tab-fijos" class="tab-content hidden">
  <h3>Presupuesto Excel · Octubre, noviembre y diciembre</h3>
@@ -1844,7 +1844,7 @@ function money(v){
             minimumFractionDigits:2,
             maximumFractionDigits:2
         }
-    ).format(number(v));
+    ).format(Math.abs(number(v))).replace(/^/, number(v)<-0.004?"-":"");
 
 }
 
@@ -3548,8 +3548,8 @@ function projectRealAtCutoff(code){
   const m=analyticMatrix([r],'ALL','ALL','',code);return sum+m.total.expense;
  },0)};
 }
-function forecastModel(){
- const real=ledgerLines(STATE.analytic).filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
+function forecastModel(filtro=null){
+ const real=lineasReales(filtro).filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
  const months=Array.from({length:12},(_,i)=>'2026-'+String(i+1).padStart(2,'0')+'-01');
  const details=new Map(),totals=months.map(()=>({income:0,cost:0,sales:0,admin:0,finance:0,other:0}));
  function add(month,code,name,area,amount,source){
@@ -3558,57 +3558,188 @@ function forecastModel(){
   details.get(key).values[i]+=amount;totals[i][area]+=amount;
  }
  for(const r of real){const area=accountingBucket(r);add(String(r.fecha).slice(0,7)+'-01',r.cuenta_codigo,r.cuenta_nombre,area,(area==='income'?-1:1)*number(r.saldo_analitico),'Odoo');}
- for(const original of STATE.fixedBudget||[]){const r=budgetEntry(original);if(r.amount===null)continue;
+ if(!filtro)for(const original of STATE.fixedBudget||[]){const r=budgetEntry(original);if(r.amount===null)continue;
   for(const a of r.allocations){const area=accountingBucket({cuenta_codigo:a.code});add(r.period,a.code,'Presupuesto: '+r.description,area,number(r.amount)*number(a.weight),'Excel');}
  }
  const scenarios=[];
  for(const s of STATE.savedSims||[]){
   const month=String(s.mes).slice(0,10),income=number(s.ingreso),cost=number(s.costo),code=s.proyecto_codigo;
+  if(filtro&&!(filtro.tipo==='po'&&String(code)===filtro.code))continue;
   add(month,'PROYECTO:'+code,'Ingreso a registrar PO '+code,'income',income,'Simulación');
   add(month,'COSTO:'+code,'Costo a registrar PO '+code,'cost',cost,'Simulación');
   scenarios.push({id:s.id,code,month,income,cost,nota:s.nota,avance:s.avance_acumulado,fecha:s.actualizado_en});
  }
  for(const r of STATE.ppaRows||[]){
   const code=String(r.fuente_ref).slice(4),month=String(r.mes).slice(0,10);
+  if(filtro&&!(filtro.tipo==='po'&&code===filtro.code))continue;
   add(month,'PPA:'+code,'Venta de energía PPA PO '+code,'income',number(r.ingreso),'PPA');
   if(number(r.costo))add(month,'PPACOSTO:'+code,'Costo operación PPA PO '+code,'cost',number(r.costo),'PPA');
  }
- for(const r of STATE.resRows||[]){
+ if(!filtro)for(const r of STATE.resRows||[]){
   const month=String(r.mes).slice(0,10);
   add(month,'RESIDENCIAL','Provisión ventas residenciales','income',number(r.ingreso),'Provisión');
   if(number(r.costo))add(month,'RESIDENCIAL_COSTO','Costo provisión ventas residenciales','cost',number(r.costo),'Provisión');
  }
  const manualIncome=document.getElementById('forecastRevenue').value,manualCost=document.getElementById('forecastCost').value;
  const valid=v=>v!==''&&Number.isFinite(Number(v))&&Number(v)>=0;
- if(valid(manualIncome))add('2026-12-01','OTROS_INGRESOS','Otros ingresos pendientes','income',Number(manualIncome),'Manual');
- if(valid(manualCost))add('2026-12-01','OTROS_COSTOS','Otros costos pendientes sin duplicar OC','cost',Number(manualCost),'Manual');
+ if(!filtro&&valid(manualIncome))add('2026-12-01','OTROS_INGRESOS','Otros ingresos pendientes','income',Number(manualIncome),'Manual');
+ if(!filtro&&valid(manualCost))add('2026-12-01','OTROS_COSTOS','Otros costos pendientes sin duplicar OC','cost',Number(manualCost),'Manual');
  for(const t of totals){t.expenses=t.sales+t.admin+t.finance+t.other;t.gross=t.income-t.cost;t.out=t.cost+t.expenses;t.profit=t.income-t.out;}
  const total=Object.fromEntries(Object.keys(totals[0]).map(k=>[k,totals.reduce((sum,t)=>sum+t[k],0)]));
- return {months,details:[...details.values()],totals,total,scenarios,ready:STATE.budgetLoaded===true&&STATE.fixedBudget.length>0,manualValid:valid(manualIncome)&&valid(manualCost)};
+ return {months,details:[...details.values()],totals,total,scenarios,ready:filtro?true:STATE.budgetLoaded===true&&STATE.fixedBudget.length>0,manualValid:valid(manualIncome)&&valid(manualCost)};
 }
+/* ========= P&G CONSOLIDADO: filtro por PO / analítica + estructura NIIF ========= */
+const PYG_PO_RE=/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i;
+const PYG_TASA_PART=0.15,PYG_TASA_IR=0.25;
+function pygFiltroActual(){
+ const v=(document.getElementById('consolidatedPo')?.value||'').trim();
+ if(!v)return null;
+ const m=v.match(/^(\d{3,4})(?:\s|$)/);
+ return m?{tipo:'po',code:m[1],label:v}:{tipo:'analitica',name:v.toLowerCase(),label:v};
+}
+function filaEnFiltro(r,filtro){
+ if(!filtro)return true;
+ const names=String(r.analitica_nombre||'').split(' | ').map(n=>n.trim());
+ return filtro.tipo==='po'?names.some(n=>n.match(PYG_PO_RE)?.[1]===filtro.code):names.some(n=>n.toLowerCase()===filtro.name);
+}
+/* Sin filtro: cada línea contable una sola vez (saldo de la línea).
+   Con filtro: solo la parte distribuida a esa analítica (saldo_analitico). */
+function lineasReales(filtro){
+ return filtro?STATE.analytic.filter(r=>filaEnFiltro(r,filtro)):ledgerLines(STATE.analytic);
+}
+function pygAgrupar(lines){
+ const totals=Array.from({length:12},()=>({income:0,cost:0,sales:0,admin:0,finance:0,other:0})),det=new Map();
+ for(const r of lines){
+  const f=String(r.fecha);if(!f.startsWith('2026-'))continue;
+  const i=Number(f.slice(5,7))-1,area=accountingBucket(r),v=(area==='income'?-1:1)*number(r.saldo_analitico);
+  totals[i][area]+=v;
+  const k=area+':'+r.cuenta_codigo;
+  if(!det.has(k))det.set(k,{code:r.cuenta_codigo,name:r.cuenta_nombre,area,values:Array(12).fill(0),source:'Odoo'});
+  det.get(k).values[i]+=v;
+ }
+ return {totals,details:[...det.values()]};
+}
+function pygDerivar(t,conImpuestos){
+ const d={...t};
+ d.gross=d.income-d.cost;
+ d.operating=d.gross-d.sales-d.admin;
+ d.uap=d.operating-d.finance-d.other;
+ if(conImpuestos){
+  d.part=Math.max(0,d.uap)*PYG_TASA_PART;
+  d.ir=Math.max(0,d.uap-d.part)*PYG_TASA_IR;
+  d.net=d.uap-d.part-d.ir;
+ }else{d.part=null;d.ir=null;d.net=null;}
+ return d;
+}
+function pygConsolidadoModelo(){
+ const filtro=pygFiltroActual(),realMode=document.getElementById('consolidatedMode').value==='real';
+ const f=forecastModel(filtro);
+ const base=realMode?pygAgrupar(lineasReales(filtro)):{totals:f.totals,details:f.details};
+ const nombresMes=f.months.map(m=>monthName(m));
+ const cols=[];
+ if(realMode){
+  const sel=f.months.map((_,i)=>i).filter(i=>monthIncluded(String(i+1).padStart(2,'0')));
+  sel.forEach(i=>cols.push({idx:[i],label:nombresMes[i],sub:'Real Odoo',agg:false,forecast:false}));
+  cols.push({idx:sel,label:'Acumulado',sub:'Real Odoo',agg:true,forecast:false});
+ }else{
+  for(let i=0;i<9;i++)cols.push({idx:[i],label:nombresMes[i],sub:'Real Odoo',agg:false,forecast:false});
+  cols.push({idx:[0,1,2,3,4,5,6,7,8],label:'Acum. ene–sep',sub:'Real Odoo',agg:true,forecast:false});
+  for(let i=9;i<12;i++)cols.push({idx:[i],label:nombresMes[i],sub:'Forecast',agg:false,forecast:true});
+  cols.push({idx:[...Array(12).keys()],label:'Cierre 2026',sub:'Real + forecast',agg:true,forecast:true,cierre:true});
+ }
+ for(const c of cols){
+  c.noDisp=!realMode&&c.forecast&&!f.ready;
+  const s={income:0,cost:0,sales:0,admin:0,finance:0,other:0};
+  for(const i of c.idx)for(const k in s)s[k]+=number(base.totals[i][k]);
+  c.d=pygDerivar(s,c.agg&&!filtro);
+ }
+ const sumaDet=(d,c)=>c.idx.reduce((a,i)=>a+number(d.values[i]),0);
+ const especificacion=[
+  {label:'Total Ingresos',key:'income',cls:'pyg-total',area:'income'},
+  {label:'Costo de Ingresos',key:'cost',area:'cost'},
+  {label:'Utilidad Bruta',key:'gross',cls:'pyg-total'},
+  {label:'Margen Bruto',ratio:'gross'},
+  {label:'50201 Gastos de venta',key:'sales',area:'sales'},
+  {label:'50202 Gastos administrativos',key:'admin',area:'admin'},
+  {label:'Utilidad Operacional',key:'operating',cls:'pyg-total'},
+  {label:'Margen Operacional',ratio:'operating'},
+  {label:'50203 Gastos financieros',key:'finance',area:'finance'},
+  {label:'Otros gastos / clasificación pendiente',key:'other',area:'other'},
+  ...(filtro?[
+   {label:'Contribución de la selección',key:'uap',cls:'pyg-benefit'},
+   {label:'Margen de contribución',ratio:'uap'}
+  ]:[
+   {label:'Utilidad antes de participación e impuestos',key:'uap',cls:'pyg-total'},
+   {label:'(-) 15% Participación trabajadores · estimado',key:'part',soloAgg:true},
+   {label:'(-) 25% Impuesto a la renta · estimado',key:'ir',soloAgg:true},
+   {label:'Utilidad Neta estimada',key:'net',cls:'pyg-benefit',soloAgg:true},
+   {label:'Margen Neto estimado',ratio:'net',soloAgg:true}
+  ])
+ ];
+ const filas=[];
+ for(const e of especificacion){
+  const valores=cols.map(c=>{
+   if(c.noDisp)return {txt:'No disponible',v:null};
+   if(e.soloAgg&&!c.agg)return {txt:'—',v:null};
+   if(e.ratio){
+    if(c.d.income<=0)return {txt:'n/a',v:null,na:true};
+    const r=c.d[e.ratio]/c.d.income;return {txt:percent(r),v:r,neg:r<0};
+   }
+   const v=c.d[e.key];return {txt:money(v),v,neg:v<-0.004};
+  });
+  const fila={label:e.label,cls:e.cls||'',area:e.area||null,tipo:e.ratio?'pct':'money',nivel:0,valores,detalle:[]};
+  if(e.area){
+   fila.detalle=base.details.filter(d=>d.area===e.area)
+    .map(d=>({label:(d.code||'')+' '+(d.name||''),fuente:d.source||'',valores:cols.map(c=>{if(c.noDisp)return {txt:'No disponible',v:null};const v=sumaDet(d,c);return {txt:money(v),v,neg:v<-0.004};})}))
+    .filter(d=>d.valores.some(x=>x.v!==null&&Math.abs(x.v)>=0.005))
+    .sort((a,b)=>String(a.label).localeCompare(String(b.label),'es',{numeric:true}));
+  }
+  filas.push(fila);
+ }
+ return {f,filtro,realMode,cols,filas};
+}
+function opcionesFiltroPyg(){
+ const dl=document.getElementById('consolidatedPoList');if(!dl)return;
+ if(STATE.pygPoRef===STATE.analytic&&STATE.pygPoSims===STATE.savedSims&&STATE.pygPoPpa===STATE.ppaRows)return;
+ STATE.pygPoRef=STATE.analytic;STATE.pygPoSims=STATE.savedSims;STATE.pygPoPpa=STATE.ppaRows;
+ const pos=new Map(),otras=new Set();
+ for(const r of STATE.analytic||[]){
+  if(!String(r.fecha).startsWith('2026-'))continue;
+  for(const n of String(r.analitica_nombre||'').split(' | ')){
+   const t=n.trim();if(!t||t==='Sin analítica')continue;
+   const c=t.match(PYG_PO_RE)?.[1];
+   if(c){if(!pos.has(c))pos.set(c,STATE.names?.[c]||t);}else otras.add(t);
+  }
+ }
+ for(const s of STATE.savedSims||[]){const c=String(s.proyecto_codigo);if(!pos.has(c))pos.set(c,STATE.names?.[c]||'');}
+ for(const r of STATE.ppaRows||[]){const c=String(r.fuente_ref).slice(4);if(!pos.has(c))pos.set(c,STATE.names?.[c]||'PPA');}
+ dl.innerHTML=[...pos].sort((a,b)=>a[0].localeCompare(b[0],'es',{numeric:true})).map(([c,n])=>'<option value="'+escapeHtml(c+(n?' — '+n:''))+'">').join('')
+  +[...otras].sort((a,b)=>a.localeCompare(b,'es')).map(n=>'<option value="'+escapeHtml(n)+'">').join('');
+}
+function filtroPygCambio(el){
+ const v=el.value.trim();
+ if(!v||[...document.querySelectorAll('#consolidatedPoList option')].some(o=>o.value===v)||/^\d{3,4}$/.test(v))renderConsolidated();
+}
+function limpiarFiltroPyg(){const el=document.getElementById('consolidatedPo');if(el){el.value='';renderConsolidated();}}
 function renderConsolidated(){
- const f=forecastModel(),realMode=document.getElementById('consolidatedMode').value==='real';
- const indices=realMode?f.months.map((_,i)=>i).filter(i=>monthIncluded(String(i+1).padStart(2,'0'))):f.months.map((_,i)=>i);
- const cells=(values,margin=false)=>indices.map(i=>'<td class="'+(!realMode&&i>=9?'forecast-cell':'')+'">'+(!realMode&&i>=9&&!f.ready?'No disponible':margin?percent(values[i]):money(values[i]))+'</td>').join('')+(realMode?'':'<td class="closing-cell">'+(!f.ready?'No disponible':margin?percent(f.total[values.key]/f.total.income||0):money(values.reduce((a,b)=>a+b,0)))+'</td>');
- const totals=realMode?f.months.map(m=>accountingTotals(STATE.analytic.filter(r=>String(r.fecha).slice(0,7)===m.slice(0,7)))):f.totals;
- const get=k=>totals.map(t=>t[k]);
- const line=(label,key,cls='pyg-total',area=null)=>{
-  let html='<tr class="'+cls+'"><th>'+(area?'<button class="pyg-toggle" onclick="toggleClosingGroup(\''+area+'\')">'+(STATE.closingExpanded?.has(area)?'▾ ':'▸ ')+label+'</button>':label)+'</th>'+cells(get(key))+'</tr>';
-  if(area&&STATE.closingExpanded?.has(area)){
-   const details=realMode?ledgerLines(STATE.analytic).filter(r=>accountingBucket(r)===area&&String(r.fecha).startsWith('2026-')).reduce((a,r)=>{let d=a.find(x=>x.code===r.cuenta_codigo);if(!d){d={code:r.cuenta_codigo,name:r.cuenta_nombre,values:Array(12).fill(0)};a.push(d);}d.values[Number(String(r.fecha).slice(5,7))-1]+=(area==='income'?-1:1)*number(r.saldo_analitico);return a;},[]):f.details.filter(d=>d.area===area);
-   html+=details.sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(d=>'<tr><th style="padding-left:28px">'+escapeHtml(d.code+' '+d.name)+'</th>'+cells(d.values)+'</tr>').join('');
-  }return html;
- };
- document.getElementById('consolidatedHead').innerHTML='<tr><th>Concepto / cuenta</th>'+indices.map(i=>'<th>'+monthName(f.months[i])+'<br>'+ (realMode?'Real Odoo':i<9?'Real Odoo':'Forecast')+'</th>').join('')+(realMode?'':'<th>Cierre 2026</th>')+'</tr>';
- let html=line('Total Ingresos','income','pyg-total','income')+line('Costo de Ingresos','cost','', 'cost')+line('Ganancia Bruta','gross');
- const gross=totals.map(t=>t.income?t.gross/t.income:0);gross.key='gross';html+='<tr><th>Margen Bruto</th>'+cells(gross,true)+'</tr>';
- const gastosAbiertos=!STATE.gastosCerrados;
- html+=line('Total Egresos','out')+line('<button class="pyg-toggle" onclick="toggleGastos502()" aria-expanded="'+gastosAbiertos+'">'+(gastosAbiertos?'▾ ':'▸ ')+'502 GASTOS</button>','expenses');
- if(gastosAbiertos)for(const area of ['sales','admin','finance','other'])html+=line(FORECAST_AREAS[area],area,'',area);
- html+=line('Beneficio Total','profit','pyg-benefit');const net=totals.map(t=>t.income?t.profit/t.income:0);net.key='profit';html+='<tr><th>Margen Neto</th>'+cells(net,true)+'</tr>';
+ opcionesFiltroPyg();
+ const {f,filtro,realMode,cols,filas}=pygConsolidadoModelo();
+ const claseCol=c=>(c.agg?'closing-cell':c.forecast?'forecast-cell':'');
+ const celda=(x,c)=>'<td class="'+claseCol(c)+(x.neg?' pyg-neg':'')+(x.na?' pyg-na':'')+'"'+(x.na?' title="El ingreso del período es cero o negativo (reversas): el margen no es interpretable."':'')+'>'+x.txt+'</td>';
+ document.getElementById('consolidatedHead').innerHTML='<tr><th>Concepto / cuenta</th>'+cols.map(c=>'<th class="'+(c.agg?'closing-cell':'')+'">'+c.label+'<br>'+c.sub+'</th>').join('')+'</tr>';
+ let html='';
+ for(const fi of filas){
+  const abierto=fi.area&&STATE.closingExpanded?.has(fi.area);
+  const etiqueta=fi.area?'<button class="pyg-toggle" onclick="toggleClosingGroup(\''+fi.area+'\')">'+(abierto?'▾ ':'▸ ')+fi.label+'</button>':fi.label;
+  html+='<tr class="'+fi.cls+(fi.tipo==='pct'?' pyg-pct':'')+'"><th>'+etiqueta+'</th>'+fi.valores.map((x,i)=>celda(x,cols[i])).join('')+'</tr>';
+  if(abierto)html+=fi.detalle.length?fi.detalle.map(d=>'<tr><th style="padding-left:28px">'+escapeHtml(d.label)+'</th>'+d.valores.map((x,i)=>celda(x,cols[i])).join('')+'</tr>').join(''):'<tr><th style="padding-left:28px;color:var(--muted)">Sin movimientos</th>'+cols.map(c=>'<td class="'+claseCol(c)+'"></td>').join('')+'</tr>';
+ }
  document.getElementById('consolidatedBody').innerHTML=html;
- document.getElementById('consolidatedPeriod').textContent=realMode?'Real Odoo · usa el mes de la cabecera · Toda Energycontrol':'Enero–septiembre: real Odoo · Octubre–diciembre: presupuesto Excel + escenarios aplicados · Toda Energycontrol';
- document.getElementById('consolidatedAllocation').textContent=forecastStatus(f);
+ const alcance=filtro?'Filtro: '+filtro.label:'Toda Energycontrol';
+ document.getElementById('consolidatedPeriod').textContent=(realMode?'Real Odoo · usa el mes de la cabecera':'Enero–septiembre: real Odoo · Octubre–diciembre: '+(filtro?'forecast guardado de la PO (avance / PPA)':'presupuesto Excel + escenarios aplicados'))+' · '+alcance;
+ document.getElementById('consolidatedAllocation').textContent=filtro
+  ?'Vista filtrada: solo ingresos, costos y gastos que en Odoo tienen la analítica seleccionada (su parte de la distribución). No incluye gastos fijos del presupuesto ni costos sin analítica, por eso el resultado es una contribución y no una utilidad neta.'
+  :forecastStatus(f)+' Participación (15%) e IR (25%) son estimaciones simples sobre la utilidad contable: no consideran gastos no deducibles, deducciones ni conciliación tributaria.';
 }
 function forecastStatus(f){return !f.ready?'Presupuesto no disponible: '+(STATE.budgetError||'inicia sesión con acceso de gerencia')+'. El cierre no debe interpretarse como completo.':'Presupuesto Excel cargado. '+f.scenarios.length+' proyectos simulados. '+(!f.manualValid?'Completa otros ingresos/costos, incluso con cero. ':'')+'Los proyectos sin simulación aún no aportan ingresos ni costos pendientes. El cierre es un escenario parcial hasta revisar todos los proyectos. Las cuentas propuestas y los repartos del Excel requieren revisión.';}
 function toggleGastos502(){STATE.gastosCerrados=!STATE.gastosCerrados;renderConsolidated();}
@@ -3637,31 +3768,15 @@ function renderForecastReports(){renderConsolidated();renderExpensePlan();render
 function resetForecast(){STATE.expensePlan={};renderForecastReports();toast('Se restauraron los valores del Excel. Los proyectos guardados se mantienen; quítalos con 🗑.');}
 /* ========= EXCEL: P&G CONSOLIDADO ========= */
 function datosPygConsolidado(){
- const f=forecastModel(),realMode=document.getElementById('consolidatedMode').value==='real';
- const idx=realMode?f.months.map((_,i)=>i).filter(i=>monthIncluded(String(i+1).padStart(2,'0'))):f.months.map((_,i)=>i);
- const totals=realMode?f.months.map(m=>accountingTotals(STATE.analytic.filter(r=>String(r.fecha).slice(0,7)===m.slice(0,7)))):f.totals;
+ const m=pygConsolidadoModelo(),filas=[];
+ const val=x=>x.v===null?(x.txt==='—'?'':x.txt):x.v;
+ for(const fi of m.filas){
+  filas.push({label:fi.label,nivel:0,tipo:fi.tipo,valores:fi.valores.map(val),fuente:''});
+  for(const d of fi.detalle)filas.push({label:d.label,nivel:1,tipo:'money',valores:d.valores.map(val),fuente:d.fuente});
+ }
+ const encabezados=m.cols.map(c=>c.label+' · '+c.sub);
  const suma=v=>v.reduce((a,b)=>a+number(b),0);
- const filas=[];
- const detalleReal=area=>ledgerLines(STATE.analytic).filter(r=>accountingBucket(r)===area&&String(r.fecha).startsWith('2026-')).reduce((a,r)=>{let d=a.find(x=>x.code===r.cuenta_codigo);if(!d){d={code:r.cuenta_codigo,name:r.cuenta_nombre,values:Array(12).fill(0),source:'Odoo'};a.push(d);}d.values[Number(String(r.fecha).slice(5,7))-1]+=(area==='income'?-1:1)*number(r.saldo_analitico);return a;},[]);
- const linea=(label,key,nivel,area)=>{
-  const v=totals.map(t=>number(t[key]));
-  filas.push({label,nivel,tipo:'money',valores:idx.map(i=>v[i]),cierre:realMode?null:suma(v),fuente:''});
-  if(!area)return;
-  const det=(realMode?detalleReal(area):f.details.filter(d=>d.area===area)).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
-  for(const d of det)filas.push({label:(d.code||'')+' '+(d.name||''),nivel:nivel+1,tipo:'money',valores:idx.map(i=>number(d.values[i])),cierre:realMode?null:suma(d.values),fuente:d.source||''});
- };
- const margen=(label,key)=>filas.push({label,nivel:0,tipo:'pct',valores:idx.map(i=>totals[i].income?totals[i][key]/totals[i].income:null),cierre:realMode?null:(f.total.income?f.total[key]/f.total.income:null),fuente:''});
- linea('Total Ingresos','income',0,'income');
- linea('Costo de Ingresos','cost',0,'cost');
- linea('Ganancia Bruta','gross',0);
- margen('Margen Bruto','gross');
- linea('Total Egresos','out',0);
- linea('502 GASTOS','expenses',0);
- for(const area of ['sales','admin','finance','other'])linea(FORECAST_AREAS[area],area,1,area);
- linea('Beneficio Total','profit',0);
- margen('Margen Neto','profit');
- const encabezados=idx.map(i=>monthName(f.months[i])+' · '+(realMode||i<9?'Real Odoo':'Forecast'));
- return {f,realMode,filas,encabezados,suma};
+ return {f:m.f,realMode:m.realMode,filtro:m.filtro,filas,encabezados,suma};
 }
 function formatoNumeros(X,ws,fmt){
  const rg=X.utils.decode_range(ws['!ref']);
@@ -3669,25 +3784,25 @@ function formatoNumeros(X,ws,fmt){
 }
 async function descargarPygConsolidado(){
  const btn=document.getElementById('btnPygXls'),txt=btn.textContent;
- const {f,realMode,filas,encabezados,suma}=datosPygConsolidado();
+ const {f,realMode,filtro,filas,encabezados,suma}=datosPygConsolidado();
  if(!realMode&&!f.ready){toast('El presupuesto no está cargado: el cierre no está completo y no se descarga.');return;}
  btn.disabled=true;btn.textContent='Generando…';
  try{
   const X=await cargarSheetJS(),wb=X.utils.book_new(),fmtMoney='#,##0.00;[Red]-#,##0.00';
   const titulo=[
-   ['ENERGYCONTROL · P&G consolidado · '+(realMode?'Real Odoo':'Cierre 2026 proyectado')],
+   ['ENERGYCONTROL · P&G consolidado · '+(realMode?'Real Odoo':'Cierre 2026 proyectado')+(filtro?' · '+filtro.label:' · Toda Energycontrol')],
    [realMode?'Real Odoo por mes':'Ene–Sep: real Odoo · Oct–Dic: forecast (presupuesto Excel + proyectos guardados en Supabase)'],
    ['Generado: '+new Date().toLocaleString('es-EC')],
    []
   ];
-  const cab=['Concepto / cuenta','Fuente',...encabezados,...(realMode?[]:['Cierre 2026'])];
-  const cuerpo=filas.map(r=>['   '.repeat(r.nivel)+r.label,r.fuente,...r.valores.map(v=>v==null?'':v),...(realMode?[]:[r.cierre==null?'':r.cierre])]);
+  const cab=['Concepto / cuenta','Fuente',...encabezados];
+  const cuerpo=filas.map(r=>['   '.repeat(r.nivel)+r.label,r.fuente,...r.valores.map(v=>v==null?'':v)]);
   const ws=X.utils.aoa_to_sheet([...titulo,cab,...cuerpo]);
   const fila0=titulo.length+1;
   filas.forEach((r,i)=>{for(let c=2;c<cab.length;c++){const cel=ws[X.utils.encode_cell({r:fila0+i,c})];if(cel&&typeof cel.v==='number')cel.z=r.tipo==='pct'?'0.0%':fmtMoney;}});
   ws['!cols']=[{wch:55},{wch:12},...cab.slice(2).map(()=>({wch:17}))];
   X.utils.book_append_sheet(wb,ws,'PyG consolidado');
-  if(!realMode){
+  if(!realMode&&!filtro){
    const proy=(STATE.savedSims||[]).map(s=>({'PO':s.proyecto_codigo,'Proyecto':projectInfo(s.proyecto_codigo).proyecto_nombre||'','Tipo':'Avance de obra','Mes':monthName(String(s.mes)),'Avance al 31-dic %':number(s.avance_acumulado),'Contrato':number(s.monto_contrato),'Ingreso Oct–Dic':number(s.ingreso),'Costo Oct–Dic':number(s.costo),'Efecto en utilidad':number(s.ingreso)-number(s.costo),'Comentario del administrador':s.nota||''}));
    const ppa=new Map();
    for(const r of STATE.ppaRows||[]){const code=String(r.fuente_ref).slice(4),g=ppa.get(code)||{ing:0,cos:0,meses:[]};g.ing+=number(r.ingreso);g.cos+=number(r.costo);if(number(r.ingreso)||number(r.costo))g.meses.push(monthName(String(r.mes)));ppa.set(code,g);}
@@ -3729,7 +3844,7 @@ async function descargarPygConsolidado(){
    formatoNumeros(X,ws3,fmtMoney);ws3['!cols']=[{wch:40},{wch:18},{wch:18},{wch:18}];
    X.utils.book_append_sheet(wb,ws3,'Notas');
   }
-  X.writeFile(wb,'PyG_'+(realMode?'real_odoo':'cierre_2026')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  X.writeFile(wb,'PyG_'+(realMode?'real_odoo':'cierre_2026')+(filtro?'_'+(filtro.code||filtro.label).replace(/[^\w-]+/g,'_'):'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('Excel del P&G descargado.');
  }catch(e){toast('No se pudo generar el Excel: '+e.message);}
  finally{btn.disabled=false;btn.textContent=txt;}
