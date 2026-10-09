@@ -1037,7 +1037,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 08-oct-2026 15:40</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 08-oct-2026 18:55</div>
 
         </div>
 
@@ -2130,6 +2130,7 @@ async function loadData(){
         try{const ct=await readAll("forecast_contratos_odoo",["analitica_id"]);STATE.contratosOdoo={};STATE.anaContrato={};STATE._anaMap=null;for(const r of ct.data||[]){if(!r.proyecto_codigo)continue;if(r.analitica_id&&!STATE.anaContrato[r.proyecto_codigo])STATE.anaContrato[r.proyecto_codigo]=r.analitica_id;STATE.contratosOdoo[r.proyecto_codigo]=(STATE.contratosOdoo[r.proyecto_codigo]||0)+number(r.monto_contrato);}}catch(e){STATE.contratosOdoo={};}
         try{const op=await readAll("vw_dashboard_operaciones",["proyecto"]);STATE.pve=op.data||[];const cat=await readAll("forecast_pve_sharepoint",["proyecto","familia"]);STATE.pveCat=cat.data||[];}catch(e){STATE.pve=[];STATE.pveCat=[];STATE.pveError=e.message;}
         try{const cr=await readAll("forecast_crm_ventas",["lead_id"]);STATE.crm=cr.data||[];}catch(e){STATE.crm=[];STATE.crmError=e.message;}
+        try{const oc=await readAll("ordenes_compra",["id"]);STATE.ocs=oc.data||[];STATE.ocsError=null;}catch(e){STATE.ocs=[];STATE.ocsError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
         STATE.projects =
             (projectsRes.data || []).map(p=>{const n=STATE.names[p.proyecto_codigo];return n&&(!p.proyecto_nombre||/^\s*(P\s*O?\s*)?\d{3,4}/i.test(p.proyecto_nombre))?{...p,proyecto_nombre:n}:p;});
@@ -3695,6 +3696,19 @@ async function descargarPygConsolidado(){
    const ws2=X.utils.json_to_sheet(proy);formatoNumeros(X,ws2,fmtMoney);
    ws2['!cols']=[12,40,20,22,16,16,16,16,16,60].map(w=>({wch:w}));
    X.utils.book_append_sheet(wb,ws2,'Proyectos en el cierre');
+   const resC=[],rubC=[];
+   for(const s of STATE.savedSims||[]){
+    const r=favFila(s.proyecto_codigo),{cats,t,enPyg,sinPasar}=resumenCostoProyecto(r),nom=r.nombre||'';
+    resC.push({'PO':r.code,'Proyecto':nom,'Avance al 31-dic %':r.a,'Costo total del proyecto':r.E,'Costo acumulado al 31-dic':r.cosAcum,'Ya en P&G (501)':enPyg,'Costo a registrar Oct–Dic':r.cosFalta,'Gastado (Control de Operaciones)':cats.length?t.re:'','Comprado sin pasar a costo':cats.length?sinPasar:'','OC abiertas':cats.length?t.abierta:'','Presupuesto sin OC':cats.length?t.sinOc:'','Sobrecosto detectado':cats.length?t.sobre:'','Presupuesto aterrizado SP':cats.length?t.p:'','Fuente del costo total':r.eacFuente});
+    for(const x of cats)rubC.push({'PO':r.code,'Proyecto':nom,'Rubro':x.rubro,'Presupuesto SP':x.p,'Gastado (facturas + salidas)':x.re,'OC abiertas':x.abierta,'Por gastar sin OC':x.sinOc,'Sobrecosto':x.sobre});
+   }
+   const ws4=X.utils.json_to_sheet(resC.length?resC:[{'PO':'Sin proyectos guardados'}]);formatoNumeros(X,ws4,fmtMoney);
+   ws4['!cols']=[10,36,12,16,16,16,16,18,18,14,16,16,18,60].map(w=>({wch:w}));
+   X.utils.book_append_sheet(wb,ws4,'Costo por proyecto');
+   const ws5=X.utils.json_to_sheet(rubC.length?rubC:[{'PO':'Sin rubros'}]);formatoNumeros(X,ws5,fmtMoney);
+   ws5['!cols']=[10,36,22,16,18,16,16,14].map(w=>({wch:w}));
+   if(rubC.length)ws5['!autofilter']={ref:X.utils.encode_range({s:{r:0,c:0},e:{r:rubC.length,c:7}})};
+   X.utils.book_append_sheet(wb,ws5,'Costo por rubro');
    const fuentes=['Simulación','PPA','Provisión'];
    const ingP=f.details.filter(d=>fuentes.includes(d.source)&&d.area==='income').reduce((a,d)=>a+suma(d.values),0);
    const cosP=f.details.filter(d=>fuentes.includes(d.source)&&d.area==='cost').reduce((a,d)=>a+suma(d.values),0);
@@ -3820,6 +3834,60 @@ function favFila(code){
   efecto:ingFalta-cosFalta,res2026:ing2026-cos2026,saved,dirty:!!STATE.favEdits[code],saving:STATE.favSaving.has(code),
   ingSaldo:ing.saldo,cosSaldo:cos.saldo,al,nota,comentario,valido:C>0&&E>0&&a>=0&&a<=100};
 }
+/* ========= DETALLE DEL COSTO POR PROYECTO ========= */
+STATE.favOpen=STATE.favOpen||new Set();
+function toggleFavDetalle(code){STATE.favOpen.has(code)?STATE.favOpen.delete(code):STATE.favOpen.add(code);renderForecastAvance();}
+function detalleCostoProyecto(code){
+ const cats=(STATE.pveCat||[]).filter(c=>String(c.proyecto)===String(code)).map(c=>({rubro:c.rubro||c.familia||'',...calcRubro(c)})).sort((a,b)=>b.p-a.p);
+ const t=cats.reduce((a,x)=>{for(const k of ['p','re','abierta','sinOc','sobre'])a[k]+=x[k];return a;},{rubro:'Total',p:0,re:0,abierta:0,sinOc:0,sobre:0});
+ return {cats,t};
+}
+function resumenCostoProyecto(r){
+ const {cats,t}=detalleCostoProyecto(r.code),enPyg=r.cosPrevio+r.cosReg;
+ return {cats,t,enPyg,sinPasar:t.re-enPyg};
+}
+function ocsDeProyecto(code){
+ const est={draft:'Borrador',sent:'Enviada',['to approve']:'Por aprobar',purchase:'Confirmada',done:'Bloqueada',cancel:'Cancelada'};
+ return (STATE.ocs||[]).filter(o=>(String(o.po_numero||'').match(/(\d{3,4})/)?.[1]||String(o.cuenta_analitica||'').match(/(\d{3,4})/)?.[1])===String(code)&&o.estado_odoo!=='cancel')
+  .map(o=>({...o,estadoTxt:est[o.estado_odoo]||o.estado_odoo||''})).sort((a,b)=>String(a.fecha_orden||'').localeCompare(String(b.fecha_orden||'')));
+}
+function ocsHtml(code){
+ if(STATE.ocsError)return '<p class="report-note">No se pudieron leer las órdenes de compra: '+escapeHtml(STATE.ocsError)+'</p>';
+ const ocs=ocsDeProyecto(code);
+ if(!ocs.length)return '<p class="report-note">No hay órdenes de compra registradas para esta PO.</p>';
+ const monto=o=>o.total_sin_iva!=null&&o.total_sin_iva!==''?number(o.total_sin_iva):number(o.total);
+ return '<h4 style="margin:14px 0 6px">Órdenes de compra de la PO · '+ocs.length+'</h4><div class="table-wrap" style="max-height:260px"><table><thead><tr><th>Fecha</th><th>Proveedor</th><th>Estado</th><th>Total OC</th><th></th></tr></thead><tbody>'
+  +ocs.map(o=>'<tr><td>'+escapeHtml(String(o.fecha_orden||'').slice(0,10))+'</td><td style="white-space:normal">'+escapeHtml(o.proveedor||'')+(o.referencia_proveedor?' <small class="report-note">· '+escapeHtml(o.referencia_proveedor)+'</small>':'')+'</td><td>'+escapeHtml(o.estadoTxt)+'</td><td>'+money(monto(o))+'</td><td>'+(o.odoo_id?'<a class="go-link" href="https://semgroup.odoo.com/mail/view?model=purchase.order&res_id='+encodeURIComponent(o.odoo_id)+'" target="_blank" rel="noopener" title="Abrir la orden de compra en Odoo">Odoo ↗</a>':'')+'</td></tr>').join('')
+  +'</tbody></table></div><p class="report-note" style="margin:6px 0 0">Total de cada OC '+(ocs.some(o=>o.total_sin_iva!=null&&o.total_sin_iva!=='')?'sin IVA':'con IVA')+'. No es el saldo pendiente: el valor de “OC abiertas” de arriba es solo lo que falta facturar.</p>';
+}
+function favDetalleHtml(r){
+ const {cats,t,enPyg,sinPasar}=resumenCostoProyecto(r);
+ if(!cats.length)return '<div class="report-note" style="margin:0">Este proyecto no tiene presupuesto por rubro en el Excel de SharePoint (hoja COSTOS). Revisa su archivo de Control Operativo y pulsa Actualizar datos.</div>';
+ const fila=(x,tot)=>'<tr'+(tot?' style="font-weight:700;background:#eef3f9"':'')+'><td>'+escapeHtml(x.rubro)+'</td><td>'+money(x.p)+'</td><td>'+money(x.re)+'</td><td>'+money(x.abierta)+'</td><td>'+money(x.sinOc)+'</td><td class="'+(x.sobre>0?'money-negative':'')+'">'+(x.sobre>0?money(x.sobre):'—')+'</td></tr>';
+ const lin=(t1,v,nota,neg)=>'<tr><td>'+t1+'</td><td style="text-align:right'+(neg?';color:var(--red)':'')+'"><b>'+money(v)+'</b></td><td class="report-note" style="margin:0;white-space:normal">'+nota+'</td></tr>';
+ const avisos=[];
+ if(t.sobre>0&&Math.abs(r.E-t.p)<1)avisos.push('El costo total usa el presupuesto aterrizado: los '+money(t.sobre)+' de sobrecosto ya detectados NO están incluidos. Si no se compensan con ahorros en otros rubros, el costo real será mayor.');
+ if(Math.abs(r.E-t.p)>=1)avisos.push('El costo total del proyecto ('+money(r.E)+') es distinto del presupuesto aterrizado ('+money(t.p)+'): '+escapeHtml(r.eacFuente)+'.');
+ if(sinPasar<-1)avisos.push('El P&G tiene '+money(-sinPasar)+' más de costo que Control de Operaciones: puede haber costo en la analítica que no está asignado a un rubro, o la sincronización de Control de Operaciones está desactualizada.');
+ if(r.a>=99.9&&t.sinOc>t.p*0.2)avisos.push('Avance al 31-dic de '+percentPoints(r.a)+' con '+money(t.sinOc)+' de presupuesto aún sin OC: confirma con el administrador si eso se va a comprar y recibir antes del cierre.');
+ return '<div style="display:grid;grid-template-columns:minmax(420px,1.3fr) minmax(380px,1fr);gap:18px;align-items:start">'
+  +'<div><h4 style="margin:0 0 6px">¿En qué se ha gastado y qué falta? · por rubro</h4><div class="table-wrap" style="max-height:none"><table><thead><tr><th>Rubro</th><th>Presupuesto SP</th><th>Gastado (facturas + salidas)</th><th>OC abiertas</th><th>Por gastar sin OC</th><th>Sobrecosto</th></tr></thead><tbody>'
+  +cats.map(x=>fila(x)).join('')+fila(t,true)+'</tbody></table></div>'
+  +'<p class="report-note" style="margin:6px 0 0">Cuadre: presupuesto = gastado + OC abiertas + por gastar − sobrecosto → '+money(t.re)+' + '+money(t.abierta)+' + '+money(t.sinOc)+' − '+money(t.sobre)+' = <b>'+money(t.re+t.abierta+t.sinOc-t.sobre)+'</b></p></div>'
+  +'<div><h4 style="margin:0 0 6px">¿De dónde sale el costo del forecast?</h4><div class="table-wrap" style="max-height:none"><table><tbody>'
+  +lin('Costo total del proyecto',r.E,escapeHtml(r.eacFuente))
+  +lin('× Avance al 31-dic',r.cosAcum,percentPoints(r.a)+(r.E>r.C&&r.C>0?' · incluye la pérdida completa (costo &gt; contrato)':''))
+  +lin('− Ya en el P&G (cuenta 501)',enPyg,'2025: '+money(r.cosPrevio)+' · ene–sep 2026: '+money(r.cosReg))
+  +lin('= Costo a registrar Oct–Dic',r.cosFalta,'Es el valor que entra al P&G consolidado',r.cosFalta<0)
+  +'<tr><td colspan="3" style="background:#eef3f9;font-weight:700">Composición de lo gastado y comprometido</td></tr>'
+  +lin('Gastado según Control de Operaciones',t.re,'Facturas de proveedor + salidas de bodega a la obra')
+  +lin('· de eso, ya en el P&G',enPyg,'Contabilizado en 501 con la analítica del proyecto')
+  +lin('· comprado sin pasar a costo',sinPasar,'Material facturado que sigue en inventario o en otras cuentas',sinPasar<0)
+  +lin('OC comprometidas sin facturar',t.abierta,'Ya pedido a proveedores')
+  +lin('Presupuesto sin OC',t.sinOc,'Lo que falta comprar según el Excel de SharePoint')
+  +'</tbody></table></div>'
+  +(avisos.length?avisos.map(x=>'<div class="ledger-msg warn" style="margin-top:6px">'+x+'</div>').join(''):'')+'</div></div>'+ocsHtml(r.code);
+}
 function renderForecastAvance(){
  const body=document.getElementById('favBody');if(!body)return;
  const q=(document.getElementById('buscarFav').value||'').toLowerCase(),flt=document.getElementById('favFiltro').value;
@@ -3833,7 +3901,7 @@ function renderForecastAvance(){
   const estado=r.saving?'<span class="badge">Guardando…</span>':r.dirty?'<span class="badge warn">Sin guardar</span>':r.saved?'<span class="badge ok" title="Guardado '+escapeHtml(String(r.saved.actualizado_en||r.saved.creado_en||'').slice(0,16).replace('T',' '))+'">En el cierre ✓</span>':'<span class="badge">No está en el cierre</span>';
   const alertas=r.al.map(([t,x])=>'<span class="badge '+t+'">'+escapeHtml(x)+'</span>').join(' ')+(r.nota?'<div class="report-note" style="margin:4px 0 0">'+escapeHtml(r.nota)+'</div>':'');
   return '<tr>'
-   +'<td class="fav-sticky"><b>'+c+'</b> '+escapeHtml(r.nombre)+linksProyecto(c)+'</td>'
+   +'<td class="fav-sticky"><button class="pyg-toggle" title="Ver de dónde sale el costo" onclick="toggleFavDetalle(\''+c+'\')">'+(STATE.favOpen?.has(r.code)?'▾ ':'▸ ')+'<b>'+c+'</b></button> '+escapeHtml(r.nombre)+linksProyecto(c)+'</td>'
    +'<td>'+money(r.C)+'</td>'
    +'<td>'+(r.hoy===null?'—':percentPoints(r.hoy))+'</td>'
    +'<td><input class="fav-in" type="number" min="0" max="100" step="0.01" value="'+(Math.round(r.a*100)/100)+'" aria-label="Avance al 31 de diciembre PO '+c+'" onchange="favEditar(\''+c+'\',\'avance\',this.value)">%'+(r.hoy!==null&&Math.abs(r.a-r.hoy)>0.005?'<button class="fav-hoy" title="Volver al avance de hoy" onclick="favEditar(\''+c+'\',\'avance\','+r.hoy+')">↺ hoy</button>':'')+'</td>'
@@ -3845,7 +3913,7 @@ function renderForecastAvance(){
    +'<td class="'+(r.efecto<0?'money-negative':'')+'" style="font-weight:700">'+money(r.efecto)+'</td>'
    +'<td class="fav-alert">'+estado+(alertas?'<div style="margin-top:4px">'+alertas+'</div>':'')+'</td>'
    +'<td>'+(r.saved?'<button class="btn-secondary" title="Quitar del cierre" onclick="eliminarSimulacion(\''+r.saved.id+'\',\''+c+'\')">🗑</button>':'')+'</td>'
-   +'</tr>';
+   +'</tr>'+(STATE.favOpen?.has(r.code)?'<tr><td colspan="21" style="white-space:normal;background:#fbfcfe;padding:14px 18px">'+favDetalleHtml(r)+'</td></tr>':'');
  }).join('')||'<tr><td colspan="21">Sin proyectos para este filtro.</td></tr>';
  const T=k=>filas.reduce((s,r)=>s+r[k],0);
  document.getElementById('favFoot').innerHTML='<tr><td class="fav-sticky">Total ('+filas.length+')</td><td>'+money(T('C'))+'</td><td></td><td></td><td></td><td>'+money(T('E'))+'</td><td>'+favMargenTotal(filas)+'</td>'
