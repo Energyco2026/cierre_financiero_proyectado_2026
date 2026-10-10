@@ -927,7 +927,10 @@ tbody tr:hover{
 .fav-table thead tr:nth-child(2) th{top:34px}
 .fav-table .fav-grp{text-align:center;border-bottom:2px solid #c9d6ea}
 .fav-sticky{position:sticky;left:0;background:#fff;z-index:1;min-width:210px;max-width:260px;white-space:normal!important}
-.fav-table thead .fav-sticky{z-index:3;background:inherit}
+.fav-table thead th{background:#f7f9fc;box-shadow:inset 0 -1px 0 #e3e9f2}
+.fav-table thead .fav-edit-h{background:#fff4c2}
+.fav-table thead .fav-sticky{z-index:4;background:#f7f9fc}
+.fav-table tbody .fav-sticky{z-index:1}
 .fav-in{width:92px;padding:5px 6px;border:1px solid #b9c7dc;border-radius:6px;font:inherit;text-align:right;background:#fffbea}
 .fav-in.eac{width:120px}
 .fav-in:focus{outline:2px solid #2b72cf;background:#fff}
@@ -1528,6 +1531,7 @@ td.fav-com-td{white-space:normal!important}
                   <select id="crmTipo" onchange="renderCrm()" aria-label="Tipo de oportunidad"><option value="ALL">Todos los tipos</option></select>
                   <details id="crmMes" class="ms" aria-label="Meses de cierre"><summary>Todos los meses</summary><div class="ms-panel"></div></details>
                   <select id="crmEstado" onchange="renderCrm()" aria-label="Estado"><option value="ALL">Todos los estados</option><option value="PEND">Sin simular</option><option value="SIM">Ya en el cierre</option></select>
+                  <select id="crmPo" onchange="renderCrm()" aria-label="PO"><option value="ALL">Con y sin PO</option><option value="CON">Con PO en Odoo</option><option value="SIN">Sin PO en Odoo</option></select>
                 </div>
                 <div id="crmTipos" class="filters-row" style="gap:8px;flex-wrap:wrap"></div>
                 <div id="crmResPanel" class="hidden" style="margin:6px 0 14px"></div>
@@ -2503,12 +2507,12 @@ function configurarPpaDesdeCrm(leadId,po){
 function setCrmTipo(t){document.getElementById('crmTipo').value=t;renderCrm();}
 function renderCrm(){
  const body=document.getElementById('crmBody');if(!body)return;
- const q=(document.getElementById('buscarCrm').value||'').toLowerCase(),anio=document.getElementById('crmAnio').value,est=document.getElementById('crmEstado').value;
+ const q=(document.getElementById('buscarCrm').value||'').toLowerCase(),anio=document.getElementById('crmAnio').value,est=document.getElementById('crmEstado').value,conPo=document.getElementById('crmPo')?.value||'ALL';
  const guardados=new Set((STATE.savedSims||[]).map(x=>x.proyecto_codigo));
  const rows=(STATE.crm||[]).map(l=>{const codeSim=l.proyecto_codigo||('CRM-'+l.lead_id);return {...l,codeSim,sim:guardados.has(codeSim)};})
   .map(l=>({...l,...tipoCrm(l)}))
   .map(l=>{if(l.proyecto_codigo)return l;const c=ppaConfigs().find(c=>Number(c.lead_id)===Number(l.lead_id));return c?{...l,proyecto_codigo:c.code,poDesdePpa:true}:l;})
-  .filter(l=>(anio==='ALL'||String(l.fecha_cierre||'').startsWith(anio))&&(est==='ALL'||(est==='SIM'?l.sim:!l.sim))&&(!q||[l.nombre,l.cliente,l.proyecto_codigo,l.ordenes_venta,l.vendedor,l.tipo].join(' ').toLowerCase().includes(q)))
+  .filter(l=>(anio==='ALL'||String(l.fecha_cierre||'').startsWith(anio))&&(est==='ALL'||(est==='SIM'?l.sim:!l.sim))&&(conPo==='ALL'||(conPo==='CON'?!!l.proyecto_codigo:!l.proyecto_codigo))&&(!q||[l.nombre,l.cliente,l.proyecto_codigo,l.ordenes_venta,l.vendedor,l.tipo].join(' ').toLowerCase().includes(q)))
   .sort((a,b)=>String(b.fecha_cierre).localeCompare(String(a.fecha_cierre)));
  // Resumen por tipo (con los demás filtros aplicados) y selector
  const selT=document.getElementById('crmTipo'),tipoSel=selT.value;
@@ -3565,15 +3569,15 @@ function forecastModel(filtro=null){
  for(const s of STATE.savedSims||[]){
   const month=String(s.mes).slice(0,10),income=number(s.ingreso),cost=number(s.costo),code=s.proyecto_codigo;
   if(filtro&&!(filtro.tipo==='po'&&String(code)===filtro.code))continue;
-  add(month,'PROYECTO:'+code,'Ingreso a registrar PO '+code,'income',income,'Simulación');
-  add(month,'COSTO:'+code,'Costo a registrar PO '+code,'cost',cost,'Simulación');
+  add(month,'PROYECTO:'+code,'Ingreso a registrar PO '+poNombre(code),'income',income,'Simulación');
+  add(month,'COSTO:'+code,'Costo a registrar PO '+poNombre(code),'cost',cost,'Simulación');
   scenarios.push({id:s.id,code,month,income,cost,nota:s.nota,avance:s.avance_acumulado,fecha:s.actualizado_en});
  }
  for(const r of STATE.ppaRows||[]){
   const code=String(r.fuente_ref).slice(4),month=String(r.mes).slice(0,10);
   if(filtro&&!(filtro.tipo==='po'&&code===filtro.code))continue;
-  add(month,'PPA:'+code,'Venta de energía PPA PO '+code,'income',number(r.ingreso),'PPA');
-  if(number(r.costo))add(month,'PPACOSTO:'+code,'Costo operación PPA PO '+code,'cost',number(r.costo),'PPA');
+  add(month,'PPA:'+code,'Venta de energía PPA PO '+poNombre(code),'income',number(r.ingreso),'PPA');
+  if(number(r.costo))add(month,'PPACOSTO:'+code,'Costo operación PPA PO '+poNombre(code),'cost',number(r.costo),'PPA');
  }
  if(!filtro)for(const r of STATE.resRows||[]){
   const month=String(r.mes).slice(0,10);
@@ -3591,6 +3595,10 @@ function forecastModel(filtro=null){
 /* ========= P&G CONSOLIDADO: filtro por PO / analítica + estructura NIIF ========= */
 const PYG_PO_RE=/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i;
 const PYG_TASA_PART=0.15,PYG_TASA_IR=0.25;
+/* Otros ingresos no operacionales: 403 (multas, reembolsos, bajas de CxP, etc.) y 40106 (intereses ganados) */
+function esOtroIngreso(code){return /^(403|40106)/.test(String(code||''));}
+function bucketPyg(r){const b=accountingBucket(r);return b==='income'&&esOtroIngreso(r.cuenta_codigo)?'otherIncome':b;}
+function poNombre(code){const c=String(code||'');if(!c)return '';const n=(STATE.names&&STATE.names[c])||(typeof projectInfo==='function'?projectInfo(c).proyecto_nombre:'')||'';return n&&!n.toUpperCase().startsWith(c)?c+' - '+n:(n||c);}
 function pygFiltroActual(){
  const v=(document.getElementById('consolidatedPo')?.value||'').trim();
  if(!v)return null;
@@ -3623,7 +3631,7 @@ function pygDerivar(t,conImpuestos){
  const d={...t};
  d.gross=d.income-d.cost;
  d.operating=d.gross-d.sales-d.admin;
- d.uap=d.operating-d.finance-d.other;
+ d.uap=d.operating+d.otherIncome-d.finance-d.other;
  if(conImpuestos){
   d.part=Math.max(0,d.uap)*PYG_TASA_PART;
   d.ir=Math.max(0,d.uap-d.part)*PYG_TASA_IR;
@@ -3631,13 +3639,16 @@ function pygDerivar(t,conImpuestos){
  }else{d.part=null;d.ir=null;d.net=null;}
  return d;
 }
-function pygConsolidadoModelo(){
- const filtro=pygFiltroActual(),realMode=document.getElementById('consolidatedMode').value==='real';
+function pygConsolidadoModelo(opts={}){
+ const filtro='filtro' in opts?opts.filtro:pygFiltroActual(),realMode='realMode' in opts?opts.realMode:document.getElementById('consolidatedMode').value==='real';
  const f=forecastModel(filtro);
- const base=realMode?pygAgrupar(lineasReales(filtro)):{totals:f.totals,details:f.details};
+ const base0=realMode?pygAgrupar(lineasReales(filtro)):{totals:f.totals,details:f.details};
+ const details=base0.details.map(d=>d.area==='income'&&esOtroIngreso(d.code)?{...d,area:'otherIncome'}:d);
+ const otros=Array(12).fill(0);for(const d of details)if(d.area==='otherIncome')d.values.forEach((v,i)=>otros[i]+=number(v));
+ const base={totals:base0.totals,details};
  const nombresMes=f.months.map(m=>monthName(m));
- const cols=[];
- if(realMode){
+ const cols=opts.cols?opts.cols.map(c=>({...c})):[];
+ if(opts.cols){}else if(realMode){
   const sel=f.months.map((_,i)=>i).filter(i=>monthIncluded(String(i+1).padStart(2,'0')));
   sel.forEach(i=>cols.push({idx:[i],label:nombresMes[i],sub:'Real Odoo',agg:false,forecast:false}));
   cols.push({idx:sel,label:'Acumulado',sub:'Real Odoo',agg:true,forecast:false});
@@ -3649,13 +3660,14 @@ function pygConsolidadoModelo(){
  }
  for(const c of cols){
   c.noDisp=!realMode&&c.forecast&&!f.ready;
-  const s={income:0,cost:0,sales:0,admin:0,finance:0,other:0};
-  for(const i of c.idx)for(const k in s)s[k]+=number(base.totals[i][k]);
+  const s={income:0,cost:0,sales:0,admin:0,finance:0,other:0,otherIncome:0};
+  for(const i of c.idx){for(const k of ['income','cost','sales','admin','finance','other'])s[k]+=number(base.totals[i][k]);s.otherIncome+=otros[i];}
+  s.income-=s.otherIncome;
   c.d=pygDerivar(s,c.agg&&!filtro);
  }
  const sumaDet=(d,c)=>c.idx.reduce((a,i)=>a+number(d.values[i]),0);
  const especificacion=[
-  {label:'Total Ingresos',key:'income',cls:'pyg-total',area:'income'},
+  {label:'Ingresos operacionales',key:'income',cls:'pyg-total',area:'income'},
   {label:'Costo de Ingresos',key:'cost',area:'cost'},
   {label:'Utilidad Bruta',key:'gross',cls:'pyg-total'},
   {label:'Margen Bruto',ratio:'gross'},
@@ -3663,6 +3675,7 @@ function pygConsolidadoModelo(){
   {label:'50202 Gastos administrativos',key:'admin',area:'admin'},
   {label:'Utilidad Operacional',key:'operating',cls:'pyg-total'},
   {label:'Margen Operacional',ratio:'operating'},
+  {label:'(+) Otros ingresos no operacionales',key:'otherIncome',area:'otherIncome'},
   {label:'50203 Gastos financieros',key:'finance',area:'finance'},
   {label:'Otros gastos / clasificación pendiente',key:'other',area:'other'},
   ...(filtro?[
@@ -3726,8 +3739,8 @@ function lineasCeldaPyg(area,code,col){
  const meses=new Set(col.idx.filter(i=>st.realMode||i<9).map(i=>String(i+1).padStart(2,'0')));
  return lineasReales(st.filtro).filter(r=>{
   const f=String(r.fecha);
-  return f.startsWith('2026-')&&meses.has(f.slice(5,7))&&accountingBucket(r)===area&&(code===null||String(r.cuenta_codigo)===String(code));
- }).map(r=>({...r,monto:(area==='income'?-1:1)*number(r.saldo_analitico)}));
+  return f.startsWith('2026-')&&meses.has(f.slice(5,7))&&bucketPyg(r)===area&&(code===null||String(r.cuenta_codigo)===String(code));
+ }).map(r=>({...r,monto:(area==='income'||area==='otherIncome'?-1:1)*number(r.saldo_analitico)}));
 }
 function abrirDetallePyg(area,code,ci){
  const st=STATE.pygUltimo,col=st?.cols[ci];if(!col)return;
@@ -3797,9 +3810,10 @@ function renderExpensePlan(){
 function renderClosingForecast(){
  const f=forecastModel(),actual=accountingTotals(STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09'));
  document.getElementById('forecastPeriod').textContent='Real enero–septiembre + forecast octubre–diciembre = cierre al 31/12/2026';
- document.getElementById('closingForecastBody').innerHTML=['income','cost','sales','admin','finance','other','expenses','profit'].map(key=>'<tr><th>'+escapeHtml(FORECAST_AREAS[key]||({expenses:'Total Gastos',profit:'Beneficio Total'})[key])+'</th><td>'+money(actual[key])+'</td><td>'+(!f.ready?'No disponible':money(f.total[key]-actual[key]))+'</td><td>'+(!f.ready?'No disponible':money(f.total[key]))+'</td></tr>').join('');
+ const mR=pygConsolidadoModelo({filtro:null,realMode:false,cols:[{idx:[0,1,2,3,4,5,6,7,8],agg:true,forecast:false},{idx:[9,10,11],agg:false,forecast:true},{idx:[...Array(12).keys()],agg:true,forecast:true}]});
+ document.getElementById('closingForecastBody').innerHTML=mR.filas.map(fi=>{const fuerte=fi.cls?'font-weight:700;background:#eef1f5':'',cur=fi.tipo==='pct'?'font-style:italic;color:#4b5565':'';return '<tr><th style="'+fuerte+cur+'">'+escapeHtml(fi.label)+'</th>'+fi.valores.map(x=>'<td style="'+fuerte+cur+'" class="'+(x.neg?'money-negative':'')+'">'+x.txt+'</td>').join('')+'</tr>';}).join('');
  document.getElementById('closingForecastStatus').textContent=forecastStatus(f);
- document.getElementById('scenarioList').innerHTML=f.scenarios.length?f.scenarios.map(s=>'<tr><td>'+escapeHtml(s.code)+'</td><td>'+percentPoints(s.avance)+' · '+monthName(s.month)+'</td><td class="'+(s.income<0?'money-negative':'')+'">'+money(s.income)+'</td><td class="'+(s.cost<0?'money-negative':'')+'">'+money(s.cost)+'</td><td>'+money(s.income-s.cost)+'</td><td>'+escapeHtml(s.nota||'')+'</td><td><button class="btn-secondary" onclick="editarSimulacion(\''+escapeHtml(s.code)+'\')" aria-label="Editar '+escapeHtml(s.code)+'">✎</button> <button class="btn-secondary" onclick="eliminarSimulacion(\''+s.id+'\',\''+escapeHtml(s.code)+'\')" aria-label="Eliminar '+escapeHtml(s.code)+'">🗑</button></td></tr>').join(''):'<tr><td colspan="7">Aún no hay proyectos guardados. Usa Simular para agregarlos.</td></tr>';
+ document.getElementById('scenarioList').innerHTML=f.scenarios.length?f.scenarios.map(s=>'<tr><td style="white-space:normal;min-width:220px"><b>'+escapeHtml(String(s.code))+'</b>'+(poNombre(s.code)!==String(s.code)?' - '+escapeHtml(poNombre(s.code).replace(String(s.code)+' - ','')):'')+'</td><td>'+percentPoints(s.avance)+' · '+monthName(s.month)+'</td><td class="'+(s.income<0?'money-negative':'')+'">'+money(s.income)+'</td><td class="'+(s.cost<0?'money-negative':'')+'">'+money(s.cost)+'</td><td>'+money(s.income-s.cost)+'</td><td>'+escapeHtml(s.nota||'')+'</td><td><button class="btn-secondary" onclick="editarSimulacion(\''+escapeHtml(s.code)+'\')" aria-label="Editar '+escapeHtml(s.code)+'">✎</button> <button class="btn-secondary" onclick="eliminarSimulacion(\''+s.id+'\',\''+escapeHtml(s.code)+'\')" aria-label="Eliminar '+escapeHtml(s.code)+'">🗑</button></td></tr>').join(''):'<tr><td colspan="7">Aún no hay proyectos guardados. Usa Simular para agregarlos.</td></tr>';
 }
 function renderForecastReports(){renderConsolidated();renderExpensePlan();renderClosingForecast();}
 function resetForecast(){STATE.expensePlan={};renderForecastReports();toast('Se restauraron los valores del Excel. Los proyectos guardados se mantienen; quítalos con 🗑.');}
@@ -4042,7 +4056,11 @@ function favDetalleHtml(r){
   +'</tbody></table></div>'
   +(avisos.length?avisos.map(x=>'<div class="ledger-msg warn" style="margin-top:6px">'+x+'</div>').join(''):'')+'</div></div>'+ocsHtml(r.code);
 }
-function renderForecastAvance(){
+function ajustarStickyFav(){
+ document.querySelectorAll('.fav-table thead').forEach(th=>{const r=th.rows;if(r.length<2)return;const h=r[0].getBoundingClientRect().height;if(h)for(const c of r[1].cells)c.style.top=h+'px';});
+}
+window.addEventListener('resize',()=>{try{ajustarStickyFav();}catch(e){}});
+function renderForecastAvance(){setTimeout(ajustarStickyFav,0);
  const body=document.getElementById('favBody');if(!body)return;
  const q=(document.getElementById('buscarFav').value||'').toLowerCase(),flt=document.getElementById('favFiltro').value;
  let filas=favCodes().map(favFila);
@@ -4625,7 +4643,7 @@ function renderQuality(){
    TABS
 ========================================================= */
 
-function abrirTab(name,button){
+function abrirTab(name,button){setTimeout(()=>{try{ajustarStickyFav();}catch(e){}},50);
     document.querySelectorAll('.menu-btn').forEach(b=>b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'"+name+"'")&&b===button||(!button?.classList.contains('menu-btn')&&(b.getAttribute('onclick')||'').includes("'"+name+"'")&&!b.textContent.includes('Resumen'))));
 
     document
