@@ -918,7 +918,7 @@ tbody tr:hover{
 .ledger-msg.warn{background:#fff6e6;color:#8a5300}
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
-<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.consolidated-matrix td.pyg-neg{color:#c62839}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.consolidated-matrix td.pyg-neg{color:#c62839}.qc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.qc-box{text-align:left;cursor:pointer;font:inherit;color:inherit;border-left:5px solid #c9d6ea!important}.qc-box:hover{box-shadow:0 4px 14px rgba(15,35,70,.12)}.qc-box small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.qc-alto{border-left-color:#e64d5e!important}.qc-medio{border-left-color:#f58a33!important}.qc-info{border-left-color:#146fe8!important}.qc-ok{border-left-color:#0ba66d!important}.qc-grupo{cursor:pointer}.qc-grupo:hover th,.qc-grupo:hover td{background:#f1f5fb}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
 #projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
@@ -1626,7 +1626,17 @@ td.fav-com-td{white-space:normal!important}
                 id="tab-calidad"
                 class="tab-content hidden">
 
-                <div class="quality-grid">
+                <h3 style="margin:0 0 6px">Controles de cierre</h3>
+<p class="report-note" style="margin-top:0">Haz clic en cada tarjeta para ir al detalle. Rojo = corregir antes del comité · Azul = informativo.</p>
+<div id="qcGrid" class="qc-grid"></div>
+<div id="qcPanel" style="margin:18px 0 26px">
+<h4 style="margin:0 0 8px">Detalle de costos y gastos sin PO</h4>
+<div class="filters-row"><select id="qcTipo" onchange="STATE.qcAbiertas=new Set();renderQcPanel()"><option value="cost">Costo de ventas 501</option><option value="gastos">Gastos 502</option><option value="all">Todos</option></select><input id="qcBuscar" class="filter-input search" placeholder="Buscar cuenta, analítica, proveedor o asiento..." oninput="renderQcPanel()"></div>
+<p id="qcResumen" class="report-note"></p>
+<div class="table-wrap" style="max-height:60vh"><table><thead><tr><th>Cuenta</th><th>Analítica actual</th><th style="text-align:right">Líneas</th><th style="text-align:right">Monto sin PO</th></tr></thead><tbody id="qcBody"></tbody></table></div>
+</div>
+<h3 style="margin:0 0 10px">Controles por proyecto</h3>
+<div class="quality-grid">
 
                     <div class="quality-box">
                         <span>Proyectos con contrato</span>
@@ -3769,6 +3779,63 @@ function abrirDetallePyg(area,code,ci){
  m.style.display='flex';
 }
 function cerrarDetallePyg(){const m=document.getElementById('pygDrill');if(m)m.style.display='none';}
+/* ========= CALIDAD DE DATOS: controles de cierre ========= */
+function lineasSinPo(){
+ if(STATE.sinPoRef===STATE.analytic)return STATE.sinPoCache;
+ const g=new Map();let k=0;
+ for(const r of STATE.analytic||[]){
+  if(!String(r.fecha).startsWith('2026-'))continue;
+  const id=r.odoo_move_line_id??('x'+(k++));
+  if(!g.has(id))g.set(id,{r,saldo:number(r.saldo_linea??r.saldo_analitico),po:0,otras:new Set()});
+  const x=g.get(id),names=String(r.analitica_nombre||'').split(' | ').map(n=>n.trim()).filter(Boolean);
+  if(names.some(n=>PYG_PO_RE.test(n)))x.po+=number(r.saldo_analitico);
+  for(const n of names)if(!PYG_PO_RE.test(n))x.otras.add(n);
+ }
+ const out=[];
+ for(const x of g.values()){
+  const area=accountingBucket(x.r);if(area==='income')continue;
+  const monto=x.saldo-x.po;if(Math.abs(monto)<0.005)continue;
+  out.push({...x.r,area,monto,parcial:Math.abs(x.po)>0.005,analitica:[...x.otras].join(' | ')||'Sin analítica'});
+ }
+ STATE.sinPoRef=STATE.analytic;STATE.sinPoCache=out;return out;
+}
+function renderCalidadCierre(){
+ const cont=document.getElementById('qcGrid');if(!cont)return;
+ const sp=lineasSinPo(),suma=a=>a.reduce((s,r)=>s+r.monto,0);
+ const cos=sp.filter(r=>r.area==='cost'),gas=sp.filter(r=>r.area!=='cost');
+ const crmSin=(STATE.crm||[]).filter(l=>String(l.fecha_cierre||'').startsWith('2026')&&!l.proyecto_codigo&&!ppaConfigs().some(c=>Number(c.lead_id)===Number(l.lead_id)));
+ let filas=[];try{filas=favCodes().map(favFila);}catch(e){}
+ const onerosos=filas.filter(r=>r.C>0&&r.E>r.C),pend=filas.filter(r=>!r.saved);
+ const caja=(titulo,valor,detalle,nivel,accion)=>'<button class="quality-box qc-box qc-'+nivel+'" onclick="'+accion+'"><span>'+titulo+'</span><strong>'+valor+'</strong><small>'+detalle+'</small></button>';
+ cont.innerHTML=
+  caja('Costo de ventas (501) sin PO',money(suma(cos)),cos.length.toLocaleString('es-EC')+' líneas · ver detalle ›','alto',"qcVer('cost')")
+ +caja('Gastos 502 sin PO',money(suma(gas)),'Esperado en gastos fijos/admin · ver detalle ›','info',"qcVer('gastos')")
+ +caja('Ventas ganadas 2026 sin PO',crmSin.length,money(crmSin.reduce((s,l)=>s+montoVentaCrm(l),0))+' · ir a Ventas CRM ›',crmSin.length?'alto':'ok',"qcIrCrm()")
+ +caja('Contratos onerosos (costo > contrato)',onerosos.length,(onerosos.length?'Pérdida total '+money(onerosos.reduce((s,r)=>s+r.E-r.C,0)):'Ninguno')+' · ver ›',onerosos.length?'alto':'ok',"qcIrForecast('ALERT')")
+ +caja('Proyectos fuera del cierre',pend.length+' de '+filas.length,'Sin guardar en Forecast por avance · ver ›',pend.length?'medio':'ok',"qcIrForecast('PEND')");
+ renderQcPanel();
+}
+function qcVer(tipo){const s=document.getElementById('qcTipo');if(s)s.value=tipo;STATE.qcAbiertas=new Set();renderQcPanel();document.getElementById('qcPanel')?.scrollIntoView({behavior:'smooth',block:'start'});}
+function qcIrCrm(){abrirTab('crm');const a=document.getElementById('crmAnio');if(a)a.value='2026';const p=document.getElementById('crmPo');if(p)p.value='SIN';STATE.crmMonths?.clear();STATE.crmMesSig=null;renderCrm();}
+function qcIrForecast(f){abrirTab('forecastav');const s=document.getElementById('favFiltro');if(s)s.value=f;const b=document.getElementById('buscarFav');if(b)b.value='';renderForecastAvance();}
+function qcToggle(k){STATE.qcAbiertas??=new Set();STATE.qcAbiertas.has(k)?STATE.qcAbiertas.delete(k):STATE.qcAbiertas.add(k);renderQcPanel();}
+function renderQcPanel(){
+ const body=document.getElementById('qcBody');if(!body)return;
+ STATE.qcAbiertas??=new Set();
+ const tipo=document.getElementById('qcTipo').value,q=(document.getElementById('qcBuscar').value||'').toLowerCase();
+ const rows=lineasSinPo().filter(r=>(tipo==='all'||(tipo==='cost'?r.area==='cost':r.area!=='cost'))&&(!q||[r.cuenta_codigo,r.cuenta_nombre,r.analitica,r.partner_nombre,r.move_name,r.ref].join(' ').toLowerCase().includes(q)));
+ const grupos=new Map();
+ for(const r of rows){const k=r.cuenta_codigo+'|'+r.analitica;if(!grupos.has(k))grupos.set(k,{k,code:r.cuenta_codigo,name:r.cuenta_nombre,analitica:r.analitica,monto:0,lineas:[]});const g=grupos.get(k);g.monto+=r.monto;g.lineas.push(r);}
+ const lista=[...grupos.values()].sort((a,b)=>Math.abs(b.monto)-Math.abs(a.monto));
+ const odoo='https://semgroup.odoo.com/mail/view?model=account.move&res_id=';
+ STATE.qcLista=lista;
+ body.innerHTML=lista.length?lista.map((g,gi)=>{
+  const ab=STATE.qcAbiertas.has(g.k);
+  let h='<tr class="qc-grupo" onclick="qcToggle(STATE.qcLista['+gi+'].k)"><th>'+(ab?'▾ ':'▸ ')+escapeHtml(g.code+' '+g.name)+'</th><td>'+escapeHtml(g.analitica)+'</td><td style="text-align:right">'+g.lineas.length+'</td><td style="text-align:right" class="'+(g.monto<0?'money-negative':'')+'"><b>'+money(g.monto)+'</b></td></tr>';
+  if(ab)h+=g.lineas.sort((a,b)=>Math.abs(b.monto)-Math.abs(a.monto)).slice(0,300).map(r=>'<tr class="qc-linea"><td style="padding-left:28px">'+escapeHtml(String(r.fecha).slice(0,10))+' · '+escapeHtml(r.move_name||'—')+(r.parcial?' <span class="badge warn" title="La línea tiene una parte en una PO y el resto sin PO">parcial</span>':'')+'</td><td>'+escapeHtml((r.partner_nombre||'—')+(r.ref?' · '+r.ref:''))+'</td><td style="text-align:right">'+(r.odoo_move_id?'<a class="go-link" href="'+odoo+encodeURIComponent(r.odoo_move_id)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">Odoo ↗</a>':'')+'</td><td style="text-align:right" class="'+(r.monto<0?'money-negative':'')+'">'+money(r.monto)+'</td></tr>').join('')+(g.lineas.length>300?'<tr><td colspan="4" class="report-note">Se muestran 300 de '+g.lineas.length+' líneas.</td></tr>':'');
+  return h;}).join(''):'<tr><td colspan="4">No hay líneas sin PO para este filtro.</td></tr>';
+ document.getElementById('qcResumen').textContent=rows.length.toLocaleString('es-EC')+' líneas · '+money(rows.reduce((s,r)=>s+r.monto,0))+' · 2026 · Monto sin PO = saldo de la línea − la parte distribuida a una PO.';
+}
 function limpiarFiltroPyg(){const el=document.getElementById('consolidatedPo');if(el){el.value='';renderConsolidated();}}
 function renderConsolidated(){
  opcionesFiltroPyg();
@@ -4446,7 +4513,7 @@ function toggleCostos(code){STATE.costsOpen.has(code)?STATE.costsOpen.delete(cod
    QUALITY
 ========================================================= */
 
-function renderQuality(){
+function renderQuality(){try{renderCalidadCierre();}catch(e){console.warn('Controles de cierre',e);}
 
     const projects =
         STATE.projects
