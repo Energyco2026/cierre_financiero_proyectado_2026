@@ -1040,7 +1040,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 08-oct-2026 21:20</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 13-oct-2026 16:50</div>
 
         </div>
 
@@ -3466,7 +3466,7 @@ function analyticMatrix(rows,year,month,search,project,pick){
    const g=groups.get(analytic.id);g.income+=income;g.expense+=expense;
   }
  }
- const cols=[...groups.values()].sort((a,b)=>a.name.localeCompare(b.name,"es",{numeric:true}));
+ const cols=[...groups.values()].sort((a,b)=>normalizarPO(a.name).localeCompare(normalizarPO(b.name),"es",{numeric:true}));
  cols.total=total;
  return cols;
 }
@@ -3968,6 +3968,14 @@ async function descargarPygConsolidado(){
  finally{btn.disabled=false;btn.textContent=txt;}
 }
 
+// Muestra las analíticas tipo PO siempre igual: "PO 1895-ER26", "PO 1727", "PO 1727 - EPC ECUAHIELO".
+// Solo cambia lo que se ve en pantalla; filtros y cálculos siguen usando el nombre original de Odoo.
+function normalizarPO(nombre){
+ const texto=String(nombre??'').trim();
+ const m=texto.match(/^(?:P\s*\.?\s*O?\s*\.?\s*)?(\d{3,4})(?:\s*-?\s*ER\s*-?\s*(\d{2}))?(?=\D|$)(.*)$/i);
+ if(!m)return texto;
+ return 'PO '+m[1]+(m[2]?'-ER'+m[2]:'')+m[3];
+}
 function nombreAnalitica(name){const code=String(name||'').match(/^(?:PO\s*)?(\d{3,4})(?=\D|$)/i)?.[1];const n=code&&STATE.names[code];return n&&!String(name).toUpperCase().includes(String(n).toUpperCase())?n:'';}
 function lineasSinAnalitica(){
  return pygRows().filter(r=>String(r.analitica_clave||'SIN_ANALITICA')==='SIN_ANALITICA'&&!(r.analitica_ids||[]).length);
@@ -4393,7 +4401,7 @@ async function guardarTodosFav(){
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  {const seen=new Map();for(const r of rows){const ids=String(r.analitica_clave||"SIN_ANALITICA").split(","),nm=(r.analitica_nombre||"Sin analítica").split(" | ");ids.forEach((id,i)=>{if(!seen.has(id))seen.set(id,nm[i]||nm[0]);});}
-  const items=[...seen].map(([value,label])=>({value,label:label+(nombreAnalitica(label)?' · '+nombreAnalitica(label):'')})).sort((a,b)=>a.label.localeCompare(b.label,"es",{numeric:true}));
+  const items=[...seen].map(([value,label])=>({value,label:normalizarPO(label)+(nombreAnalitica(label)?' · '+nombreAnalitica(label):'')})).sort((a,b)=>a.label.localeCompare(b.label,"es",{numeric:true}));
   const sig=items.map(i=>i.value).join(",");if(STATE.pygItemsSig!==sig){STATE.pygItemsSig=sig;checklist("pygAnaliticas",items,STATE.pygPick,"Todas",renderPygTable,true);}}
  const search=document.getElementById("buscarPyg").value.trim().toLowerCase();
  const project=document.getElementById("pygScope").value==="ALL"?"ALL":selectedProject();
@@ -4402,7 +4410,7 @@ function renderPygTable(){
  rows=rows.filter(r=>String(r.analitica_clave||"SIN_ANALITICA").split(",").some(id=>selectedIds.has(id)));
  STATE.pygColumns=cols;STATE.pygReportRows=rows;STATE.pygReportFilters={search,project,period};
  {const n=lineasSinAnalitica().length,bt=document.getElementById('btnSinAnalitica');if(bt)bt.textContent='⬇ Movimientos sin analítica ('+n.toLocaleString('es-EC')+')';}
- document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto / cuenta contable</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(g.name)+(nombreAnalitica(g.name)?'<br><small>'+escapeHtml(nombreAnalitica(g.name))+'</small>':'')+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
+ document.getElementById("pygHead").innerHTML='<tr><th scope="col">Concepto / cuenta contable</th>'+cols.map(g=>'<th scope="col">'+escapeHtml(normalizarPO(g.name))+(nombreAnalitica(g.name)?'<br><small>'+escapeHtml(nombreAnalitica(g.name))+'</small>':'')+'</th>').join("")+'<th scope="col">Total de selección</th></tr>';
  STATE.pygRowSpecs=[];
  function row(label,subset,type,style,toggle,level,group=null,account=null){
   const specIndex=STATE.pygRowSpecs.push({type,group,account})-1;
@@ -4456,7 +4464,7 @@ function abrirMovimientos(rowIndex,colIndex){
  const account=spec.account!==null?rows[0]:null;
  STATE.pygDrill={rows:rows.slice().sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||number(a.odoo_move_line_id)-number(b.odoo_move_line_id)),page:0};
  document.getElementById("movementsTitle").textContent=account?(account.cuenta_codigo+" "+account.cuenta_nombre):spec.type==="income"?"Movimientos de ingresos":spec.type==="expense"?"Movimientos de egresos":"Movimientos del beneficio";
- document.getElementById("movementsContext").textContent=(col?.name||"Total de selección")+" · "+STATE.pygReportFilters.period.label+" · "+rows.length+" distribuciones contables";
+ document.getElementById("movementsContext").textContent=(col?normalizarPO(col.name):"Total de selección")+" · "+STATE.pygReportFilters.period.label+" · "+rows.length+" distribuciones contables";
  document.getElementById("buscarMovimiento").value="";
  renderMovimientos();
  document.getElementById("pygMovimientos").showModal();
@@ -4468,7 +4476,7 @@ function renderMovimientos(){
  const pages=Math.max(1,Math.ceil(rows.length/100));drill.page=Math.max(0,Math.min(drill.page,pages-1));
  const pageRows=rows.slice(drill.page*100,(drill.page+1)*100);
  const amount=r=>pygType(r)==="income"?-number(r.saldo_analitico):number(r.saldo_analitico);
- document.getElementById("movementsBody").innerHTML=pageRows.length?pageRows.map(r=>'<tr>'+[r.fecha,r.move_name,(r.cuenta_codigo||"")+" "+(r.cuenta_nombre||""),r.partner_nombre,r.ref,r.analitica_nombre,money(r.debito),money(r.credito),percent(r.porcentaje_analitico),money(amount(r))].map(v=>'<td>'+escapeHtml(v||"—")+'</td>').join("")+'<td>'+(r.odoo_move_id?'<a class="go-link" href="https://semgroup.odoo.com/mail/view?model=account.move&res_id='+encodeURIComponent(r.odoo_move_id)+'" target="_blank" rel="noopener" title="Abrir el asiento en Odoo">Odoo ↗</a>':'')+'</td></tr>').join(""):'<tr><td colspan="11">No hay movimientos para esta selección.</td></tr>';
+ document.getElementById("movementsBody").innerHTML=pageRows.length?pageRows.map(r=>'<tr>'+[r.fecha,r.move_name,(r.cuenta_codigo||"")+" "+(r.cuenta_nombre||""),r.partner_nombre,r.ref,String(r.analitica_nombre||"").split(" | ").map(normalizarPO).join(" | "),money(r.debito),money(r.credito),percent(r.porcentaje_analitico),money(amount(r))].map(v=>'<td>'+escapeHtml(v||"—")+'</td>').join("")+'<td>'+(r.odoo_move_id?'<a class="go-link" href="https://semgroup.odoo.com/mail/view?model=account.move&res_id='+encodeURIComponent(r.odoo_move_id)+'" target="_blank" rel="noopener" title="Abrir el asiento en Odoo">Odoo ↗</a>':'')+'</td></tr>').join(""):'<tr><td colspan="11">No hay movimientos para esta selección.</td></tr>';
  const income=rows.filter(r=>pygType(r)==="income").reduce((sum,r)=>sum-number(r.saldo_analitico),0);
  const expense=rows.filter(r=>pygType(r)==="expense").reduce((sum,r)=>sum+number(r.saldo_analitico),0);
  document.getElementById("movementsSummary").textContent=rows.length+" movimientos · Página "+(drill.page+1)+" de "+pages+" · Ingresos "+money(income)+" · Egresos "+money(expense)+" · Beneficio "+money(income-expense);
