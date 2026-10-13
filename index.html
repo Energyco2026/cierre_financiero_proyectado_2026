@@ -843,6 +843,10 @@ tbody tr:hover{
 .pyg-matrix tbody tr:nth-child(2) td{color:#008b98}
 .pyg-matrix thead th{white-space:normal;max-width:240px}
 .pyg-matrix .benefit th,.pyg-matrix .benefit td{background:#d8dade;font-weight:800;border-top:2px solid #a9c7ed}
+.pyg-matrix .pyg-margin th,.pyg-matrix .pyg-margin td{background:#eaf3ff;color:#183c68;font-weight:700}
+.pyg-matrix .pyg-margin td.money-negative{color:var(--red)}
+.pyg-matrix .pyg-margin td.pyg-na{color:#98a2b3;font-style:italic;font-weight:400}
+#btnMargenPyg.on{background:var(--blue);color:#fff}
 .report-note{color:var(--muted);font-size:12px;margin:12px 0}
 .sync-report{margin:12px 0;padding:12px;background:#f7f9fc;border-radius:10px}
 
@@ -1040,7 +1044,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 13-oct-2026 16:50</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 13-oct-2026 17:10</div>
 
         </div>
 
@@ -1556,6 +1560,7 @@ td.fav-com-td{white-space:normal!important}
                   <label>Hasta <input type="date" id="pygTo" class="filter-input" onchange="usarRangoPyg()"></label>
                   <button class="btn-secondary" onclick="expandirPyg()">Desplegar cuentas</button>
                   <button class="btn-secondary" onclick="STATE.pygExpanded.clear();renderPygTable()">Contraer cuentas</button>
+                  <button class="btn-secondary" id="btnMargenPyg" onclick="toggleMargenPyg()" title="Muestra el margen bruto y el margen de utilidad de cada analítica">% Margen</button>
                   <button class="btn-secondary" id="btnSinAnalitica" onclick="descargarSinAnalitica()" title="Descarga en Excel las líneas contables del período elegido que no tienen analítica en Odoo">⬇ Movimientos sin analítica</button>
                 </div>
                 <div class="table-wrap"><table class="pyg-matrix"><thead id="pygHead"></thead><tbody id="pygBody"></tbody></table></div>
@@ -4398,6 +4403,12 @@ async function guardarTodosFav(){
  let ok=0;for(const r of pend){if(await guardarFav(r.code,true))ok++;}
  toast(ok+' de '+pend.length+' proyectos guardados en el cierre.');
 }
+function toggleMargenPyg(){
+ STATE.pygMargen=!STATE.pygMargen;
+ const b=document.getElementById("btnMargenPyg");
+ b.classList.toggle("on",STATE.pygMargen);b.textContent=STATE.pygMargen?"Ocultar % margen":"% Margen";
+ renderPygTable();
+}
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  {const seen=new Map();for(const r of rows){const ids=String(r.analitica_clave||"SIN_ANALITICA").split(","),nm=(r.analitica_nombre||"Sin analítica").split(" | ");ids.forEach((id,i)=>{if(!seen.has(id))seen.set(id,nm[i]||nm[0]);});}
@@ -4441,6 +4452,18 @@ function renderPygTable(){
   }
  }
  output+=row("Beneficio Total",rows,"benefit","benefit",null,0);
+ if(STATE.pygMargen){
+  // Margen por columna: bruto = (ingresos − costo de ventas 501) / ingresos · utilidad = beneficio total / ingresos
+  const mx=sub=>{const v=analyticMatrix(sub,"ALL","ALL",search,project,STATE.pygPick),m=new Map(v.map(x=>[x.id,x]));return [...cols.map(c=>m.get(c.id)||{income:0,expense:0}),v.total];};
+  const tot=mx(rows),c501=mx(rows.filter(r=>pygType(r)==="expense"&&pygGroup(r)==="501"));
+  const fila=(label,ayuda,num)=>'<tr class="pyg-margin"><th scope="row" title="'+ayuda+'">'+label+'</th>'+tot.map((t,i)=>{
+   if(!(t.income>0.005))return '<td class="pyg-na" title="Sin ingresos (o ingresos negativos por reversas) en el período: el margen no aplica">n/a</td>';
+   const r=num(t,c501[i])/t.income;
+   return '<td class="'+(r<0?'money-negative':'')+'" title="'+money(num(t,c501[i]))+' / '+money(t.income)+'">'+percent(r)+'</td>';
+  }).join("")+'</tr>';
+  output+=fila("Margen bruto %","(Ingresos − costo de ventas 501) / ingresos",(t,c)=>t.income-c.expense)
+        +fila("Margen de utilidad %","Beneficio total / ingresos",t=>t.income-t.expense);
+ }
  document.getElementById("pygBody").innerHTML=output;
  document.getElementById("pygPeriod").textContent=period.label;
  document.getElementById("pygNote").textContent=period.invalid?"Selecciona un rango válido: Desde debe ser anterior o igual a Hasta.":cols.length?cols.length+" analíticas. Despliega Ingresos/Egresos y sus grupos para ver cuentas; pulsa cualquier importe para ver movimientos.":"No hay movimientos para estos filtros.";
