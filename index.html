@@ -3757,8 +3757,9 @@ function lineasCeldaPyg(area,code,col){
   return f.startsWith('2026-')&&meses.has(f.slice(5,7))&&bucketPyg(r)===area&&(code===null||String(r.cuenta_codigo)===String(code));
  }).map(r=>({...r,monto:(area==='income'||area==='otherIncome'?-1:1)*number(r.saldo_analitico)}));
 }
-function abrirDetallePyg(area,code,ci){
+function abrirDetallePyg(area,code,ci,soloReal){
  const st=STATE.pygUltimo,col=st?.cols[ci];if(!col)return;
+ if(col.forecast&&!st.realMode&&!soloReal){abrirDetalleForecast(area,code,ci);return;}
  const lineas=lineasCeldaPyg(area,code,col).sort((a,b)=>Math.abs(b.monto)-Math.abs(a.monto));
  const total=lineas.reduce((a,r)=>a+r.monto,0),odoo='https://semgroup.odoo.com/mail/view?model=';
  const det=code===null?null:st.filas.flatMap(f=>f.detalle).find(d=>d.area===area&&String(d.code)===String(code));
@@ -3784,6 +3785,116 @@ function abrirDetallePyg(area,code,ci){
  m.style.display='flex';
 }
 function cerrarDetallePyg(){const m=document.getElementById('pygDrill');if(m)m.style.display='none';}
+/* ========= P&G CONSOLIDADO: detalle del FORECAST (oct–dic) por proyecto y categoría ========= */
+function modalPygDrill(){
+ let m=document.getElementById('pygDrill');
+ if(!m){m=document.createElement('div');m.id='pygDrill';m.style.cssText='position:fixed;inset:0;background:rgba(8,40,74,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';m.onclick=e=>{if(e.target===m)cerrarDetallePyg();};document.body.appendChild(m);document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarDetallePyg();});}
+ return m;
+}
+function analisisProyectoForecast(po,fIdx){
+ const f=STATE.pygUltimo.f,meses=new Set(fIdx.map(i=>f.months[i]));
+ const vDet=k=>{const d=f.details.find(x=>String(x.code)===k);return d?fIdx.reduce((a,i)=>a+number(d.values[i]),0):0;};
+ const ing=vDet('PROYECTO:'+po),cos=vDet('COSTO:'+po);
+ const s=(STATE.savedSims||[]).find(x=>String(x.proyecto_codigo)===String(po)&&meses.has(String(x.mes).slice(0,10)))||{};
+ const det=s.detalle||{};
+ const contrato=number(s.monto_contrato),av31=number(s.avance_acumulado),avHoy=det.avance_hoy==null?null:number(det.avance_hoy);
+ const ingPrev=number(s.ingreso_reconocido_previo),cosPrev=number(s.costo_reconocido_previo);
+ const ingReal26=number(det.ingreso_neto_2026),cosReal26=number(det.costo_neto_2026);
+ const eacG=number(det.costo_proyecto_eac),costoTotEst=number(det.costo_total_estimado);
+ const eacAct=eacSugerido(po),{cats,t}=detalleCostoProyecto(po);
+ const enPyg=cosPrev+cosReal26,factSinCosto=Math.max(t.re-enPyg,0);
+ const respaldo=t.abierta+factSinCosto,sinRespaldo=Math.max(cos-respaldo,0);
+ const alertas=[];
+ if(cos>ing+0.005)alertas.push({t:'danger',x:'Margen negativo en el tramo oct–dic: '+money(ing-cos)});
+ if(ing<-0.005)alertas.push({t:'warn',x:'Reversa de ingreso: ya se facturó más que el avance al 31-dic'});
+ if(eacG>0&&eacAct.v>0&&Math.abs(eacG-eacAct.v)/eacAct.v>0.01)alertas.push({t:'warn',x:'El forecast se guardó con un costo total (EAC) de '+money(eacG)+', pero hoy el EAC sugerido es '+money(eacAct.v)+'. Vuelve a guardar el proyecto en Forecast por avance.'});
+ if(sinRespaldo>1)alertas.push({t:'danger',x:'Costo sin OC abierta ni factura que lo respalde: '+money(sinRespaldo)});
+ if(contrato>0&&eacG>0&&(ingPrev>0||cosPrev>0)){const pI=ingPrev/contrato,pC=cosPrev/eacG;if(Math.abs(pI-pC)>0.10)alertas.push({t:'warn',x:'Hasta 2025 se reconoció el '+percent(pI)+' del ingreso pero solo el '+percent(pC)+' del costo: 2026 absorbe la diferencia'});}
+ if(!cats.length)alertas.push({t:'warn',x:'Sin presupuesto por categoría en SharePoint: no se puede verificar el costo'});
+ const nom=String(poNombre(po)||'').replace(new RegExp('^'+po+'\\s*-\\s*'),'');return {po,nombre:nom===String(po)?'':nom,ing,cos,margen:ing-cos,contrato,av31,avHoy,ingPrev,cosPrev,ingReal26,cosReal26,eacG,costoTotEst,eacAct,cats,t,enPyg,factSinCosto,respaldo,sinRespaldo,nota:s.nota||'',alertas,tieneSim:!!s.proyecto_codigo};
+}
+function abrirDetalleForecast(area,code,ci){
+ const st=STATE.pygUltimo,col=st?.cols[ci];if(!col)return;
+ const fIdx=col.idx.filter(i=>i>=9),rIdx=col.idx.filter(i=>i<9);
+ const areaDe=d=>d.area==='income'&&esOtroIngreso(d.code)?'otherIncome':d.area;
+ const suma=(d,idx)=>idx.reduce((a,i)=>a+number(d.values[i]),0);
+ const dets=st.f.details.filter(d=>areaDe(d)===area&&(code===null||String(d.code)===String(code)));
+ const real=dets.filter(d=>d.source==='Odoo').reduce((a,d)=>a+suma(d,rIdx),0);
+ const comps=dets.filter(d=>d.source!=='Odoo').map(d=>({code:String(d.code),name:d.name,source:d.source,v:suma(d,fIdx)})).filter(x=>Math.abs(x.v)>=0.005);
+ const totalF=comps.reduce((a,x)=>a+x.v,0);
+ const filaCelda=code===null?st.filas.find(x=>x.area===area):st.filas.flatMap(x=>x.detalle).find(d=>d.area===area&&String(d.code)===String(code));
+ const vCelda=filaCelda?.valores?.[ci]?.v;
+ const dif=vCelda==null?null:vCelda-(totalF+real);
+ const esProy=c=>/^(PROYECTO|COSTO):/.test(c.code);
+ const pos=[...new Set(comps.filter(esProy).map(c=>c.code.split(':')[1]))];
+ const proys=pos.map(po=>analisisProyectoForecast(po,fIdx)).sort((a,b)=>Math.abs(area==='income'?b.ing:b.cos)-Math.abs(area==='income'?a.ing:a.cos));
+ const otros=comps.filter(c=>!esProy(c)).sort((a,b)=>Math.abs(b.v)-Math.abs(a.v));
+ const titulo=(code===null?(filaCelda?.label||area):(filaCelda?.label||code))+' · '+col.label;
+ STATE.fcDrill={titulo,col:col.label,proys,otros,real,totalF,vCelda};
+ const nP=proys.filter(p=>p.alertas.length).length;
+ const tot=proys.reduce((a,p)=>{a.ing+=p.ing;a.cos+=p.cos;a.sin+=p.sinRespaldo;return a;},{ing:0,cos:0,sin:0});
+ const td=(v,ex='')=>'<td style="text-align:right;white-space:nowrap'+(number(v)<-0.004?';color:#c62839':'')+ex+'">'+money(v)+'</td>';
+ const chip=a=>'<div style="font-size:12px;margin:2px 0;color:'+(a.t==='danger'?'#c62839':'#9a6200')+'">'+(a.t==='danger'?'⛔ ':'⚠️ ')+escapeHtml(a.x)+'</div>';
+ const filaProy=p=>{
+  const id='fcx_'+p.po.replace(/\W/g,'');
+  const calc=p.tieneSim?'<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin:8px 0">'
+   +'<div><b>Cómo se calcula el ingreso</b><table style="width:100%">'
+   +'<tr><td>Contrato × avance al 31-dic ('+p.av31+'%)</td>'+td(p.contrato*p.av31/100)+'</tr>'
+   +'<tr><td>(−) Reconocido hasta 2025</td>'+td(-p.ingPrev)+'</tr>'
+   +'<tr><td>(−) Facturado / reconocido 2026 (ene–sep)</td>'+td(-p.ingReal26)+'</tr>'
+   +'<tr style="font-weight:700"><td>= Ingreso forecast</td>'+td(p.ing)+'</tr></table></div>'
+   +'<div><b>Cómo se calcula el costo</b><table style="width:100%">'
+   +'<tr><td>Costo total estimado (EAC '+money(p.eacG)+') × '+p.av31+'%</td>'+td(p.costoTotEst)+'</tr>'
+   +'<tr><td>(−) Costo reconocido hasta 2025</td>'+td(-p.cosPrev)+'</tr>'
+   +'<tr><td>(−) Costo real 2026 en P&amp;G (ene–sep)</td>'+td(-p.cosReal26)+'</tr>'
+   +'<tr style="font-weight:700"><td>= Costo forecast</td>'+td(p.cos)+'</tr></table>'
+   +'<div class="report-note" style="margin:4px 0 0">EAC hoy: '+money(p.eacAct.v)+' · '+escapeHtml(p.eacAct.fuente)+'</div></div></div>':'<p class="report-note">No hay forecast guardado para esta PO en los meses de la columna.</p>';
+  const cat=p.cats.length?'<b>Costo por categoría (presupuesto SharePoint vs Odoo)</b><table style="width:100%;margin-top:4px"><thead><tr><th>Categoría</th><th style="text-align:right">Presupuesto aterrizado</th><th style="text-align:right">Real facturado</th><th style="text-align:right">OC abiertas</th><th style="text-align:right">Por comprometer (sin OC)</th><th style="text-align:right">Sobre presupuesto</th></tr></thead><tbody>'
+   +p.cats.map(c=>'<tr><td>'+escapeHtml(c.rubro)+'</td>'+td(c.p)+td(c.re)+td(c.abierta)+td(c.sinOc)+'<td style="text-align:right;white-space:nowrap'+(c.sobre>0?';color:#c62839;font-weight:700':'')+'">'+(c.sobre>0?money(c.sobre):'—')+'</td></tr>').join('')
+   +'<tr style="font-weight:700"><td>Total</td>'+td(p.t.p)+td(p.t.re)+td(p.t.abierta)+td(p.t.sinOc)+td(p.t.sobre)+'</tr></tbody></table>'
+   +'<div class="report-note" style="margin:6px 0 0">Respaldo del costo forecast = OC abiertas '+money(p.t.abierta)+' + facturado que aún no pasa a costo '+money(p.factSinCosto)+' (real facturado '+money(p.t.re)+' − costo ya en P&amp;G '+money(p.enPyg)+') = <b>'+money(p.respaldo)+'</b>. Costo forecast sin respaldo: <b'+(p.sinRespaldo>1?' style="color:#c62839"':'')+'>'+money(p.sinRespaldo)+'</b>.</div>'
+   :'<p class="report-note">Esta PO no tiene presupuesto por categoría en SharePoint.</p>';
+  return '<tr style="cursor:pointer" onclick="toggleFcProy(\''+id+'\')"><td style="white-space:nowrap">▸ <b>'+escapeHtml(p.po)+'</b></td><td>'+escapeHtml(p.nombre||'')+(p.nota?'<div class="report-note" style="margin:0">'+escapeHtml(p.nota)+'</div>':'')+'</td>'
+   +'<td style="text-align:right;white-space:nowrap">'+(p.avHoy==null?'—':p.avHoy.toFixed(1)+'%')+' → '+p.av31+'%</td>'
+   +td(p.ing)+td(p.cos)+td(p.margen,';font-weight:700')+td(p.sinRespaldo)+'<td style="min-width:240px;max-width:360px;white-space:normal">'+(p.alertas.length?p.alertas.map(chip).join(''):'<span style="color:#1b7f4b">✓</span>')+'</td></tr>'
+   +'<tr id="'+id+'" style="display:none;background:#f6f9fc"><td colspan="8" style="padding:8px 14px 14px">'+calc+cat+'</td></tr>';
+ };
+ const m=modalPygDrill();
+ m.innerHTML='<style>#pygDrill td,#pygDrill th{min-width:0!important}#pygDrill td{padding:6px 8px;white-space:normal}</style><div style="background:#fff;border-radius:12px;max-width:1250px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
+  +'<div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start"><div style="flex:1"><h3 style="margin:0 0 4px">'+escapeHtml(titulo)+' · de dónde sale</h3>'
+  +'<div class="report-note" style="margin:0">'+(rIdx.length?'Real Odoo ene–sep '+money(real)+' + ':'')+'Forecast '+money(totalF)+' = '+money(totalF+real)
+  +(vCelda==null?'':(Math.abs(dif)<1?' · <span style="color:#1b7f4b">✓ cuadra con la celda</span>':' · <span style="color:#c62839">⚠️ no cuadra con la celda ('+money(vCelda)+', diferencia '+money(dif)+')</span>'))
+  +(proys.length?' · '+proys.length+' proyecto(s), '+nP+' con alertas':'')+'</div></div>'
+  +(rIdx.length?'<button class="btn-secondary" onclick="abrirDetallePyg(\''+area+'\','+(code===null?'null':'\''+String(code).replace(/[^\w.:-]/g,'')+'\'')+','+ci+',true)">Ver asientos reales ene–sep</button>':'')
+  +'<button class="btn-secondary" onclick="descargarDetalleForecast()">Descargar Excel</button>'
+  +'<button class="btn-secondary" onclick="cerrarDetallePyg()">✕</button></div>'
+  +'<div style="overflow:auto;padding:0 20px 16px">'
+  +(proys.length?'<h4 style="margin:14px 0 6px">Proyectos · Forecast por avance <span class="report-note">(clic en un proyecto para ver el cálculo y el costo por categoría)</span></h4><table style="width:100%"><thead><tr><th>PO</th><th>Proyecto</th><th style="text-align:right">Avance hoy → 31-dic</th><th style="text-align:right">Ingreso</th><th style="text-align:right">Costo</th><th style="text-align:right">Margen</th><th style="text-align:right">Costo sin respaldo</th><th>Alertas</th></tr></thead><tbody>'
+   +proys.map(filaProy).join('')
+   +'<tr style="font-weight:700;border-top:2px solid var(--line)"><td colspan="3">Total proyectos</td>'+td(tot.ing)+td(tot.cos)+td(tot.ing-tot.cos)+td(tot.sin)+'<td></td></tr></tbody></table>':'')
+  +(otros.length?'<h4 style="margin:18px 0 6px">Otros conceptos del forecast</h4><table style="width:100%"><thead><tr><th>Concepto</th><th>Fuente</th><th style="text-align:right">Monto</th></tr></thead><tbody>'
+   +otros.map(o=>'<tr><td>'+escapeHtml((/^\d/.test(o.code)?o.code+' ':'')+(o.name||o.code))+'</td><td>'+escapeHtml(o.source||'')+'</td>'+td(o.v)+'</tr>').join('')
+   +'<tr style="font-weight:700"><td colspan="2">Total otros</td>'+td(otros.reduce((a,o)=>a+o.v,0))+'</tr></tbody></table>':'')
+  +(!proys.length&&!otros.length?'<p class="report-note" style="margin-top:14px">No hay valores de forecast para esta celda.</p>':'')
+  +'</div></div>';
+ m.style.display='flex';
+}
+function toggleFcProy(id){const r=document.getElementById(id);if(!r)return;const abrir=r.style.display==='none';r.style.display=abrir?'table-row':'none';const p=r.previousElementSibling?.firstElementChild;if(p)p.innerHTML=p.innerHTML.replace(abrir?'▸':'▾',abrir?'▾':'▸');}
+async function descargarDetalleForecast(){
+ const d=STATE.fcDrill;if(!d)return;
+ try{
+  const X=await cargarSheetJS(),r2=v=>Math.round(number(v)*100)/100;
+  const p1=d.proys.map(p=>({'PO':p.po,'Proyecto':p.nombre||'','Avance hoy %':p.avHoy,'Avance 31-dic %':p.av31,'Contrato':r2(p.contrato),'Ingreso reconocido hasta 2025':r2(p.ingPrev),'Ingreso 2026 ene-sep':r2(p.ingReal26),'Ingreso forecast':r2(p.ing),'EAC guardado':r2(p.eacG),'EAC actual':r2(p.eacAct.v),'Costo total estimado al avance':r2(p.costoTotEst),'Costo reconocido hasta 2025':r2(p.cosPrev),'Costo 2026 ene-sep':r2(p.cosReal26),'Costo forecast':r2(p.cos),'Margen forecast':r2(p.margen),'OC abiertas':r2(p.t.abierta),'Facturado sin pasar a costo':r2(p.factSinCosto),'Costo sin respaldo':r2(p.sinRespaldo),'Nota':p.nota,'Alertas':p.alertas.map(a=>a.x).join(' | ')}));
+  const p2=d.proys.flatMap(p=>p.cats.map(c=>({'PO':p.po,'Proyecto':p.nombre||'','Categoría':c.rubro,'Presupuesto aterrizado':r2(c.p),'Real facturado':r2(c.re),'OC abiertas':r2(c.abierta),'Por comprometer (sin OC)':r2(c.sinOc),'Sobre presupuesto':r2(c.sobre)})));
+  const p3=d.otros.map(o=>({'Concepto':(/^\d/.test(o.code)?o.code+' ':'')+(o.name||o.code),'Fuente':o.source||'','Monto':r2(o.v)}));
+  const wb=X.utils.book_new();
+  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Detalle del forecast — '+d.titulo],['Generado',new Date().toLocaleString('es-EC')],['Real ene–sep',r2(d.real)],['Forecast',r2(d.totalF)],['Total',r2(d.real+d.totalF)],['Valor en la celda',d.vCelda==null?'':r2(d.vCelda)]]),'Resumen');
+  X.utils.book_append_sheet(wb,X.utils.json_to_sheet(p1.length?p1:[{'Sin proyectos':''}]),'Proyectos');
+  X.utils.book_append_sheet(wb,X.utils.json_to_sheet(p2.length?p2:[{'Sin categorías':''}]),'Costo por categoría');
+  X.utils.book_append_sheet(wb,X.utils.json_to_sheet(p3.length?p3:[{'Sin otros conceptos':''}]),'Otros conceptos');
+  X.writeFile(wb,'Detalle_forecast_'+String(d.col).replace(/\W+/g,'_')+'.xlsx');
+ }catch(e){toast('No se pudo generar el Excel: '+e.message);}
+}
 /* ========= CALIDAD DE DATOS: controles de cierre ========= */
 function lineasSinPo(){
  if(STATE.sinPoRef===STATE.analytic)return STATE.sinPoCache;
@@ -3846,7 +3957,7 @@ function renderConsolidated(){
  opcionesFiltroPyg();
  const modelo=pygConsolidadoModelo(),{f,filtro,realMode,cols,filas}=modelo;STATE.pygUltimo=modelo;
  const claseCol=c=>(c.agg?'closing-cell':c.forecast?'forecast-cell':'');
- const clic=(area,code,i)=>{const c=cols[i];if(!area||(!realMode&&c.idx.every(k=>k>=9)))return '';return ' onclick="abrirDetallePyg(\''+area+'\','+(code===null?'null':'\''+String(code).replace(/[^\w.:-]/g,'')+'\'')+','+i+')" title="Ver asientos en Odoo" style="cursor:pointer"';};
+ const clic=(area,code,i)=>{const c=cols[i];if(!area)return '';return ' onclick="abrirDetallePyg(\''+area+'\','+(code===null?'null':'\''+String(code).replace(/[^\w.:-]/g,'')+'\'')+','+i+')" title="'+(c.forecast&&!realMode?'Ver de qué proyectos y conceptos sale':'Ver asientos en Odoo')+'" style="cursor:pointer"';};
  const celda=(x,c,ex='')=>'<td class="'+claseCol(c)+(x.neg?' pyg-neg':'')+(x.na?' pyg-na':'')+(ex?' pyg-click':'')+'"'+ex+(x.na?' title="El ingreso del período es cero o negativo (reversas): el margen no es interpretable."':'')+'>'+x.txt+'</td>';
  document.getElementById('consolidatedHead').innerHTML='<tr><th>Concepto / cuenta</th>'+cols.map(c=>'<th class="'+(c.agg?'closing-cell':'')+'">'+c.label+'<br>'+c.sub+'</th>').join('')+'</tr>';
  let html='';
