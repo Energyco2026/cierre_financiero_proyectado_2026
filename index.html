@@ -922,7 +922,7 @@ tbody tr:hover{
 .ledger-msg.warn{background:#fff6e6;color:#8a5300}
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
-<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.contratos-table td{vertical-align:middle}.contratos-table input.cr-monto{width:140px;text-align:right;background:#fff8d6}.contratos-table input.cr-nota{min-width:240px;width:100%;background:#fff8d6}.contratos-table td.num{text-align:right;white-space:nowrap}.contratos-table .cr-acc{white-space:nowrap}.consolidated-matrix td.pyg-neg{color:#c62839}.qc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.qc-box{text-align:left;cursor:pointer;font:inherit;color:inherit;border-left:5px solid #c9d6ea!important}.qc-box:hover{box-shadow:0 4px 14px rgba(15,35,70,.12)}.qc-box small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.qc-alto{border-left-color:#e64d5e!important}.qc-medio{border-left-color:#f58a33!important}.qc-info{border-left-color:#146fe8!important}.qc-ok{border-left-color:#0ba66d!important}.qc-grupo{cursor:pointer}.qc-grupo:hover th,.qc-grupo:hover td{background:#f1f5fb}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.simp-wrap{max-height:72vh;overflow:auto}.simp-table{border-collapse:separate;border-spacing:0}.simp-table th,.simp-table td{white-space:nowrap;text-align:right;padding:4px 8px;border-bottom:1px solid #e6e9ef}.simp-table thead th{position:sticky;top:0;background:#f4f6fa;z-index:2;vertical-align:bottom;text-align:center}.simp-table tbody th{position:sticky;left:0;background:#fff;z-index:1;text-align:left;min-width:230px}.simp-table thead th:first-child{left:0;z-index:3}.simp-table tr.pyg-total td,.simp-table tr.pyg-total th{font-weight:700;background:#eef1f5}.simp-table tr.pyg-benefit td,.simp-table tr.pyg-benefit th{font-weight:700;background:#e7f4ea}.simp-table tr.pyg-pct td,.simp-table tr.pyg-pct th{font-style:italic;color:#4b5565}.simp-table input.sim-in{width:118px;text-align:right;background:#fff8d6;border:1px solid #e3d48a;border-radius:4px;padding:2px 4px}.simp-table input.sim-in.edit{background:#ffe08a;border-color:#c99a00;font-weight:700}.simp-table input.sim-mot{width:160px;background:#fff8d6;border:1px solid #e3d48a;border-radius:4px;padding:2px 4px}.simp-table td.neg{color:#c62839}.simp-table td.tot,.simp-table th.tot{background:#eef3f9;border-left:2px solid #c5cfdd}.simp-table small.base{display:block;color:#8a93a3;font-size:11px}.simp-table td.al{white-space:normal;min-width:150px;text-align:left;font-size:11px}.contratos-table td{vertical-align:middle}.contratos-table input.cr-monto{width:140px;text-align:right;background:#fff8d6}.contratos-table input.cr-nota{min-width:240px;width:100%;background:#fff8d6}.contratos-table td.num{text-align:right;white-space:nowrap}.contratos-table .cr-acc{white-space:nowrap}.consolidated-matrix td.pyg-neg{color:#c62839}.qc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.qc-box{text-align:left;cursor:pointer;font:inherit;color:inherit;border-left:5px solid #c9d6ea!important}.qc-box:hover{box-shadow:0 4px 14px rgba(15,35,70,.12)}.qc-box small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.qc-alto{border-left-color:#e64d5e!important}.qc-medio{border-left-color:#f58a33!important}.qc-info{border-left-color:#146fe8!important}.qc-ok{border-left-color:#0ba66d!important}.qc-grupo{cursor:pointer}.qc-grupo:hover th,.qc-grupo:hover td{background:#f1f5fb}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
 #projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
@@ -1371,6 +1371,7 @@ td.fav-com-td{white-space:normal!important}
 <button class="tab-btn" data-tab="proyeccion" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
 <button class="tab-btn" data-tab="forecastav" onclick="abrirTab('forecastav',this)">Forecast por avance</button>
 <button class="tab-btn" data-tab="contratos" onclick="abrirTab('contratos',this);renderContratos()">Contratos</button>
+<button class="tab-btn" data-tab="simpyg" onclick="abrirTab('simpyg',this);abrirSimPyg()">Simulador P&G</button>
 
                 <button
                     class="tab-btn active"
@@ -1496,6 +1497,26 @@ td.fav-com-td{white-space:normal!important}
 
 
             <!-- PYG -->
+            <div id="tab-simpyg" class="tab-content hidden">
+                <div class="card-title"><h3>Simulador P&amp;G por PO · cierre 2026</h3><small id="simpResumen"></small></div>
+                <div class="ledger-msg warn" style="margin:0 0 10px">Esto es una <b>simulación</b>: no cambia el Forecast por avance, el P&amp;G consolidado ni Odoo. Cada columna arranca con el cierre 2026 del P&amp;G consolidado (real ene–sep + forecast oct–dic). Cambia las celdas amarillas y se recalcula todo. Cada PO que ajustes necesita un <b>motivo</b>: es tu sustento ante gerencia y el auditor.</div>
+                <div class="filters-row" style="flex-wrap:wrap">
+                  <label>Escenario <select id="simpLista" onchange="cargarEscenarioSimPyg(this.value)"><option value="">— Nuevo escenario —</option></select></label>
+                  <input id="simpNombre" class="filter-input" placeholder="Nombre del escenario (ej. Cierre conservador)" style="min-width:260px" oninput="STATE.simPyg.nombre=this.value">
+                  <button class="btn-primary" onclick="guardarEscenarioSimPyg()">Guardar escenario</button>
+                  <button class="btn-secondary" onclick="limpiarSimPyg()" title="Volver todas las celdas al valor base">Volver a base</button>
+                  <button class="btn-secondary" id="simpBorrar" onclick="borrarEscenarioSimPyg()" style="display:none">Eliminar</button>
+                  <button class="btn-secondary" onclick="descargarSimPyg()">Descargar Excel</button>
+                </div>
+                <div class="filters-row" style="flex-wrap:wrap">
+                  <label style="display:flex;align-items:center;gap:6px">Mostrar PO con ingreso + costo 2026 desde $<input id="simpMin" class="filter-input" type="number" min="0" step="1000" value="20000" style="width:110px" onchange="STATE.simPyg.min=Number(this.value)||0;renderSimPyg()"></label>
+                  <label>Agregar PO <input id="simpAgregar" class="filter-input" list="consolidatedPoList" placeholder="Escribe la PO" style="width:200px" onchange="agregarPoSimPyg(this)"></label>
+                  <small style="color:var(--muted)">Siempre aparecen las PO guardadas en Forecast por avance y las que ajustaste.</small>
+                </div>
+                <div class="table-wrap simp-wrap"><table class="simp-table"><thead id="simpHead"></thead><tbody id="simpBody"></tbody></table></div>
+                <p class="report-note" id="simpNota"></p>
+            </div>
+
             <div id="tab-contratos" class="tab-content hidden">
                 <div class="card-title"><h3>Contratos reales · sin IVA</h3><small id="contratosResumen"></small></div>
                 <p class="report-note">Escribe el <b>valor real del contrato sin IVA</b> y su <b>sustento</b> (ej. "400.000 obra + 35.000 controlador híbrido, contrato firmado"). Cuando una PO tiene contrato real, el dashboard usa ese valor en todas las pestañas (Forecast, Proyectos, P&amp;G, controles) y deja de usar SharePoint y la orden de venta de Odoo. Si la PO ya está guardada en el Forecast por avance, se vuelve a guardar sola con el nuevo contrato. Cada cambio queda en el historial de Supabase.</p>
@@ -4206,6 +4227,203 @@ function favFila(code){
   ingSaldo:ing.saldo,cosSaldo:cos.saldo,al,nota,comentario,valido:C>0&&E>0&&a>=0&&a<=100};
 }
 
+
+/* ========= SIMULADOR P&G POR PO ========= */
+STATE.simPyg??={id:null,nombre:'',celdas:{},motivos:{},extra:[],min:20000,lista:[]};
+const SIMP_EDIT=['income','cost','sales','admin','otherIncome','finance','other'];
+const SIMP_FILAS=[
+ {k:'income',l:'Ingresos operacionales',ed:1,cls:'pyg-total'},
+ {k:'cost',l:'Costo de ingresos',ed:1},
+ {k:'gross',l:'Utilidad bruta',cls:'pyg-total'},
+ {r:'gross',l:'Margen bruto'},
+ {k:'sales',l:'50201 Gastos de venta',ed:1},
+ {k:'admin',l:'50202 Gastos administrativos',ed:1},
+ {k:'operating',l:'Utilidad operacional',cls:'pyg-total'},
+ {r:'operating',l:'Margen operacional'},
+ {k:'otherIncome',l:'(+) Otros ingresos no operacionales',ed:1},
+ {k:'finance',l:'50203 Gastos financieros',ed:1},
+ {k:'other',l:'Otros gastos / clasificación pendiente',ed:1},
+ {k:'uap',l:'Utilidad antes de participación e IR',cls:'pyg-total'},
+ {k:'part',l:'(−) 15% Participación trabajadores · estimado',tot:1},
+ {k:'ir',l:'(−) 25% Impuesto a la renta · estimado',tot:1},
+ {k:'net',l:'Utilidad neta estimada',cls:'pyg-benefit',tot:1},
+ {r:'net',l:'Margen neto',tot:1}];
+function simpModelo(filtro){
+ const m=pygConsolidadoModelo({filtro,realMode:false,cols:[{idx:[0,1,2,3,4,5,6,7,8],agg:true,forecast:false,label:'',sub:''},{idx:[...Array(12).keys()],agg:true,forecast:true,label:'',sub:''}]});
+ return {real:m.cols[0].d,cierre:m.cols[1].d,noDisp:!!m.cols[1].noDisp};
+}
+function simpCacheOk(){
+ const c=STATE.simpCache;
+ if(c&&c.a===STATE.analytic&&c.s===STATE.savedSims&&c.p===STATE.ppaRows&&c.b===STATE.fixedBudget&&c.e===STATE.expensePlan)return c;
+ return STATE.simpCache={a:STATE.analytic,s:STATE.savedSims,p:STATE.ppaRows,b:STATE.fixedBudget,e:STATE.expensePlan,po:{},total:null};
+}
+function simpBase(code){const c=simpCacheOk();return c.po[code]??=simpModelo({tipo:'po',code:String(code),label:String(code)});}
+function simpTotal(){return simpModelo(null);}
+function simpCodigos(){
+ const min=number(STATE.simPyg.min),act=new Map(),set=new Set();
+ for(const r of STATE.analytic||[]){
+  if(!String(r.fecha).startsWith('2026-'))continue;
+  const b=bucketPyg(r);if(b!=='income'&&b!=='cost')continue;
+  for(const n of String(r.analitica_nombre||'').split(' | ')){const c=n.trim().match(PYG_PO_RE)?.[1];if(c)act.set(c,(act.get(c)||0)+Math.abs(number(r.saldo_analitico)));}
+ }
+ for(const [c,v] of act)if(v>=min)set.add(c);
+ for(const x of STATE.savedSims||[]){const c=String(x.proyecto_codigo||'');if(/^\d{3,4}$/.test(c))set.add(c);}
+ for(const c of ppaCodigos())if(/^\d{3,4}$/.test(c))set.add(c);
+ for(const c of STATE.simPyg.extra||[])set.add(String(c));
+ for(const c of Object.keys(STATE.simPyg.celdas||{}))if(c!=='RESTO')set.add(c);
+ return [...set].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+}
+function simpVal(code,k,base){const o=STATE.simPyg.celdas?.[code]?.[k];return o&&o.v!=null?number(o.v):number(base[k]);}
+function simpEditado(code){return Object.keys(STATE.simPyg.celdas?.[code]||{}).length>0;}
+function simpCalcular(){
+ const codes=simpCodigos(),T=simpTotal();
+ const cols=codes.map(code=>{const b=simpBase(code);return {code,label:'PO '+code,nombre:String(poNombre(code)||'').replace(new RegExp('^'+code+'\\s*-\\s*'),''),base:b.cierre,real:b.real};});
+ const resto={};for(const k of SIMP_EDIT)resto[k]=number(T.cierre[k])-cols.reduce((a,c)=>a+number(c.base[k]),0);
+ cols.push({code:'RESTO',label:'Resto',nombre:'Otras PO, sin PO y gastos generales',base:resto,real:null});
+ const sumE={},sumB={};for(const k of SIMP_EDIT){sumE[k]=0;sumB[k]=0;}
+ for(const c of cols){
+  const s={};for(const k of SIMP_EDIT){s[k]=simpVal(c.code,k,c.base);sumE[k]+=s[k];}
+  c.s=s;c.d=pygDerivar(s,false);c.db=pygDerivar(Object.fromEntries(SIMP_EDIT.map(k=>[k,number(c.base[k])])),false);
+  c.ed=simpEditado(c.code);c.mot=String(STATE.simPyg.motivos?.[c.code]||'').trim();
+  const al=[];
+  if(c.ed&&!c.mot)al.push(['danger','Falta el motivo del ajuste']);
+  if(c.real&&s.cost<number(c.real.cost)-0.5)al.push(['danger','Costo menor al ya registrado en Odoo ene–sep ('+money(c.real.cost)+'): ese costo no se puede quitar']);
+  if(c.real&&c.ed&&s.income<number(c.real.income)-0.5)al.push(['warn','Ingreso menor al ya registrado ene–sep ('+money(c.real.income)+'): implica una reversa']);
+  if(c.ed&&c.code!=='RESTO'&&c.d.gross<0)al.push(['warn','Pérdida bruta en el escenario']);
+  c.al=al;
+ }
+ const totE=pygDerivar(sumE,true),totB=T.cierre;
+ return {cols,totE,totB,noDisp:T.noDisp};
+}
+function simpCelda(v,neg){return '<td class="'+(neg?'neg':'')+'">'+money(v)+'</td>';}
+function simpRatio(d,k){if(!(number(d.income)>0))return '<td style="color:#98a2b3">n/a</td>';const r=number(d[k])/number(d.income);return '<td class="'+(r<0?'neg':'')+'">'+percent(r)+'</td>';}
+function renderSimPyg(){
+ const head=document.getElementById('simpHead'),body=document.getElementById('simpBody');if(!head||!body)return;
+ if(!STATE.analytic){body.innerHTML='<tr><th>Cargando datos…</th></tr>';return;}
+ const foco=document.activeElement&&document.activeElement.closest?.('#simpBody')?{c:document.activeElement.dataset.c,k:document.activeElement.dataset.k,m:document.activeElement.dataset.m}:null;
+ const M=simpCalcular(),{cols,totE,totB}=M;
+ head.innerHTML='<tr><th>Concepto</th>'+cols.map(c=>'<th title="'+escapeHtml(c.nombre)+'">'+escapeHtml(c.label)+'<br><small style="font-weight:400;display:inline-block;max-width:140px;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(c.nombre||'')+'</small></th>').join('')+'<th class="tot">Total escenario</th><th class="tot">Total base</th><th class="tot">Diferencia</th></tr>';
+ let h='';
+ for(const f of SIMP_FILAS){
+  h+='<tr class="'+(f.cls||'')+(f.r?' pyg-pct':'')+'"><th>'+escapeHtml(f.l)+'</th>';
+  for(const c of cols){
+   if(f.tot){h+='<td style="color:#98a2b3">—</td>';continue;}
+   if(f.r){h+=simpRatio(c.d,f.r);continue;}
+   if(f.ed){
+    const o=STATE.simPyg.celdas?.[c.code]?.[f.k],v=simpVal(c.code,f.k,c.base);
+    h+='<td><input class="sim-in'+(o?' edit':'')+'" type="number" step="0.01" data-c="'+escapeHtml(c.code)+'" data-k="'+f.k+'" value="'+(Math.round(v*100)/100)+'" title="Base: '+money(c.base[f.k])+'">'+(o?'<small class="base">base '+money(c.base[f.k])+'</small>':'')+'</td>';
+    continue;
+   }
+   h+=simpCelda(c.d[f.k],number(c.d[f.k])<-0.004);
+  }
+  if(f.r){h+=simpRatio(totE,f.r).replace('<td','<td class="tot"')+simpRatio(totB,f.r).replace('<td','<td class="tot"')+'<td class="tot"></td>';}
+  else{const e=number(totE[f.k]),b=number(totB[f.k]),df=e-b;h+='<td class="tot'+(e<-0.004?' neg':'')+'">'+money(e)+'</td><td class="tot'+(b<-0.004?' neg':'')+'">'+money(b)+'</td><td class="tot'+(df<-0.004?' neg':'')+'">'+(Math.abs(df)<0.005?'—':money(df))+'</td>';}
+  h+='</tr>';
+ }
+ h+='<tr><th>Diferencia vs base (utilidad)</th>'+cols.map(c=>{const df=c.d.uap-c.db.uap;return '<td class="'+(df<-0.004?'neg':'')+'">'+(Math.abs(df)<0.005?'—':money(df))+'</td>';}).join('')+'<td class="tot"></td><td class="tot"></td><td class="tot"></td></tr>';
+ h+='<tr><th>Motivo del ajuste</th>'+cols.map(c=>'<td><input class="sim-mot" type="text" maxlength="300" data-m="'+escapeHtml(c.code)+'" placeholder="'+(c.ed?'Obligatorio':'')+'" value="'+escapeHtml(STATE.simPyg.motivos?.[c.code]||'')+'"></td>').join('')+'<td class="tot"></td><td class="tot"></td><td class="tot"></td></tr>';
+ h+='<tr><th>Alertas</th>'+cols.map(c=>'<td class="al">'+c.al.map(a=>'<span class="badge '+a[0]+'">'+escapeHtml(a[1])+'</span>').join('<br>')+'</td>').join('')+'<td class="tot"></td><td class="tot"></td><td class="tot"></td></tr>';
+ body.innerHTML=h;
+ const nAj=cols.filter(c=>c.ed).length,nAl=cols.reduce((a,c)=>a+c.al.filter(x=>x[0]==='danger').length,0);
+ document.getElementById('simpResumen').textContent=(cols.length-1)+' PO · '+nAj+' columna(s) ajustada(s) · Utilidad neta escenario '+money(totE.net)+' vs base '+money(totB.net)+' ('+(totE.net-totB.net>=0?'+':'')+money(totE.net-totB.net)+')'+(nAl?' · '+nAl+' alerta(s) roja(s)':'');
+ document.getElementById('simpNota').textContent=(M.noDisp?'Atención: el presupuesto de gastos fijos no está cargado, el cierre base está incompleto. ':'')+'Base = columna "Cierre 2026" del P&G consolidado. Cada PO toma solo su parte asignada en Odoo y su forecast guardado; "Resto" = total de la empresa menos las PO mostradas (incluye gastos fijos del presupuesto, otras PO y movimientos sin analítica). Participación 15% e IR 25% se calculan solo sobre el total, igual que en el P&G consolidado.';
+ if(!body.dataset.ok){body.dataset.ok='1';body.addEventListener('change',simpCambio);}
+ if(foco){const sel=foco.m!=null?'[data-m="'+CSS.escape(foco.m)+'"]':'[data-c="'+CSS.escape(foco.c||'')+'"][data-k="'+CSS.escape(foco.k||'')+'"]';const el=body.querySelector(sel);if(el){el.focus();try{el.select();}catch(e){}}}
+}
+function simpCambio(ev){
+ const el=ev.target;
+ if(el.dataset.m!=null){STATE.simPyg.motivos[el.dataset.m]=String(el.value||'').trim();STATE.simPyg.sucio=true;renderSimPyg();return;}
+ const code=el.dataset.c,k=el.dataset.k;if(!code||!k)return;
+ const cols=simpCalcular().cols,c=cols.find(x=>x.code===code);if(!c)return;
+ const b=number(c.base[k]),txt=String(el.value).trim(),v=Number(txt.replace(',','.'));
+ STATE.simPyg.celdas[code]??={};
+ if(txt===''||!Number.isFinite(v)||Math.abs(v-b)<0.005)delete STATE.simPyg.celdas[code][k];
+ else STATE.simPyg.celdas[code][k]={v:Math.round(v*100)/100,base:Math.round(b*100)/100};
+ if(!Object.keys(STATE.simPyg.celdas[code]).length)delete STATE.simPyg.celdas[code];
+ STATE.simPyg.sucio=true;renderSimPyg();
+}
+function agregarPoSimPyg(el){
+ const m=String(el.value||'').trim().match(/^(?:PO\s*)?(\d{3,4})/i);
+ if(!m){toast('Escribe un número de PO (ej. 1741).');return;}
+ if(!STATE.simPyg.extra.includes(m[1]))STATE.simPyg.extra.push(m[1]);
+ el.value='';renderSimPyg();
+}
+function limpiarSimPyg(){
+ if(Object.keys(STATE.simPyg.celdas).length&&!confirm('Se quitan todos los ajustes de la pantalla (lo guardado no se borra hasta que guardes). ¿Continuar?'))return;
+ STATE.simPyg.celdas={};STATE.simPyg.motivos={};STATE.simPyg.sucio=true;renderSimPyg();
+}
+async function listarEscenariosSimPyg(){
+ try{
+  const r=await sb.from('forecast_escenarios').select('id,nombre,overrides,actualizado_en,creado_en').eq('tipo','personalizado').order('nombre');
+  if(r.error)throw r.error;
+  STATE.simPyg.lista=(r.data||[]).filter(x=>x.overrides?.modulo==='simulador_pyg');
+ }catch(e){STATE.simPyg.lista=[];toast('No se pudieron leer los escenarios: '+e.message);}
+ const sel=document.getElementById('simpLista');
+ sel.innerHTML='<option value="">— Nuevo escenario —</option>'+STATE.simPyg.lista.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.nombre)+'</option>').join('');
+ sel.value=STATE.simPyg.id||'';
+ document.getElementById('simpBorrar').style.display=STATE.simPyg.id?'':'none';
+}
+async function abrirSimPyg(){
+ document.getElementById('simpMin').value=STATE.simPyg.min;
+ document.getElementById('simpNombre').value=STATE.simPyg.nombre||'';
+ renderSimPyg();
+ await listarEscenariosSimPyg();
+}
+function cargarEscenarioSimPyg(id){
+ if(STATE.simPyg.sucio&&Object.keys(STATE.simPyg.celdas).length&&!confirm('Tienes cambios sin guardar. ¿Cambiar de escenario igual?')){document.getElementById('simpLista').value=STATE.simPyg.id||'';return;}
+ const x=STATE.simPyg.lista.find(e=>e.id===id),o=x?.overrides||{};
+ Object.assign(STATE.simPyg,{id:x?.id||null,nombre:x?.nombre||'',celdas:JSON.parse(JSON.stringify(o.celdas||{})),motivos:{...(o.motivos||{})},extra:[...(o.extra||[])],sucio:false});
+ document.getElementById('simpNombre').value=STATE.simPyg.nombre;
+ document.getElementById('simpBorrar').style.display=STATE.simPyg.id?'':'none';
+ renderSimPyg();
+ if(x){const M=simpCalcular(),cambios=[];for(const [code,cs] of Object.entries(STATE.simPyg.celdas)){const c=M.cols.find(y=>y.code===code);if(!c)continue;for(const [k,o] of Object.entries(cs))if(Math.abs(number(o.base)-number(c.base[k]))>1)cambios.push(code);}
+  if(cambios.length)toast('Ojo: desde que guardaste este escenario cambió la base de: '+[...new Set(cambios)].join(', ')+'. Revisa esos valores.');}
+}
+async function guardarEscenarioSimPyg(){
+ const nombre=String(document.getElementById('simpNombre').value||'').trim();
+ if(!nombre){toast('Ponle un nombre al escenario.');return;}
+ const M=simpCalcular(),sinMot=M.cols.filter(c=>c.ed&&!c.mot).map(c=>c.code==='RESTO'?'Resto':'PO '+c.code);
+ if(sinMot.length){toast('Falta el motivo en: '+sinMot.join(', '));return;}
+ const overrides={modulo:'simulador_pyg',version:1,celdas:STATE.simPyg.celdas,motivos:Object.fromEntries(Object.entries(STATE.simPyg.motivos).filter(([c,v])=>v&&STATE.simPyg.celdas[c])),extra:STATE.simPyg.extra,
+  resumen:{utilidad_neta:Math.round(M.totE.net*100)/100,utilidad_neta_base:Math.round(number(M.totB.net)*100)/100}};
+ const descripcion='Simulador P&G · utilidad neta '+money(M.totE.net)+' (base '+money(M.totB.net)+')';
+ try{
+  const {data:{user}}=await sb.auth.getUser();
+  let r;
+  if(STATE.simPyg.id)r=await sb.from('forecast_escenarios').update({nombre,overrides,descripcion,actualizado_en:new Date().toISOString()}).eq('id',STATE.simPyg.id).select('id').single();
+  else r=await sb.from('forecast_escenarios').insert({nombre,tipo:'personalizado',fecha_corte:'2026-09-30',overrides,descripcion,es_activo:false,creado_por:user?.id||null}).select('id').single();
+  if(r.error)throw r.error;
+  STATE.simPyg.id=r.data.id;STATE.simPyg.nombre=nombre;STATE.simPyg.sucio=false;
+  await listarEscenariosSimPyg();toast('Escenario "'+nombre+'" guardado.');
+ }catch(e){toast('No se guardó el escenario: '+e.message);}
+}
+async function borrarEscenarioSimPyg(){
+ if(!STATE.simPyg.id)return;
+ if(!confirm('¿Eliminar el escenario "'+STATE.simPyg.nombre+'"? No afecta el forecast ni el P&G consolidado.'))return;
+ try{const r=await sb.from('forecast_escenarios').delete().eq('id',STATE.simPyg.id).eq('tipo','personalizado');if(r.error)throw r.error;
+  Object.assign(STATE.simPyg,{id:null,nombre:'',celdas:{},motivos:{},extra:[],sucio:false});document.getElementById('simpNombre').value='';
+  await listarEscenariosSimPyg();renderSimPyg();toast('Escenario eliminado.');
+ }catch(e){toast('No se pudo eliminar: '+e.message);}
+}
+async function descargarSimPyg(){
+ try{
+  const X=await cargarSheetJS(),wb=X.utils.book_new(),M=simpCalcular(),r2=v=>Math.round(number(v)*100)/100;
+  const cab=['Concepto',...M.cols.map(c=>c.label+(c.nombre?' · '+c.nombre:'')),'Total escenario','Total base','Diferencia'];
+  const filas=SIMP_FILAS.map(f=>{
+   const vals=M.cols.map(c=>f.tot?'':f.r?(number(c.d.income)>0?r2(c.d[f.r]/c.d.income*100)/100:''):r2(c.d[f.k]));
+   const e=f.r?(number(M.totE.income)>0?M.totE[f.r]/M.totE.income:''):r2(M.totE[f.k]),b=f.r?(number(M.totB.income)>0?M.totB[f.r]/M.totB.income:''):r2(M.totB[f.k]);
+   return [f.l,...vals,e,b,f.r?'':r2(number(e)-number(b))];
+  });
+  filas.push(['Motivo del ajuste',...M.cols.map(c=>c.mot||''),'','','']);
+  const titulo=['ENERGYCONTROL · Simulador P&G cierre 2026 · '+(STATE.simPyg.nombre||'Escenario sin guardar')+' · '+new Date().toLocaleString('es-EC')];
+  const ws=X.utils.aoa_to_sheet([titulo,['SIMULACIÓN: no es el forecast oficial ni el P&G consolidado.'],[],cab,...filas]);
+  ws['!cols']=[{wch:42},...cab.slice(1).map(()=>({wch:18}))];
+  X.utils.book_append_sheet(wb,ws,'Simulación');
+  const aj=[];for(const c of M.cols)for(const [k,o] of Object.entries(STATE.simPyg.celdas[c.code]||{})){const f=SIMP_FILAS.find(x=>x.k===k);aj.push({'Columna':c.label,'Proyecto':c.nombre,'Concepto':f?f.l:k,'Base':r2(c.base[k]),'Escenario':r2(o.v),'Diferencia':r2(number(o.v)-number(c.base[k])),'Motivo':c.mot,'Alertas':c.al.map(a=>a[1]).join(' · ')});}
+  X.utils.book_append_sheet(wb,X.utils.json_to_sheet(aj.length?aj:[{'Columna':'Sin ajustes'}]),'Ajustes');
+  X.writeFile(wb,'Simulador_PyG_'+String(STATE.simPyg.nombre||'escenario').replace(/[^\w-]+/g,'_')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+ }catch(e){toast('No se pudo generar el Excel: '+e.message);}
+}
 /* ========= CONTRATOS REALES (sin IVA) ========= */
 async function cargarContratosReales(){
  try{const r=await readAll("forecast_contrato_real",["proyecto_codigo"]);STATE.contratoReal=Object.fromEntries((r.data||[]).map(x=>[String(x.proyecto_codigo),x]));STATE.contratoRealError=null;}
@@ -4219,7 +4437,7 @@ function aplicarContratos(){
   return {...p,contrato_sp:sp,contrato_odoo:ov,contrato_real:cr>0?cr:null,monto_contrato:cr>0?cr:(sp>0?sp:ov),contrato_fuente:cr>0?'Contrato real':(sp>0?'SharePoint':(ov>0?'OV Odoo':'')),contrato_dif:sp>0&&ov>0?ov-sp:null};
  });
 }
-function rerenderTodo(){for(const f of ['renderProjects','renderForecastAvance','renderForecastReports','renderConsolidated','renderContratos'])try{if(typeof window[f]==='function')window[f]();}catch(e){console.warn(f,e);}}
+function rerenderTodo(){for(const f of ['renderProjects','renderForecastAvance','renderForecastReports','renderConsolidated','renderContratos','renderSimPyg'])try{if(typeof window[f]==='function')window[f]();}catch(e){console.warn(f,e);}}
 function renderContratos(){
  const body=document.getElementById('contratosBody');if(!body)return;
  if(STATE.contratoRealError){body.innerHTML='<tr><td colspan="9">No se pudo leer la tabla de contratos reales: '+escapeHtml(STATE.contratoRealError)+'</td></tr>';return;}
