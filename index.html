@@ -922,7 +922,7 @@ tbody tr:hover{
 .ledger-msg.warn{background:#fff6e6;color:#8a5300}
 .ledger-msg.ok{background:var(--greenSoft);color:#087b50}
 </style>
-<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.consolidated-matrix td.pyg-neg{color:#c62839}.qc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.qc-box{text-align:left;cursor:pointer;font:inherit;color:inherit;border-left:5px solid #c9d6ea!important}.qc-box:hover{box-shadow:0 4px 14px rgba(15,35,70,.12)}.qc-box small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.qc-alto{border-left-color:#e64d5e!important}.qc-medio{border-left-color:#f58a33!important}.qc-info{border-left-color:#146fe8!important}.qc-ok{border-left-color:#0ba66d!important}.qc-grupo{cursor:pointer}.qc-grupo:hover th,.qc-grupo:hover td{background:#f1f5fb}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
+<style>.consolidated-matrix table{min-width:2050px}.consolidated-matrix th:first-child{position:sticky;left:0;min-width:280px;background:white;z-index:1}.consolidated-matrix td{text-align:right;white-space:nowrap}.consolidated-matrix .pyg-total th,.consolidated-matrix .pyg-total td,.consolidated-matrix .pyg-benefit th,.consolidated-matrix .pyg-benefit td{background:#d7d9dc;font-weight:700}.forecast-cell{background:#edf7e5}.contratos-table td{vertical-align:middle}.contratos-table input.cr-monto{width:140px;text-align:right;background:#fff8d6}.contratos-table input.cr-nota{min-width:240px;width:100%;background:#fff8d6}.contratos-table td.num{text-align:right;white-space:nowrap}.contratos-table .cr-acc{white-space:nowrap}.consolidated-matrix td.pyg-neg{color:#c62839}.qc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.qc-box{text-align:left;cursor:pointer;font:inherit;color:inherit;border-left:5px solid #c9d6ea!important}.qc-box:hover{box-shadow:0 4px 14px rgba(15,35,70,.12)}.qc-box small{display:block;color:var(--muted);font-size:11px;margin-top:4px}.qc-alto{border-left-color:#e64d5e!important}.qc-medio{border-left-color:#f58a33!important}.qc-info{border-left-color:#146fe8!important}.qc-ok{border-left-color:#0ba66d!important}.qc-grupo{cursor:pointer}.qc-grupo:hover th,.qc-grupo:hover td{background:#f1f5fb}.consolidated-matrix td.pyg-click:hover{text-decoration:underline;color:var(--blue)}.consolidated-matrix td.pyg-na{color:#98a2b3;font-style:italic}.consolidated-matrix .pyg-pct th,.consolidated-matrix .pyg-pct td{font-style:italic;color:#4b5565}
 #projectsTable.vista-res .col-det{display:none}
 .fav-wrap{max-height:70vh}
 .fav-table{font-size:12.5px}
@@ -1370,6 +1370,7 @@ td.fav-com-td{white-space:normal!important}
 <button class="tab-btn" data-tab="fijos" onclick="abrirTab('fijos',this)">Gastos fijos</button>
 <button class="tab-btn" data-tab="proyeccion" onclick="abrirTab('proyeccion',this)">Proyección de cierre</button>
 <button class="tab-btn" data-tab="forecastav" onclick="abrirTab('forecastav',this)">Forecast por avance</button>
+<button class="tab-btn" data-tab="contratos" onclick="abrirTab('contratos',this);renderContratos()">Contratos</button>
 
                 <button
                     class="tab-btn active"
@@ -1495,6 +1496,16 @@ td.fav-com-td{white-space:normal!important}
 
 
             <!-- PYG -->
+            <div id="tab-contratos" class="tab-content hidden">
+                <div class="card-title"><h3>Contratos reales · sin IVA</h3><small id="contratosResumen"></small></div>
+                <p class="report-note">Escribe el <b>valor real del contrato sin IVA</b> y su <b>sustento</b> (ej. "400.000 obra + 35.000 controlador híbrido, contrato firmado"). Cuando una PO tiene contrato real, el dashboard usa ese valor en todas las pestañas (Forecast, Proyectos, P&amp;G, controles) y deja de usar SharePoint y la orden de venta de Odoo. Si la PO ya está guardada en el Forecast por avance, se vuelve a guardar sola con el nuevo contrato. Cada cambio queda en el historial de Supabase.</p>
+                <div class="filters-row">
+                  <input id="buscarContrato" class="filter-input search" placeholder="Buscar PO o proyecto..." oninput="renderContratos()">
+                  <select id="contratoFiltro" onchange="renderContratos()" aria-label="Filtrar contratos"><option value="ALL">Todas las PO con contrato</option><option value="REAL">Con contrato real</option><option value="SIN">Sin contrato real</option><option value="DIF">SharePoint ≠ orden de venta Odoo</option></select>
+                </div>
+                <div class="table-wrap"><table class="contratos-table"><thead><tr><th>PO</th><th>Proyecto</th><th style="text-align:right">SharePoint</th><th style="text-align:right">Orden de venta Odoo</th><th>Contrato real sin IVA</th><th>Sustento</th><th>Usa el dashboard</th><th>Último cambio</th><th></th></tr></thead><tbody id="contratosBody"></tbody></table></div>
+            </div>
+
             <div id="tab-forecastav" class="tab-content hidden">
                 <div class="card-title"><h3>Forecast por avance · cierre 2026</h3><small id="favResumen"></small></div>
                 <p class="report-note">Edita las celdas amarillas: <b>avance al 31-dic</b> (lo que te dice el administrador), <b>comentario</b> (por qué no cierra al 100%) y <b>costo total del proyecto</b>. Se guarda solo y pasa al P&G consolidado. <b>Le toca a 2026</b> = contrato × avance − reconocido hasta 2025. <b>Falta Oct–Dic</b> = le toca a 2026 − registrado ene–sep (negativo = reversa). Si el costo total supera el contrato, la pérdida se reconoce completa (NIIF 15). Comparte datos con el simulador: no se duplica.</p>
@@ -2151,12 +2162,13 @@ async function loadData(){
         try{const cr=await readAll("forecast_crm_ventas",["lead_id"]);STATE.crm=cr.data||[];}catch(e){STATE.crm=[];STATE.crmError=e.message;}
         try{const oc=await readAll("ordenes_compra",["id"]);STATE.ocs=oc.data||[];STATE.ocsError=null;}catch(e){STATE.ocs=[];STATE.ocsError=e.message;}
         try{const nm=await readAll("forecast_proyecto_nombre",["proyecto_codigo"]);STATE.names=Object.fromEntries((nm.data||[]).map(r=>[r.proyecto_codigo,r.nombre]));}catch(e){STATE.names={};}
+        await cargarContratosReales();
         STATE.projects =
             (projectsRes.data || []).map(p=>{const n=STATE.names[p.proyecto_codigo];return n&&(!p.proyecto_nombre||/^\s*(P\s*O?\s*)?\d{3,4}/i.test(p.proyecto_nombre))?{...p,proyecto_nombre:n}:p;});
         // Contrato: el del Control Operativo (SharePoint); si el proyecto no lo tiene, la orden de venta confirmada de Odoo (sin IVA).
         {const vistos=new Set(STATE.projects.map(p=>p.proyecto_codigo));
          for(const code of Object.keys(STATE.contratosOdoo||{}))if(!vistos.has(code)&&STATE.contratosOdoo[code]>0)STATE.projects.push({proyecto_codigo:code,proyecto_nombre:STATE.names[code]||code,monto_contrato:0});
-         STATE.projects=STATE.projects.map(p=>{const sp=number(p.monto_contrato),ov=number(STATE.contratosOdoo?.[p.proyecto_codigo]);return {...p,contrato_sp:sp,contrato_odoo:ov,monto_contrato:sp>0?sp:ov,contrato_fuente:sp>0?'SharePoint':(ov>0?'OV Odoo':''),contrato_dif:sp>0&&ov>0?ov-sp:null};});}
+         aplicarContratos();}
 
         STATE.monthly =
             monthlyRes.data || [];
@@ -4163,7 +4175,7 @@ function eacSugerido(code){
 }
 function favFila(code){
  const p=projectInfo(code),saved=(STATE.savedSims||[]).find(s=>s.proyecto_codigo===code),ed=STATE.favEdits[code]||{};
- const C=saved&&number(saved.monto_contrato)>0?number(saved.monto_contrato):number(p.monto_contrato);
+ const C=number(p.contrato_real)>0?number(p.contrato_real):(saved&&number(saved.monto_contrato)>0?number(saved.monto_contrato):number(p.monto_contrato));
  const hoy=p.avance_fisico==null?null:number(p.avance_fisico);
  const sug=eacSugerido(code);
  const savedA=saved?number(saved.avance_acumulado):null;
@@ -4190,8 +4202,87 @@ function favFila(code){
  const nota=(Math.abs(post.income)>1||Math.abs(post.cost)>1)?'Odoo ya registró desde octubre: ingreso '+money(post.income)+' · costo '+money(post.cost)+'. Falta registrar hasta el 31-dic: ingreso '+money(ingFalta-post.income)+' · costo '+money(cosFalta-post.cost)+'.':'';
  return {code,nombre:p.proyecto_nombre||STATE.names[code]||'',C,hoy,a,E,eacFuente,margen:C>0&&E>0?(C-E)/C:null,
   ingAcum,ingPrevio:ing.total,ing2026,ingReg:real.income,ingFalta,cosAcum,cosPrevio:cos.total,cos2026,cosReg:real.cost,cosFalta,
-  efecto:ingFalta-cosFalta,res2026:ing2026-cos2026,saved,dirty:!!STATE.favEdits[code],saving:STATE.favSaving.has(code),
+  efecto:ingFalta-cosFalta,res2026:ing2026-cos2026,saved,dirty:!!STATE.favEdits[code]||(!!saved&&C>0&&Math.abs(number(saved.monto_contrato)-C)>0.005),saving:STATE.favSaving.has(code),
   ingSaldo:ing.saldo,cosSaldo:cos.saldo,al,nota,comentario,valido:C>0&&E>0&&a>=0&&a<=100};
+}
+
+/* ========= CONTRATOS REALES (sin IVA) ========= */
+async function cargarContratosReales(){
+ try{const r=await readAll("forecast_contrato_real",["proyecto_codigo"]);STATE.contratoReal=Object.fromEntries((r.data||[]).map(x=>[String(x.proyecto_codigo),x]));STATE.contratoRealError=null;}
+ catch(e){STATE.contratoReal={};STATE.contratoRealError=e.message;}
+}
+function aplicarContratos(){
+ const vistos=new Set(STATE.projects.map(p=>p.proyecto_codigo));
+ for(const code of Object.keys(STATE.contratoReal||{}))if(!vistos.has(code))STATE.projects.push({proyecto_codigo:code,proyecto_nombre:STATE.names[code]||code,monto_contrato:0,contrato_sp:0});
+ STATE.projects=STATE.projects.map(p=>{
+  const sp=p.contrato_sp!==undefined?number(p.contrato_sp):number(p.monto_contrato),ov=number(STATE.contratosOdoo?.[p.proyecto_codigo]),cr=number(STATE.contratoReal?.[p.proyecto_codigo]?.monto_sin_iva);
+  return {...p,contrato_sp:sp,contrato_odoo:ov,contrato_real:cr>0?cr:null,monto_contrato:cr>0?cr:(sp>0?sp:ov),contrato_fuente:cr>0?'Contrato real':(sp>0?'SharePoint':(ov>0?'OV Odoo':'')),contrato_dif:sp>0&&ov>0?ov-sp:null};
+ });
+}
+function rerenderTodo(){for(const f of ['renderProjects','renderForecastAvance','renderForecastReports','renderConsolidated','renderContratos'])try{if(typeof window[f]==='function')window[f]();}catch(e){console.warn(f,e);}}
+function renderContratos(){
+ const body=document.getElementById('contratosBody');if(!body)return;
+ if(STATE.contratoRealError){body.innerHTML='<tr><td colspan="9">No se pudo leer la tabla de contratos reales: '+escapeHtml(STATE.contratoRealError)+'</td></tr>';return;}
+ const q=String(document.getElementById('buscarContrato').value||'').toLowerCase().trim(),f=document.getElementById('contratoFiltro').value;
+ let rows=(STATE.projects||[]).filter(p=>number(p.contrato_sp)>0||number(p.contrato_odoo)>0||number(p.contrato_real)>0);
+ if(f==='REAL')rows=rows.filter(p=>number(p.contrato_real)>0);
+ if(f==='SIN')rows=rows.filter(p=>!(number(p.contrato_real)>0));
+ if(f==='DIF')rows=rows.filter(p=>number(p.contrato_sp)>0&&number(p.contrato_odoo)>0&&Math.abs(number(p.contrato_sp)-number(p.contrato_odoo))>Math.max(1,number(p.contrato_sp)*0.01));
+ if(q)rows=rows.filter(p=>(String(p.proyecto_codigo)+' '+(p.proyecto_nombre||'')).toLowerCase().includes(q));
+ rows.sort((a,b)=>String(b.proyecto_codigo).localeCompare(String(a.proyecto_codigo),'es',{numeric:true}));
+ const nReal=(STATE.projects||[]).filter(p=>number(p.contrato_real)>0).length;
+ document.getElementById('contratosResumen').textContent=rows.length+' PO · '+nReal+' con contrato real';
+ body.innerHTML=rows.map(p=>{
+  const code=String(p.proyecto_codigo),cr=STATE.contratoReal?.[code],tiene=number(p.contrato_real)>0;
+  const fuente=tiene?'<span class="badge ok">Contrato real</span>':(p.contrato_fuente?'<span class="badge warn">'+escapeHtml(p.contrato_fuente)+'</span>':'<span class="badge danger">Sin contrato</span>');
+  const cambio=cr?escapeHtml(new Date(cr.actualizado_en).toLocaleString('es-EC',{dateStyle:'short',timeStyle:'short'}))+'<br><small>'+escapeHtml(cr.actualizado_por||'')+'</small>':'—';
+  return '<tr data-code="'+escapeHtml(code)+'"><td><b>'+escapeHtml(code)+'</b></td><td>'+escapeHtml(p.proyecto_nombre||'')+'</td>'
+   +'<td class="num">'+(number(p.contrato_sp)>0?money(p.contrato_sp):'—')+'</td><td class="num">'+(number(p.contrato_odoo)>0?money(p.contrato_odoo):'—')+'</td>'
+   +'<td><input class="filter-input cr-monto" type="number" min="0" step="0.01" placeholder="sin IVA" value="'+(tiene?Number(p.contrato_real).toFixed(2):'')+'"></td>'
+   +'<td><input class="filter-input cr-nota" type="text" maxlength="500" placeholder="Sustento del valor" value="'+escapeHtml(cr?.nota||'')+'"></td>'
+   +'<td>'+fuente+'<br><small>'+money(p.monto_contrato)+'</small></td><td><small>'+cambio+'</small></td>'
+   +'<td class="cr-acc"><button class="btn-primary" onclick="guardarContratoReal(this)">Guardar</button>'+(tiene?' <button class="btn-secondary" onclick="quitarContratoReal(this)" title="Volver a usar SharePoint / Odoo">Quitar</button>':'')+'</td></tr>';
+ }).join('')||'<tr><td colspan="9">No hay PO con ese filtro.</td></tr>';
+}
+async function reguardarForecastSiExiste(code){
+ const saved=(STATE.savedSims||[]).find(s=>s.proyecto_codigo===code);
+ if(!saved)return '';
+ const ok=await guardarFav(code,true);
+ return ok?' El Forecast por avance de la PO se recalculó y guardó con el nuevo contrato.':' Atención: el Forecast por avance de la PO NO se pudo recalcular; revísalo en esa pestaña y guárdalo.';
+}
+async function guardarContratoReal(btn){
+ const tr=btn.closest('tr'),code=tr.dataset.code;
+ const v=Number(String(tr.querySelector('.cr-monto').value).replace(',','.'));
+ const nota=String(tr.querySelector('.cr-nota').value||'').trim();
+ if(!Number.isFinite(v)||v<=0){toast('PO '+code+': escribe el contrato sin IVA (mayor a 0).');return;}
+ if(!nota){toast('PO '+code+': escribe el sustento del valor (de dónde sale).');return;}
+ const p=projectInfo(code),sp=number(p.contrato_sp),antes=number(p.monto_contrato);
+ if(sp>0&&Math.abs(v/sp-1.15)<0.003&&!confirm('El valor es 15% mayor que SharePoint: parece que incluye IVA. El contrato debe ir SIN IVA. ¿Guardarlo igual?'))return;
+ if(!confirm('PO '+code+': el dashboard usará '+money(v)+' sin IVA como contrato (antes '+money(antes)+(p.contrato_fuente?' de '+p.contrato_fuente:'')+'). ¿Continuar?'))return;
+ btn.disabled=true;
+ try{
+  const r=await sb.from('forecast_contrato_real').upsert({proyecto_codigo:code,monto_sin_iva:Number(v.toFixed(2)),nota},{onConflict:'proyecto_codigo'});
+  if(r.error)throw r.error;
+  await cargarContratosReales();aplicarContratos();
+  const extra=await reguardarForecastSiExiste(code);
+  toast('PO '+code+': contrato real guardado ('+money(v)+' sin IVA).'+extra);
+ }catch(e){toast('PO '+code+': no se guardó el contrato. '+e.message);}
+ finally{btn.disabled=false;rerenderTodo();}
+}
+async function quitarContratoReal(btn){
+ const tr=btn.closest('tr'),code=tr.dataset.code,p=projectInfo(code);
+ const vuelve=number(p.contrato_sp)>0?money(p.contrato_sp)+' de SharePoint':(number(p.contrato_odoo)>0?money(p.contrato_odoo)+' de la orden de venta Odoo':'sin contrato');
+ if(!confirm('PO '+code+': se quita el contrato real y el dashboard vuelve a usar '+vuelve+'. ¿Continuar?'))return;
+ btn.disabled=true;
+ try{
+  const r=await sb.from('forecast_contrato_real').delete().eq('proyecto_codigo',code);
+  if(r.error)throw r.error;
+  await cargarContratosReales();
+  STATE.projects=STATE.projects.map(x=>x.proyecto_codigo===code?{...x,contrato_real:null}:x);aplicarContratos();
+  const extra=number(projectInfo(code).monto_contrato)>0?await reguardarForecastSiExiste(code):'';
+  toast('PO '+code+': contrato real quitado.'+extra);
+ }catch(e){toast('PO '+code+': no se pudo quitar. '+e.message);}
+ finally{btn.disabled=false;rerenderTodo();}
 }
 /* ========= DETALLE DEL COSTO POR PROYECTO ========= */
 STATE.favOpen=STATE.favOpen||new Set();
@@ -5085,12 +5176,12 @@ function editarSimulacion(code){llenarSelectorSimulador(code);document.getElemen
 function cargarProyectoSimulador(){
  const p=currentSimProject();if(!p)return;
  const code=p.proyecto_codigo,saved=(STATE.savedSims||[]).find(s=>s.proyecto_codigo===code);
- const contrato=saved?number(saved.monto_contrato):number(p.monto_contrato);
+ const contrato=number(p.contrato_real)>0?number(p.contrato_real):(saved?number(saved.monto_contrato):number(p.monto_contrato));
  const avance=saved?number(saved.avance_acumulado):number(p.avance_fisico);
  const aterrizado=presupuestoProyecto(code);
  const costoTotal=saved?number(saved.detalle?.costo_total_estimado):(aterrizado>0?aterrizado*avance/100:'');
  document.getElementById('simContratoInput').value=contrato||'';
- document.getElementById('simContratoNota').textContent=String(code).startsWith('CRM-')?'Tomado de la venta del CRM (orden de venta o ingreso esperado). Confírmalo.':number(p.contrato_sp)>0?'Del Control Operativo (SharePoint).':number(p.monto_contrato)>0?'De la orden de venta en Odoo.':'Sin contrato cargado: escríbelo sin IVA.';
+ document.getElementById('simContratoNota').textContent=number(p.contrato_real)>0?'Contrato real sin IVA (pestaña Contratos). Para cambiarlo, edítalo allí.':String(code).startsWith('CRM-')?'Tomado de la venta del CRM (orden de venta o ingreso esperado). Confírmalo.':number(p.contrato_sp)>0?'Del Control Operativo (SharePoint).':number(p.monto_contrato)>0?'De la orden de venta en Odoo.':'Sin contrato cargado: escríbelo sin IVA.';
  document.getElementById('simAvance').value=avance||'';
  document.getElementById('simAvanceNota').textContent=p.avance_fisico!=null?'Avance físico ('+(p.avance_fuente==='Excel PORTADA'?'Excel SharePoint, hoja PORTADA':'Control de Operaciones')+'): '+percentPoints(p.avance_fisico)+'.':'Sin avance registrado.';
  document.getElementById('simCostoTotal').value=costoTotal===''?'':number(costoTotal).toFixed(2);
