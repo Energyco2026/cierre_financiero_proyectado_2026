@@ -1606,6 +1606,7 @@ td.fav-com-td{white-space:normal!important}
                   <label>Ingresos mayores a <input type="number" id="pygMinIng" class="filter-input" placeholder="Ej. 5000" min="0" step="100" oninput="renderPygDebounce()"></label>
                   <label>Egresos mayores a <input type="number" id="pygMinEgr" class="filter-input" placeholder="Ej. 5000" min="0" step="100" oninput="renderPygDebounce()"></label>
                   <label>Beneficio total <select id="pygBenef" onchange="renderPygTable()"><option value="ALL">Todos</option><option value="NEG">Solo negativos (pérdida)</option><option value="POS">Solo positivos</option></select></label>
+                  <label>Estado financiero <select id="pygEstadoFin" onchange="renderPygTable()"><option value="ALL">Todas</option><option value="Abierta">Abiertas</option><option value="Cerrada">Cerradas</option><option value="SIN">Sin estado en Odoo</option></select></label>
                   <label>Tipo de venta <details id="pygTipoVenta" class="ms"><summary>Todos</summary><div class="ms-panel"></div></details></label>
                   <button class="btn-secondary" onclick="limpiarFiltrosPyg()">✕ Limpiar filtros</button>
                 </div>
@@ -4859,7 +4860,8 @@ function sufijoPO(name){const m=String(name||'').match(/ER\s*-?\s*(?:20)?(\d{2})
 function codigoPO(name){return String(name||'').match(/^(?:P\s*\.?\s*O?\s*\.?\s*)?(\d{3,4})(?=\D|$)/i)?.[1]||'';}
 // Servicio = analítica creada en Odoo por María Isabel Piñeyro (dato de forecast_analitica_info, se llena con "Actualizar datos").
 function creadorAnalitica(id){return STATE.analiticaInfo?.get(String(id))?.creado_por||'';}
-function tipoVentaCol(c){if(/mar[ií]a?\s*isabel/i.test(creadorAnalitica(c.id)))return 'Servicio';return tipoVentaPO(c.name);}
+function tipoVentaCol(c){const t=tipoVentaPO(c.name);if(t==='Sin venta en CRM'&&/mar[ií]a?\s*isabel/i.test(creadorAnalitica(c.id)))return 'Servicio';return t;}
+function estadoFinCol(c){const e=String(STATE.analiticaInfo?.get(String(c.id))?.estado_financiero||'').trim();return /cerrad/i.test(e)?'Cerrada':/abiert/i.test(e)?'Abierta':'SIN';}
 function tipoVentaPO(name){
  const code=codigoPO(name);if(!code)return 'No es PO';
  if(STATE.pygTipoRef!==STATE.crm){STATE.pygTipoRef=STATE.crm;STATE.pygTipoMap=new Map();
@@ -4867,7 +4869,7 @@ function tipoVentaPO(name){
   for(const c of (typeof ppaConfigs==='function'?ppaConfigs():[])){const k=String(c.code||'').match(/\d{3,4}/)?.[0];if(k&&!STATE.pygTipoMap.has(k))STATE.pygTipoMap.set(k,'PPA');}}
  return STATE.pygTipoMap.get(code)||'Sin venta en CRM';
 }
-function limpiarFiltrosPyg(){['pygMinIng','pygMinEgr'].forEach(id=>document.getElementById(id).value='');document.getElementById('pygSufijo').value='ALL';document.getElementById('pygBenef').value='ALL';STATE.pygTipos.clear();STATE.pygTipoSig=null;renderPygTable();}
+function limpiarFiltrosPyg(){['pygMinIng','pygMinEgr'].forEach(id=>document.getElementById(id).value='');document.getElementById('pygSufijo').value='ALL';document.getElementById('pygEstadoFin').value='ALL';document.getElementById('pygBenef').value='ALL';STATE.pygTipos.clear();STATE.pygTipoSig=null;renderPygTable();}
 let pygTimer=null;function renderPygDebounce(){clearTimeout(pygTimer);pygTimer=setTimeout(renderPygTable,350);}
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
@@ -4882,11 +4884,12 @@ function renderPygTable(){
  {const disp=[...new Set(base.map(c=>sufijoPO(c.name)))].sort((a,b)=>(a==='SIN')-(b==='SIN')||b.localeCompare(a));
   suf.innerHTML='<option value="ALL">Todas (ER25, ER26...)</option>'+disp.map(k=>'<option value="'+k+'"'+(k===sufSel?' selected':'')+'>'+(k==='SIN'?'Sin ER (otras analíticas)':k+' (20'+k.slice(2)+')')+'</option>').join('');
   if(sufSel!=='ALL'&&!disp.includes(sufSel))suf.value='ALL';}
- const minIng=document.getElementById("pygMinIng").value,minEgr=document.getElementById("pygMinEgr").value,benef=document.getElementById("pygBenef").value;
+ const estFin=document.getElementById("pygEstadoFin").value,minIng=document.getElementById("pygMinIng").value,minEgr=document.getElementById("pygMinEgr").value,benef=document.getElementById("pygBenef").value;
  const colsSinTipo=base.filter(c=>(suf.value==='ALL'||sufijoPO(c.name)===suf.value)
    &&(minIng===''||c.income>Number(minIng))
    &&(minEgr===''||c.expense>Number(minEgr))
-   &&(benef==='ALL'||(benef==='NEG'?c.income-c.expense<-0.005:c.income-c.expense>0.005)));
+   &&(benef==='ALL'||(benef==='NEG'?c.income-c.expense<-0.005:c.income-c.expense>0.005))
+   &&(estFin==='ALL'||estadoFinCol(c)===estFin));
  // Desplegable de tipo de venta (varios a la vez); cada opción muestra cuántas analíticas y sus ingresos con los demás filtros
  {const porTipo=new Map();for(const c of colsSinTipo){const t=tipoVentaCol(c),g=porTipo.get(t)||{n:0,i:0};g.n++;g.i+=c.income;porTipo.set(t,g);}
   const orden=['Residencial','Comercial','Industrial','Servicio','Sector Público','PPA','Agropecuario','Sin tipo','Sin venta en CRM','No es PO'];
