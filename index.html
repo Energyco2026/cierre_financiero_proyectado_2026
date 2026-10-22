@@ -1590,7 +1590,7 @@ td.fav-com-td{white-space:normal!important}
                 <div class="filters-row">
                     <input id="buscarPyg" class="filter-input search" placeholder="Buscar analítica..." oninput="renderPygTable()">
                     <label>Año <select id="pygYear" onchange="renderPygTable()"><option>2026</option></select></label>
-                    <label>Meses <details id="pygMeses" class="ms"><summary>Anual</summary><div class="ms-panel"></div></details></label>
+                    <label>Meses <details id="pygMeses" class="ms"><summary>Todos los meses</summary><div class="ms-panel"></div></details></label>
                     <label>Analíticas <details id="pygAnaliticas" class="ms"><summary>Todas</summary><div class="ms-panel"></div></details></label><select id="pygScope" class="hidden"><option value="ALL">Todas</option></select>
                 </div>
                 <div class="filters-row">
@@ -1999,7 +1999,7 @@ document.addEventListener('click',e=>{document.querySelectorAll('details.ms[open
 function initFiltrosMes(){
  const items=MESES_LISTA.map(([v,l])=>({value:v,label:l}));
  checklist('filtroMes',items,STATE.months,'Todo el año',renderAll,false);
- checklist('pygMeses',items,STATE.pygMonths,'Anual',()=>{document.getElementById('pygFrom').value='';document.getElementById('pygTo').value='';STATE.pygCustom=false;renderPygTable();},false);
+ checklist('pygMeses',items,STATE.pygMonths,'Todos los meses',()=>{document.getElementById('pygFrom').value='';document.getElementById('pygTo').value='';STATE.pygCustom=false;renderPygTable();},false);
 }
 function selectedMonth(){return 'ALL';}
 function selectedMonth_old(){
