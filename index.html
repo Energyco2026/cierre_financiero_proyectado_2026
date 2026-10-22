@@ -890,6 +890,9 @@ tbody tr:hover{
 .ms-panel .ms-actions button{border:0;background:#eef2f7;border-radius:8px;padding:6px 10px;font-size:12px}
 .ms-panel input[type=checkbox]{min-width:0!important;width:auto;margin:0}
 .ms-panel label{justify-content:flex-start}
+#pygAnaliticas .ms-panel{left:auto;right:0;min-width:480px;max-width:min(680px,92vw)}
+#pygAnaliticas .ms-panel label{white-space:normal;align-items:flex-start;line-height:1.3}
+#pygFiltrosExtra input[type=number]{width:140px;min-width:0}
 .ms-panel input[type=search]{min-width:0!important;width:100%;margin-bottom:6px;padding:8px;border:1px solid var(--line);border-radius:8px}
 
 .sim-step{display:grid;grid-template-columns:30px 1fr;gap:10px;margin-bottom:16px}
@@ -1595,6 +1598,14 @@ td.fav-com-td{white-space:normal!important}
                   <button class="btn-secondary" id="btnMargenPyg" onclick="toggleMargenPyg()" title="Muestra el margen bruto y el margen de utilidad de cada analítica">% Margen</button>
                   <button class="btn-secondary" id="btnSinAnalitica" onclick="descargarSinAnalitica()" title="Descarga en Excel las líneas contables del período elegido que no tienen analítica en Odoo">⬇ Movimientos sin analítica</button>
                 </div>
+                <div class="filters-row" id="pygFiltrosExtra">
+                  <label>Año de la PO <select id="pygSufijo" onchange="renderPygTable()"><option value="ALL">Todas (ER25, ER26...)</option></select></label>
+                  <label>Ingresos mayores a <input type="number" id="pygMinIng" class="filter-input" placeholder="Ej. 5000" min="0" step="100" oninput="renderPygDebounce()"></label>
+                  <label>Egresos mayores a <input type="number" id="pygMinEgr" class="filter-input" placeholder="Ej. 5000" min="0" step="100" oninput="renderPygDebounce()"></label>
+                  <label>Beneficio total <select id="pygBenef" onchange="renderPygTable()"><option value="ALL">Todos</option><option value="NEG">Solo negativos (pérdida)</option><option value="POS">Solo positivos</option></select></label>
+                  <button class="btn-secondary" onclick="limpiarFiltrosPyg()">✕ Limpiar filtros</button>
+                </div>
+                <div id="pygTipos" class="filters-row" style="gap:8px;flex-wrap:wrap"></div>
                 <div class="table-wrap"><table class="pyg-matrix"><thead id="pygHead"></thead><tbody id="pygBody"></tbody></table></div>
                 <p id="pygNote" class="report-note"></p>
                 <p class="report-note">Importes de Odoo contabilizados. Las cuentas y los movimientos permiten revisar la ejecución financiera; el avance físico de la obra se consulta por separado en los datos operativos. Un movimiento puede pertenecer a analíticas de distintos planes y aparecer en varias columnas. El total de selección cuenta cada distribución una vez; no es la suma de columnas de distintos planes. Usa Meses para elegir uno o varios meses, o Desde/Hasta para un rango. En Analíticas puedes marcar varias.</p>
@@ -4829,6 +4840,20 @@ function toggleMargenPyg(){
  b.classList.toggle("on",STATE.pygMargen);b.textContent=STATE.pygMargen?"Ocultar % margen":"% Margen";
  renderPygTable();
 }
+// ---- Filtros extra del P&G por analítica: año de la PO (ER25/ER26), montos mínimos, beneficio y tipo de venta del CRM ----
+STATE.pygTipo='ALL';
+function sufijoPO(name){const m=String(name||'').match(/ER\s*-?\s*(?:20)?(\d{2})(?!\d)/i);return m?'ER'+m[1]:'SIN';}
+function codigoPO(name){return String(name||'').match(/^(?:P\s*\.?\s*O?\s*\.?\s*)?(\d{3,4})(?=\D|$)/i)?.[1]||'';}
+function tipoVentaPO(name){
+ const code=codigoPO(name);if(!code)return 'No es PO';
+ if(STATE.pygTipoRef!==STATE.crm){STATE.pygTipoRef=STATE.crm;STATE.pygTipoMap=new Map();
+  for(const l of (STATE.crm||[])){const c=String(l.proyecto_codigo||'').match(/\d{3,4}/)?.[0];if(c&&!STATE.pygTipoMap.has(c))STATE.pygTipoMap.set(c,tipoCrm(l).tipo);}
+  for(const c of (typeof ppaConfigs==='function'?ppaConfigs():[])){const k=String(c.code||'').match(/\d{3,4}/)?.[0];if(k&&!STATE.pygTipoMap.has(k))STATE.pygTipoMap.set(k,'PPA');}}
+ return STATE.pygTipoMap.get(code)||'Sin venta en CRM';
+}
+function setPygTipo(t){STATE.pygTipo=t;renderPygTable();}
+function limpiarFiltrosPyg(){['pygMinIng','pygMinEgr'].forEach(id=>document.getElementById(id).value='');document.getElementById('pygSufijo').value='ALL';document.getElementById('pygBenef').value='ALL';STATE.pygTipo='ALL';renderPygTable();}
+let pygTimer=null;function renderPygDebounce(){clearTimeout(pygTimer);pygTimer=setTimeout(renderPygTable,350);}
 function renderPygTable(){
  const period=pygPeriod();let rows=pygRows();
  {const seen=new Map();for(const r of rows){const ids=String(r.analitica_clave||"SIN_ANALITICA").split(","),nm=(r.analitica_nombre||"Sin analítica").split(" | ");ids.forEach((id,i)=>{if(!seen.has(id))seen.set(id,nm[i]||nm[0]);});}
@@ -4836,7 +4861,27 @@ function renderPygTable(){
   const sig=items.map(i=>i.value).join(",");if(STATE.pygItemsSig!==sig){STATE.pygItemsSig=sig;checklist("pygAnaliticas",items,STATE.pygPick,"Todas",renderPygTable,true);}}
  const search=document.getElementById("buscarPyg").value.trim().toLowerCase();
  const project=document.getElementById("pygScope").value==="ALL"?"ALL":selectedProject();
- const cols=analyticMatrix(rows,"ALL","ALL",search,project,STATE.pygPick);
+ const base=analyticMatrix(rows,"ALL","ALL",search,project,STATE.pygPick);
+ // Filtros extra sobre las columnas (cada analítica)
+ const suf=document.getElementById("pygSufijo"),sufSel=suf.value;
+ {const disp=[...new Set(base.map(c=>sufijoPO(c.name)))].sort((a,b)=>(a==='SIN')-(b==='SIN')||b.localeCompare(a));
+  suf.innerHTML='<option value="ALL">Todas (ER25, ER26...)</option>'+disp.map(k=>'<option value="'+k+'"'+(k===sufSel?' selected':'')+'>'+(k==='SIN'?'Sin ER (otras analíticas)':k+' (20'+k.slice(2)+')')+'</option>').join('');
+  if(sufSel!=='ALL'&&!disp.includes(sufSel))suf.value='ALL';}
+ const minIng=document.getElementById("pygMinIng").value,minEgr=document.getElementById("pygMinEgr").value,benef=document.getElementById("pygBenef").value;
+ const colsSinTipo=base.filter(c=>(suf.value==='ALL'||sufijoPO(c.name)===suf.value)
+   &&(minIng===''||c.income>Number(minIng))
+   &&(minEgr===''||c.expense>Number(minEgr))
+   &&(benef==='ALL'||(benef==='NEG'?c.income-c.expense<-0.005:c.income-c.expense>0.005)));
+ // Botones por tipo de venta (Residencial, Comercial, Industrial...) con los demás filtros aplicados
+ {const porTipo=new Map();for(const c of colsSinTipo){const t=tipoVentaPO(c.name),g=porTipo.get(t)||{n:0,i:0,b:0};g.n++;g.i+=c.income;g.b+=c.income-c.expense;porTipo.set(t,g);}
+  const orden=['Residencial','Comercial','Industrial','Sector Público','PPA','Agropecuario','Sin tipo','Sin venta en CRM','No es PO'];
+  const tipos=[...porTipo.keys()].sort((a,b)=>((orden.indexOf(a)+1)||50)-((orden.indexOf(b)+1)||50)||a.localeCompare(b));
+  if(STATE.pygTipo!=='ALL'&&!porTipo.has(STATE.pygTipo))tipos.push(STATE.pygTipo);
+  document.getElementById("pygTipos").innerHTML=tipos.map(t=>{const g=porTipo.get(t)||{n:0,i:0,b:0};return '<button class="btn-secondary" style="'+(t===STATE.pygTipo?'outline:2px solid #2b72cf;':'')+(['Sin tipo','Sin venta en CRM'].includes(t)?'border-color:#e0a400;':'')+'" onclick="setPygTipo(\''+escapeHtml(t)+'\')" title="Ingresos '+money(g.i)+' · Beneficio '+money(g.b)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.i)+'</button>';}).join('')+(STATE.pygTipo!=='ALL'?'<button class="btn-secondary" onclick="setPygTipo(\'ALL\')">✕ Quitar tipo</button>':'');}
+ const colsF=colsSinTipo.filter(c=>STATE.pygTipo==='ALL'||tipoVentaPO(c.name)===STATE.pygTipo);
+ const filtrado=colsF.length!==base.length;
+ const pick=filtrado?new Set(colsF.length?colsF.map(c=>c.id):['__NINGUNA__']):STATE.pygPick;
+ const cols=filtrado?analyticMatrix(rows,"ALL","ALL",search,project,pick):base;
  const selectedIds=new Set(cols.map(c=>c.id));
  rows=rows.filter(r=>String(r.analitica_clave||"SIN_ANALITICA").split(",").some(id=>selectedIds.has(id)));
  STATE.pygColumns=cols;STATE.pygReportRows=rows;STATE.pygReportFilters={search,project,period};
@@ -4845,7 +4890,7 @@ function renderPygTable(){
  STATE.pygRowSpecs=[];
  function row(label,subset,type,style,toggle,level,group=null,account=null){
   const specIndex=STATE.pygRowSpecs.push({type,group,account})-1;
-  const values=analyticMatrix(subset,"ALL","ALL",search,project,STATE.pygPick);
+  const values=analyticMatrix(subset,"ALL","ALL",search,project,pick);
   const byId=new Map(values.map(v=>[v.id,v]));
   const cells=[...cols.map(c=>byId.get(c.id)||{income:0,expense:0}),values.total];
   const head=toggle?'<button class="pyg-toggle" data-toggle="'+escapeHtml(toggle)+'" aria-expanded="'+STATE.pygExpanded.has(toggle)+'">'+(STATE.pygExpanded.has(toggle)?'▾ ':'▸ ')+escapeHtml(label)+'</button>':escapeHtml(label);
@@ -4874,7 +4919,7 @@ function renderPygTable(){
  output+=row("Beneficio Total",rows,"benefit","benefit",null,0);
  if(STATE.pygMargen){
   // Margen por columna: bruto = (ingresos − costo de ventas 501) / ingresos · utilidad = beneficio total / ingresos
-  const mx=sub=>{const v=analyticMatrix(sub,"ALL","ALL",search,project,STATE.pygPick),m=new Map(v.map(x=>[x.id,x]));return [...cols.map(c=>m.get(c.id)||{income:0,expense:0}),v.total];};
+  const mx=sub=>{const v=analyticMatrix(sub,"ALL","ALL",search,project,pick),m=new Map(v.map(x=>[x.id,x]));return [...cols.map(c=>m.get(c.id)||{income:0,expense:0}),v.total];};
   const tot=mx(rows),c501=mx(rows.filter(r=>pygType(r)==="expense"&&pygGroup(r)==="501"));
   const fila=(label,ayuda,num)=>'<tr class="pyg-margin"><th scope="row" title="'+ayuda+'">'+label+'</th>'+tot.map((t,i)=>{
    if(!(t.income>0.005))return '<td class="pyg-na" title="Sin ingresos (o ingresos negativos por reversas) en el período: el margen no aplica">n/a</td>';
@@ -4886,7 +4931,7 @@ function renderPygTable(){
  }
  document.getElementById("pygBody").innerHTML=output;
  document.getElementById("pygPeriod").textContent=period.label;
- document.getElementById("pygNote").textContent=period.invalid?"Selecciona un rango válido: Desde debe ser anterior o igual a Hasta.":cols.length?cols.length+" analíticas. Despliega Ingresos/Egresos y sus grupos para ver cuentas; pulsa cualquier importe para ver movimientos.":"No hay movimientos para estos filtros.";
+ document.getElementById("pygNote").textContent=period.invalid?"Selecciona un rango válido: Desde debe ser anterior o igual a Hasta.":cols.length?cols.length+" analíticas"+(filtrado?" (de "+base.length+" con los filtros extra)":"")+". Despliega Ingresos/Egresos y sus grupos para ver cuentas; pulsa cualquier importe para ver movimientos.":"No hay movimientos para estos filtros.";
  document.querySelectorAll("#pygBody [data-toggle]").forEach(el=>el.onclick=()=>togglePyg(el.dataset.toggle));
  document.querySelectorAll("#pygBody [data-row]").forEach(el=>el.onclick=()=>abrirMovimientos(Number(el.dataset.row),Number(el.dataset.col)));
 }
