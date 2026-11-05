@@ -1429,11 +1429,11 @@ td.fav-com-td{white-space:normal!important}
  <p class="report-note" id="consolidatedPeriod"></p>
  <div class="table-wrap consolidated-matrix"><table><thead id="consolidatedHead"></thead><tbody id="consolidatedBody"></tbody></table></div>
  <p id="consolidatedAllocation" class="report-note"></p>
- <p class="report-note">Sin filtro: toda Energycontrol, incluidas las líneas sin analítica; cada movimiento contable se cuenta una sola vez. Con filtro de PO/analítica: solo la parte asignada a esa analítica. Despliega ingresos y cuentas de gastos con ▸. El reporte de cierre mantiene el corte septiembre; el selector mensual de la cabecera aplica al reporte Real Odoo. El forecast no incluye asientos reales de octubre a diciembre.</p>
+ <p class="report-note">Sin filtro: toda Energycontrol, incluidas las líneas sin analítica; cada movimiento contable se cuenta una sola vez. Con filtro de PO/analítica: solo la parte asignada a esa analítica. Despliega ingresos y cuentas de gastos con ▸. El reporte de cierre usa el corte a <span class="t-corte">octubre</span>; el selector mensual de la cabecera aplica al reporte Real Odoo. El forecast no incluye asientos reales posteriores al corte (<span class="t-fcl">nov–dic</span>).</p>
 </div>
 <div id="tab-fijos" class="tab-content hidden">
  <h3>Presupuesto Excel · Octubre, noviembre y diciembre</h3>
- <p class="report-note">Importado de “Presupuesto versus ejecución energy 2026 para directorio v2.xlsx”, hoja “Proyeccion Mensual ”, columnas AS, AT y AU. Se excluyen las filas de totales y resúmenes. Una celda vacía significa sin presupuesto, no un gasto confirmado de cero. Sueldos, vehículos y otros rubros combinados se distribuyen usando el real enero–agosto del Excel; son estimaciones, no distribuciones confirmadas. Cambiar una cuenta asigna todo el rubro a ese grupo en los tres meses.</p>
+ <p class="report-note">Importado de “Presupuesto versus ejecución energy 2026 para directorio v2.xlsx”, hoja “Proyeccion Mensual ”, columnas AS, AT y AU. Se excluyen las filas de totales y resúmenes. Una celda vacía significa sin presupuesto, no un gasto confirmado de cero. Sueldos, vehículos y otros rubros combinados se distribuyen usando el real enero–agosto del Excel; son estimaciones, no distribuciones confirmadas. Cambiar una cuenta asigna todo el rubro a ese grupo en los meses del forecast (<span class="t-fcl">nov–dic</span>).</p>
  <div class="table-wrap"><table><thead><tr><th>Rubro del Excel</th><th>Cuenta / grupo propuesto</th><th>Octubre</th><th>Noviembre</th><th>Diciembre</th></tr></thead><tbody id="expensePlanBody"></tbody></table></div>
  <p id="expensePlanSummary" class="report-note"></p>
  <p class="report-note">Los ajustes afectan el P&G consolidado y la proyección en pantalla. No cambian el Excel ni la contabilidad. Depreciación, devolución de impuestos, EO Ecuador y gastos de obligaciones tienen clasificación propuesta: revisa su cuenta. Arriendo se conserva en el grupo 5020209.</p>
@@ -1441,7 +1441,7 @@ td.fav-com-td{white-space:normal!important}
 <div id="tab-proyeccion" class="tab-content hidden">
  <h3>Proyección de cierre 2026</h3><p id="forecastPeriod" class="report-note"></p>
  <div class="filters-row"><label>Otros ingresos pendientes en diciembre <input id="forecastRevenue" type="number" min="0" step="0.01" class="filter-input" placeholder="Estimar, incluso cero" oninput="renderConsolidated();renderClosingForecast()"></label><label>Otros costos pendientes en diciembre <input id="forecastCost" type="number" min="0" step="0.01" class="filter-input" placeholder="Sin duplicar OC ni Excel" oninput="renderConsolidated();renderClosingForecast()"></label><button class="btn" onclick="abrirSimulador()">Simular proyecto / OC</button></div>
- <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real enero–septiembre</th><th>Forecast octubre–diciembre</th><th>Cierre 2026</th></tr></thead><tbody id="closingForecastBody"></tbody></table></div>
+ <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real <span class="t-real-l">enero–octubre</span></th><th>Forecast <span class="t-fc-l">noviembre–diciembre</span></th><th>Cierre 2026</th></tr></thead><tbody id="closingForecastBody"></tbody></table></div>
  <p id="closingForecastStatus" class="report-note"></p>
  <h4>Proyectos guardados en el escenario Base</h4><div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Avance · mes</th><th>Ingreso a registrar</th><th>Costo a registrar</th><th>Efecto en utilidad</th><th>Nota</th><th></th></tr></thead><tbody id="scenarioList"></tbody></table></div>
  <p class="report-note">Cada proyecto guardado suma al mes elegido: ingreso a registrar = contrato × % de avance − reconocido antes de 2026 − ingreso neto 2026 en Odoo; el costo se calcula igual con el costo total acumulado. Los valores negativos son reversas pendientes. ✎ edita, 🗑 quita (queda en el historial).</p>
@@ -1505,7 +1505,7 @@ td.fav-com-td{white-space:normal!important}
             <!-- PYG -->
             <div id="tab-simpyg" class="tab-content hidden">
                 <div class="card-title"><h3>Simulador P&amp;G por PO · cierre 2026</h3><small id="simpResumen"></small></div>
-                <div class="ledger-msg warn" style="margin:0 0 10px">Esto es una <b>simulación</b>: no cambia el Forecast por avance, el P&amp;G consolidado ni Odoo. Cada columna arranca con el cierre 2026 del P&amp;G consolidado (real ene–sep + forecast oct–dic). Cambia las celdas amarillas y se recalcula todo. Cada PO que ajustes necesita un <b>motivo</b>: es tu sustento ante gerencia y el auditor.</div>
+                <div class="ledger-msg warn" style="margin:0 0 10px">Esto es una <b>simulación</b>: no cambia el Forecast por avance, el P&amp;G consolidado ni Odoo. Cada columna arranca con el cierre 2026 del P&amp;G consolidado (real <span class="t-real">ene–oct</span> + forecast <span class="t-fcl">nov–dic</span>). Cambia las celdas amarillas y se recalcula todo. Cada PO que ajustes necesita un <b>motivo</b>: es tu sustento ante gerencia y el auditor.</div>
                 <div class="filters-row" style="flex-wrap:wrap">
                   <label>Escenario <select id="simpLista" onchange="cargarEscenarioSimPyg(this.value)"><option value="">— Nuevo escenario —</option></select></label>
                   <input id="simpNombre" class="filter-input" placeholder="Nombre del escenario (ej. Cierre conservador)" style="min-width:260px" oninput="STATE.simPyg.nombre=this.value">
@@ -1535,7 +1535,7 @@ td.fav-com-td{white-space:normal!important}
 
             <div id="tab-forecastav" class="tab-content hidden">
                 <div class="card-title"><h3>Forecast por avance · cierre 2026</h3><small id="favResumen"></small></div>
-                <p class="report-note">Edita las celdas amarillas: <b>avance al 31-dic</b> (lo que te dice el administrador), <b>comentario</b> (por qué no cierra al 100%) y <b>costo total del proyecto</b>. Se guarda solo y pasa al P&G consolidado. <b>Le toca a 2026</b> = contrato × avance − reconocido hasta 2025. <b>Falta Oct–Dic</b> = le toca a 2026 − registrado ene–sep (negativo = reversa). Si el costo total supera el contrato, la pérdida se reconoce completa (NIIF 15). Comparte datos con el simulador: no se duplica.</p>
+                <p class="report-note">Edita las celdas amarillas: <b>avance al 31-dic</b> (lo que te dice el administrador), <b>comentario</b> (por qué no cierra al 100%) y <b>costo total del proyecto</b>. Se guarda solo y pasa al P&G consolidado. <b>Le toca a 2026</b> = contrato × avance − reconocido hasta 2025. <b>Falta <span class="t-fc">Nov–Dic</span></b> = le toca a 2026 − registrado <span class="t-real">ene–oct</span> (negativo = reversa). Si el costo total supera el contrato, la pérdida se reconoce completa (NIIF 15). Comparte datos con el simulador: no se duplica.</p>
                 <div class="filters-row">
                   <input id="buscarFav" class="filter-input search" placeholder="Buscar proyecto..." oninput="renderForecastAvance()">
                   <select id="favFiltro" onchange="renderForecastAvance()" aria-label="Filtrar"><option value="ALL">Todos los proyectos</option><option value="PEND">Sin guardar</option><option value="SAVED">Guardados en el cierre</option><option value="ALERT">Con alertas</option></select>
@@ -1543,8 +1543,8 @@ td.fav-com-td{white-space:normal!important}
                 </div>
                 <div class="table-wrap fav-wrap"><table class="fav-table">
                   <thead>
-                    <tr><th rowspan="2" class="fav-sticky">Proyecto</th><th rowspan="2">Contrato</th><th colspan="3" class="fav-grp">Avance físico</th><th rowspan="2" title="Costo total que tendrá el proyecto al terminar">Costo total proyecto ✎</th><th rowspan="2">Margen</th><th colspan="5" class="fav-grp">Ingreso</th><th colspan="5" class="fav-grp">Costo</th><th rowspan="2" title="Ingreso que falta − costo que falta, Oct–Dic">Efecto en resultado Oct–Dic</th><th rowspan="2">Estado</th><th rowspan="2"></th></tr>
-                    <tr><th>Hoy (Excel)</th><th class="fav-edit-h">Al 31-dic ✎</th><th class="fav-edit-h" title="Por qué no cierra al 100% (lo que dice el administrador)">Comentario del administrador ✎</th><th>Acumulado al 31-dic</th><th>Reconocido hasta 2025</th><th>Le toca a 2026</th><th>Registrado ene–sep</th><th>Falta Oct–Dic</th><th>Acumulado al 31-dic</th><th>Reconocido hasta 2025</th><th>Le toca a 2026</th><th>Registrado ene–sep</th><th>Falta Oct–Dic</th></tr>
+                    <tr><th rowspan="2" class="fav-sticky">Proyecto</th><th rowspan="2">Contrato</th><th colspan="3" class="fav-grp">Avance físico</th><th rowspan="2" title="Costo total que tendrá el proyecto al terminar">Costo total proyecto ✎</th><th rowspan="2">Margen</th><th colspan="5" class="fav-grp">Ingreso</th><th colspan="5" class="fav-grp">Costo</th><th rowspan="2" title="Ingreso que falta − costo que falta, hasta el 31-dic">Efecto en resultado <span class="t-fc">Nov–Dic</span></th><th rowspan="2">Estado</th><th rowspan="2"></th></tr>
+                    <tr><th>Hoy (Excel)</th><th class="fav-edit-h">Al 31-dic ✎</th><th class="fav-edit-h" title="Por qué no cierra al 100% (lo que dice el administrador)">Comentario del administrador ✎</th><th>Acumulado al 31-dic</th><th>Reconocido hasta 2025</th><th>Le toca a 2026</th><th>Registrado <span class="t-real">ene–oct</span></th><th>Falta <span class="t-fc">Nov–Dic</span></th><th>Acumulado al 31-dic</th><th>Reconocido hasta 2025</th><th>Le toca a 2026</th><th>Registrado <span class="t-real">ene–oct</span></th><th>Falta <span class="t-fc">Nov–Dic</span></th></tr>
                   </thead>
                   <tbody id="favBody"></tbody>
                   <tfoot id="favFoot"></tfoot>
@@ -1552,14 +1552,14 @@ td.fav-com-td{white-space:normal!important}
                 <p id="favNota" class="report-note"></p>
 
                 <div id="ppaSeccion" class="card-title" style="margin-top:30px"><h3>Contratos PPA · venta de energía</h3><small id="ppaResumen"></small></div>
-                <p class="report-note">En un PPA la planta es de ENERGYCONTROL: <b>no se reconoce ingreso por avance de obra</b>, sino la energía vendida cada mes. <b>Ingreso mensual</b> = kWh/año × disponibilidad × tarifa ÷ 12 (puedes escribir otro valor). Solo se proyecta Oct–Dic desde el mes de inicio de operación; ene–sep ya está en Odoo. Una PO registrada aquí sale de la tabla de avance de arriba.</p>
+                <p class="report-note">En un PPA la planta es de ENERGYCONTROL: <b>no se reconoce ingreso por avance de obra</b>, sino la energía vendida cada mes. <b>Ingreso mensual</b> = kWh/año × disponibilidad × tarifa ÷ 12 (puedes escribir otro valor). Solo se proyecta <span class="t-fc">Nov–Dic</span> desde el mes de inicio de operación; <span class="t-real">ene–oct</span> ya está en Odoo. Una PO registrada aquí sale de la tabla de avance de arriba.</p>
                 <div class="filters-row">
                   <input id="ppaNuevoPo" class="filter-input" list="ppaPoLista" placeholder="PO del PPA (ej. 1756)" style="max-width:220px">
                   <datalist id="ppaPoLista"></datalist>
                   <button class="btn-secondary" onclick="ppaNuevo()">+ Agregar PPA</button>
                 </div>
                 <div class="table-wrap fav-wrap"><table class="fav-table">
-                  <thead><tr><th style="min-width:200px">Proyecto</th><th class="fav-edit-h">kWh / año ✎</th><th class="fav-edit-h">Disponibilidad % ✎</th><th class="fav-edit-h">Tarifa $/kWh ✎</th><th class="fav-edit-h">Inicio de operación ✎</th><th class="fav-edit-h">Ingreso mensual ✎</th><th class="fav-edit-h" title="O&M, seguros u otros costos mensuales de la planta (opcional)">Costo mensual ✎</th><th class="fav-edit-h">Oportunidad CRM ✎</th><th>Meses en el forecast</th><th>Ingreso Oct–Dic</th><th>Estado</th><th></th></tr></thead>
+                  <thead><tr><th style="min-width:200px">Proyecto</th><th class="fav-edit-h">kWh / año ✎</th><th class="fav-edit-h">Disponibilidad % ✎</th><th class="fav-edit-h">Tarifa $/kWh ✎</th><th class="fav-edit-h">Inicio de operación ✎</th><th class="fav-edit-h">Ingreso mensual ✎</th><th class="fav-edit-h" title="O&M, seguros u otros costos mensuales de la planta (opcional)">Costo mensual ✎</th><th class="fav-edit-h">Oportunidad CRM ✎</th><th>Meses en el forecast</th><th>Ingreso <span class="t-fc">Nov–Dic</span></th><th>Estado</th><th></th></tr></thead>
                   <tbody id="ppaBody"></tbody>
                 </table></div>
             </div>
@@ -1822,8 +1822,8 @@ td.fav-com-td{white-space:normal!important}
 
  <div id="simLedger" class="sim-ledger"></div>
 
- <div class="sim-field" style="margin-top:14px"><label for="simForecastMonth">Mes en que se registra</label><select id="simForecastMonth" onchange="actualizarSimulacion()"><option value="2026-10-01">Octubre</option><option value="2026-11-01">Noviembre</option><option value="2026-12-01" selected>Diciembre</option></select></div>
- <div class="sim-field"><label for="simNota">Nota (sustento)</label><input id="simNota" type="text" maxlength="300" class="filter-input" placeholder="Ej.: avance según informe de obra 30-sep"></div>
+ <div class="sim-field" style="margin-top:14px"><label for="simForecastMonth">Mes en que se registra</label><select id="simForecastMonth" onchange="actualizarSimulacion()"><option value="2026-11-01">Noviembre</option><option value="2026-12-01" selected>Diciembre</option></select></div>
+ <div class="sim-field"><label for="simNota">Nota (sustento)</label><input id="simNota" type="text" maxlength="300" class="filter-input" placeholder="Ej.: avance según informe de obra al corte"></div>
 
  <div class="sim-actions">
   <button class="btn-secondary" onclick="cargarProyectoSimulador()">Restaurar valores</button>
@@ -1839,6 +1839,33 @@ td.fav-com-td{white-space:normal!important}
 
 
 <script>
+/* =========================================================
+   CORTE DEL REAL ODOO — único valor a cambiar cada mes
+   (último mes cerrado contablemente en Odoo)
+========================================================= */
+const CORTE_MES='2026-10';
+const CORTE_N=Number(CORTE_MES.slice(5));                       // meses con real (10 = ene–oct)
+const CORTE_FECHA=CORTE_MES+'-'+String(new Date(Number(CORTE_MES.slice(0,4)),CORTE_N,0).getDate()).padStart(2,'0');
+const MES_ABR=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MES_LARGO=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const cap1=t=>t.charAt(0).toUpperCase()+t.slice(1);
+const TXT_REAL='ene–'+MES_ABR[CORTE_N-1];                        // ene–oct
+const TXT_REAL_L='enero–'+MES_LARGO[CORTE_N-1];                  // enero–octubre
+const TXT_FC=CORTE_N<11?cap1(MES_ABR[CORTE_N])+"–Dic":"Dic";     // Nov–Dic
+const TXT_FCL=TXT_FC.toLowerCase();                              // nov–dic
+const TXT_FC_L=MES_LARGO[CORTE_N]+(CORTE_N<11?'–diciembre':'');  // noviembre–diciembre
+const IDX_REAL=[...Array(CORTE_N).keys()];                       // [0..9]
+const IDX_FC=Array.from({length:12-CORTE_N},(_,i)=>CORTE_N+i);   // [10,11]
+const FORECAST_MONTHS=IDX_FC.map(i=>'2026-'+String(i+1).padStart(2,'0')+'-01');
+const FORECAST_CUTOFF=CORTE_MES;
+const enRealCorte=f=>{const m=String(f).slice(0,7);return m.startsWith('2026-')&&m<=CORTE_MES;};
+const mesFcCorto=m=>cap1(MES_ABR[Number(String(m).slice(5,7))-1]);
+(function pintarCorte(){
+ const put=(c,t)=>document.querySelectorAll('.'+c).forEach(e=>e.textContent=t);
+ put('t-real',TXT_REAL);put('t-real-l',TXT_REAL_L);put('t-fc',TXT_FC);put('t-fcl',TXT_FCL);put('t-fc-l',TXT_FC_L);put('t-corte',MES_LARGO[CORTE_N-1]);
+ const sel=document.getElementById('simForecastMonth');
+ if(sel)sel.innerHTML=FORECAST_MONTHS.map((m,i)=>'<option value="'+m+'"'+(i===FORECAST_MONTHS.length-1?' selected':'')+'>'+cap1(MES_LARGO[Number(m.slice(5,7))-1])+'</option>').join('');
+})();
 
 
 /* =========================================================
@@ -2500,8 +2527,8 @@ function renderCrmPpaPanel(mostrar){
  }
  for(const c of cfg)if(!usados.has(c.code))filas.push({l:null,c,po:c.code});
  const total=filas.reduce((s,f)=>s+(f.c&&f.c.saved&&!f.c.dirty?ppaCalc(f.c).total:0),0);
- el.innerHTML='<div class="card-title" style="margin:0 0 6px"><h4 style="margin:0">Contratos PPA (todos los años) · venta de energía en el cierre</h4><small>'+filas.filter(f=>f.c&&f.c.saved).length+' de '+filas.length+' configurados · Ingreso Oct–Dic '+money(total)+'</small></div>'
-  +'<div class="table-wrap"><table><thead><tr><th>PO</th><th>Oportunidad</th><th>Cierre CRM</th><th>Monto CRM</th><th>kWh / año</th><th>Tarifa</th><th>Ingreso mensual</th><th>Inicio operación</th><th>Ingreso Oct–Dic</th><th>Estado</th><th></th></tr></thead><tbody>'
+ el.innerHTML='<div class="card-title" style="margin:0 0 6px"><h4 style="margin:0">Contratos PPA (todos los años) · venta de energía en el cierre</h4><small>'+filas.filter(f=>f.c&&f.c.saved).length+' de '+filas.length+' configurados · Ingreso '+TXT_FC+' '+money(total)+'</small></div>'
+  +'<div class="table-wrap"><table><thead><tr><th>PO</th><th>Oportunidad</th><th>Cierre CRM</th><th>Monto CRM</th><th>kWh / año</th><th>Tarifa</th><th>Ingreso mensual</th><th>Inicio operación</th><th>Ingreso '+TXT_FC+'</th><th>Estado</th><th></th></tr></thead><tbody>'
   +filas.map(f=>{const k=f.c?ppaCalc(f.c):null;const nm=f.l?f.l.nombre:(STATE.names?.[f.po]||projectInfo(f.po).proyecto_nombre||'');
    const est=!f.c?'<span class="badge warn">Falta configurar</span>':f.c.dirty?'<span class="badge warn">Sin guardar</span>':'<span class="badge ok">En el cierre ✓</span>';
    const ini=k?(k.ini==='2027-01'?'2027 o después':['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][Number(k.ini.slice(5))-1]+' '+k.ini.slice(0,4)):'—';
@@ -2512,21 +2539,21 @@ function renderCrmResPanel(mostrar){
  const el=document.getElementById('crmResPanel');if(!el)return;
  el.classList.toggle('hidden',!mostrar);if(!mostrar)return;
  const filas=STATE.resRows||[],d=STATE.resDraft||{};
- const guardado={ingreso:filas[0]?number(filas[0].ingreso):'',costo:filas[0]&&number(filas[0].costo)?number(filas[0].costo):'',meses:new Set(filas.map(r=>String(r.mes).slice(0,7)))};
- const v={ingreso:d.ingreso??guardado.ingreso,costo:d.costo??guardado.costo,meses:d.meses??(filas.length?guardado.meses:new Set(['2026-10','2026-11','2026-12']))};
- // Referencia: promedio mensual de ventas residenciales ganadas en 2026 (ene–sep) según el CRM
- const res26=(STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='Residencial'&&String(l.fecha_cierre||'')>='2026-01'&&String(l.fecha_cierre||'')<'2026-10');
- const prom=res26.reduce((s,l)=>s+montoVentaCrm(l),0)/9;
+ const guardado={ingreso:filas[0]?number(filas[0].ingreso):'',costo:filas[0]&&number(filas[0].costo)?number(filas[0].costo):'',meses:new Set(filas.map(r=>String(r.mes).slice(0,7)).filter(m=>m>CORTE_MES))};
+ const v={ingreso:d.ingreso??guardado.ingreso,costo:d.costo??guardado.costo,meses:d.meses??(filas.length?guardado.meses:new Set(FORECAST_MONTHS.map(m=>m.slice(0,7))))};
+ // Referencia: promedio mensual de ventas residenciales ganadas en 2026 hasta el corte según el CRM
+ const res26=(STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='Residencial'&&String(l.fecha_cierre||'')>='2026-01'&&String(l.fecha_cierre||'').slice(0,7)<=CORTE_MES);
+ const prom=res26.reduce((s,l)=>s+montoVentaCrm(l),0)/CORTE_N;
  // Riesgo de doble conteo: ventas residenciales ya llevadas una a una al cierre
  const simRes=(STATE.crm||[]).filter(l=>tipoCrm(l).tipo==='Residencial').map(l=>l.proyecto_codigo||('CRM-'+l.lead_id)).filter(c=>(STATE.savedSims||[]).some(x=>x.proyecto_codigo===c));
  const meses=[...v.meses].sort(),total=number(v.ingreso)*meses.length,costoT=number(v.costo)*meses.length;
  const sucio=!!STATE.resDraft;
- el.innerHTML='<div class="card-title" style="margin:0 0 6px"><h4 style="margin:0">Provisión mensual de ventas residenciales</h4><small>'+(filas.length&&!sucio?'<span class="badge ok">En el cierre ✓</span> ':sucio?'<span class="badge warn">Sin guardar</span> ':'')+'Oct–Dic: ingreso '+money(total)+(costoT?' · costo '+money(costoT):'')+'</small></div>'
-  +'<p class="report-note" style="margin:0 0 8px">Un solo valor mensual para todas las ventas residenciales, en lugar de proyectarlas una por una. Referencia: ventas residenciales ganadas ene–sep 2026 según el CRM = '+money(prom*9)+' (promedio '+money(prom)+' al mes).</p>'
+ el.innerHTML='<div class="card-title" style="margin:0 0 6px"><h4 style="margin:0">Provisión mensual de ventas residenciales</h4><small>'+(filas.length&&!sucio?'<span class="badge ok">En el cierre ✓</span> ':sucio?'<span class="badge warn">Sin guardar</span> ':'')+TXT_FC+': ingreso '+money(total)+(costoT?' · costo '+money(costoT):'')+'</small></div>'
+  +'<p class="report-note" style="margin:0 0 8px">Un solo valor mensual para todas las ventas residenciales, en lugar de proyectarlas una por una. Referencia: ventas residenciales ganadas '+TXT_REAL+' 2026 según el CRM = '+money(prom*CORTE_N)+' (promedio '+money(prom)+' al mes).</p>'
   +'<div class="filters-row" style="align-items:flex-end;gap:14px">'
   +'<label>Ingreso mensual<br><input id="resIngreso" class="fav-in" type="number" min="0" step="0.01" style="width:140px" value="'+escapeHtml(String(v.ingreso))+'" onchange="resEditar()"></label>'
   +'<label title="Costo de ventas mensual estimado. Si lo dejas vacío, la provisión entra al 100% de margen.">Costo mensual (opcional)<br><input id="resCosto" class="fav-in" type="number" min="0" step="0.01" style="width:140px" value="'+escapeHtml(String(v.costo))+'" onchange="resEditar()"></label>'
-  +'<div style="display:flex;flex-direction:column;gap:4px">Meses<div>'+['2026-10','2026-11','2026-12'].map(m=>'<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;min-width:0;width:auto"><input type="checkbox" class="resMes" style="width:auto;min-width:0;margin:0" value="'+m+'"'+(v.meses.has(m)?' checked':'')+' onchange="resEditar()">'+['Oct','Nov','Dic'][Number(m.slice(5))-10]+'</label>').join('')+'</div></div>'
+  +'<div style="display:flex;flex-direction:column;gap:4px">Meses<div>'+FORECAST_MONTHS.map(m=>m.slice(0,7)).map(m=>'<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;min-width:0;width:auto"><input type="checkbox" class="resMes" style="width:auto;min-width:0;margin:0" value="'+m+'"'+(v.meses.has(m)?' checked':'')+' onchange="resEditar()">'+mesFcCorto(m)+'</label>').join('')+'</div></div>'
   +'<button class="btn-primary" onclick="resGuardar()"'+(sucio?'':' disabled')+'>Guardar en el cierre</button>'
   +(filas.length?'<button class="btn-secondary" onclick="resEliminar()">🗑 Quitar provisión</button>':'')
   +'</div>'
@@ -2548,7 +2575,7 @@ async function resGuardar(){
   const {data:{user}}=await sb.auth.getUser();
   const ids=(STATE.resRows||[]).map(r=>r.id);
   if(ids.length){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).in('id',ids);if(del.error)throw del.error;}
-  const ins=await sb.from('forecast_movimientos').insert(meses.map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:'RESIDENCIAL',concepto:'Provisión ventas residenciales',mes:m+'-01',ingreso:Number(number(d.ingreso).toFixed(2)),costo:Number(number(d.costo).toFixed(2)),fuente_ref:'RESIDENCIAL',fecha_corte:'2026-09-30',detalle:{origen:'provision_residencial'}})));
+  const ins=await sb.from('forecast_movimientos').insert(meses.map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:'RESIDENCIAL',concepto:'Provisión ventas residenciales',mes:m+'-01',ingreso:Number(number(d.ingreso).toFixed(2)),costo:Number(number(d.costo).toFixed(2)),fuente_ref:'RESIDENCIAL',fecha_corte:CORTE_FECHA,detalle:{origen:'provision_residencial'}})));
   if(ins.error)throw ins.error;
   STATE.resDraft=null;await cargarForecastGuardado();renderCrm();renderForecastReports();
   toast('Provisión residencial guardada: '+money(number(d.ingreso))+' mensuales en '+meses.length+' mes(es).');
@@ -2564,7 +2591,7 @@ async function resEliminar(){
 function configurarPpaDesdeCrm(leadId,po){
  let code=po;
  if(!code){const sug=ppaConfigs().find(c=>!ppaLeadDe(c))?.code||'';code=(prompt('Esta oportunidad no tiene PO en Odoo. Escribe la PO del PPA'+(sug?' (la '+sug+' es un PPA sin oportunidad vinculada)':'')+':',sug)||'').match(/\d{3,4}/)?.[0];if(!code)return;}
- if(!ppaConfigs().some(c=>c.code===code))STATE.ppaDraft[code]={disponibilidad:95,inicio:'2026-10',lead_id:leadId||''};
+ if(!ppaConfigs().some(c=>c.code===code))STATE.ppaDraft[code]={disponibilidad:95,inicio:FORECAST_MONTHS[0].slice(0,7),lead_id:leadId||''};
  else if(leadId&&!ppaConfigs().find(c=>c.code===code).lead_id){const a=ppaConfigs().find(c=>c.code===code);STATE.ppaDraft[code]={kwh_anual:a.kwh_anual,disponibilidad:a.disponibilidad,tarifa:a.tarifa,inicio:a.inicio,mensual_manual:a.mensual_manual,costo_mensual:a.costo_mensual,lead_id:leadId,generacion:a.generacion,plazo:a.plazo};}
  renderPpa();abrirGenPpa(code);
 }
@@ -3597,31 +3624,31 @@ function accountingTotals(rows){
 function consolidatedRows(){
  return STATE.analytic.filter(r=>String(r.fecha).startsWith("2026-")&&monthIncluded(String(r.fecha).slice(5,7)));
 }
-const FORECAST_MONTHS=['2026-10-01','2026-11-01','2026-12-01'];
 const FORECAST_AREAS={income:'Total Ingresos',cost:'501 COSTO DE VENTAS Y PRODUCCIÓN',sales:'50201 GASTOS DE VENTA',admin:'50202 GASTOS ADMINISTRATIVOS',finance:'50203 GASTOS FINANCIEROS',other:'Otros gastos / clasificación pendiente'};
 function budgetEntry(r){
  const key=r.source_row+':'+r.period,o=STATE.expensePlan[key]||{};
  return {...r,amount:Object.hasOwn(o,'amount')?o.amount:r.amount,allocations:o.code?[{code:o.code,weight:1}]:r.allocations};
 }
 function projectRealAfterCutoff(code){
- const rows=STATE.analytic.filter(r=>String(r.fecha).slice(0,7)>'2026-09');
+ const rows=STATE.analytic.filter(r=>String(r.fecha).slice(0,7)>CORTE_MES);
  const cols=analyticMatrix(rows,'ALL','ALL','',code);
  const cost=analyticMatrix(rows.filter(r=>accountingBucket(r)==='cost'),'ALL','ALL','',code).total.expense;
  return {income:cols.total.income,cost};
 }
 function projectRealAtCutoff(code){
- const rows=STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
+ const rows=STATE.analytic.filter(r=>enRealCorte(r.fecha));
  const cols=analyticMatrix(rows,'ALL','ALL','',code);
  return {income:cols.total.income,cost:rows.filter(r=>accountingBucket(r)==='cost').reduce((sum,r)=>{
   const m=analyticMatrix([r],'ALL','ALL','',code);return sum+m.total.expense;
  },0)};
 }
 function forecastModel(filtro=null){
- const real=lineasReales(filtro).filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09');
+ const real=lineasReales(filtro).filter(r=>enRealCorte(r.fecha));
  const months=Array.from({length:12},(_,i)=>'2026-'+String(i+1).padStart(2,'0')+'-01');
  const details=new Map(),totals=months.map(()=>({income:0,cost:0,sales:0,admin:0,finance:0,other:0}));
  function add(month,code,name,area,amount,source){
   const i=months.indexOf(month);if(i<0)return;
+  if(source!=='Odoo'&&i<CORTE_N)return; // ese mes ya es real Odoo
   const key=area+':'+code;if(!details.has(key))details.set(key,{key,code,name,area,values:Array(12).fill(0),source});
   details.get(key).values[i]+=amount;totals[i][area]+=amount;
  }
@@ -3631,7 +3658,7 @@ function forecastModel(filtro=null){
  }
  const scenarios=[];
  for(const s of STATE.savedSims||[]){
-  const month=String(s.mes).slice(0,10),income=number(s.ingreso),cost=number(s.costo),code=s.proyecto_codigo;
+  const m0=String(s.mes).slice(0,10),month=m0.slice(0,7)<=CORTE_MES?'2026-12-01':m0,income=number(s.ingreso),cost=number(s.costo),code=s.proyecto_codigo;
   if(filtro&&!filtroTienePo(filtro,code))continue;
   add(month,'PROYECTO:'+code,'Ingreso a registrar PO '+poNombre(code),'income',income,'Simulación');
   add(month,'COSTO:'+code,'Costo a registrar PO '+poNombre(code),'cost',cost,'Simulación');
@@ -3723,9 +3750,9 @@ function pygConsolidadoModelo(opts={}){
   sel.forEach(i=>cols.push({idx:[i],label:nombresMes[i],sub:'Real Odoo',agg:false,forecast:false}));
   cols.push({idx:sel,label:'Acumulado',sub:'Real Odoo',agg:true,forecast:false});
  }else{
-  for(let i=0;i<9;i++)cols.push({idx:[i],label:nombresMes[i],sub:'Real Odoo',agg:false,forecast:false});
-  cols.push({idx:[0,1,2,3,4,5,6,7,8],label:'Acum. ene–sep',sub:'Real Odoo',agg:true,forecast:false});
-  for(let i=9;i<12;i++)cols.push({idx:[i],label:nombresMes[i],sub:'Forecast',agg:false,forecast:true});
+  for(const i of IDX_REAL)cols.push({idx:[i],label:nombresMes[i],sub:'Real Odoo',agg:false,forecast:false});
+  cols.push({idx:IDX_REAL,label:'Acum. '+TXT_REAL,sub:'Real Odoo',agg:true,forecast:false});
+  for(const i of IDX_FC)cols.push({idx:[i],label:nombresMes[i],sub:'Forecast',agg:false,forecast:true});
   cols.push({idx:[...Array(12).keys()],label:'Cierre 2026',sub:'Real + forecast',agg:true,forecast:true,cierre:true});
  }
  for(const c of cols){
@@ -3809,7 +3836,7 @@ function filtroPygCambio(el){
 /* ========= P&G CONSOLIDADO: detalle de asientos con enlace a Odoo ========= */
 function lineasCeldaPyg(area,code,col){
  const st=STATE.pygUltimo;if(!st)return [];
- const meses=new Set(col.idx.filter(i=>st.realMode||i<9).map(i=>String(i+1).padStart(2,'0')));
+ const meses=new Set(col.idx.filter(i=>st.realMode||i<CORTE_N).map(i=>String(i+1).padStart(2,'0')));
  return lineasReales(st.filtro).filter(r=>{
   const f=String(r.fecha);
   return f.startsWith('2026-')&&meses.has(f.slice(5,7))&&bucketPyg(r)===area&&(code===null||String(r.cuenta_codigo)===String(code));
@@ -3829,7 +3856,7 @@ function abrirDetallePyg(area,code,ci,soloReal){
  m.innerHTML='<div style="background:#fff;border-radius:12px;max-width:1150px;width:100%;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
   +'<div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start"><div style="flex:1"><h3 style="margin:0 0 4px">'+escapeHtml(titulo)+'</h3>'
   +'<div class="report-note" style="margin:0">'+lineas.length+' línea(s) · Total '+money(total)+(st.filtro?' · Filtro: '+escapeHtml(st.filtro.label)+' (parte asignada a esa analítica)':' · Toda Energycontrol')
-  +(col.forecast&&!st.realMode?' · Solo el real ene–sep: el forecast no tiene asientos en Odoo':'')+'</div></div>'
+  +(col.forecast&&!st.realMode?' · Solo el real '+TXT_REAL+': el forecast no tiene asientos en Odoo':'')+'</div></div>'
   +(cuentaId?'<a class="go-link" href="'+odoo+'account.account&res_id='+encodeURIComponent(cuentaId)+'" target="_blank" rel="noopener">Cuenta en Odoo ↗</a>':'')
   +'<button class="btn-secondary" onclick="cerrarDetallePyg()">✕</button></div>'
   +'<div style="overflow:auto;padding:0 20px 16px"><table style="width:100%"><thead><tr><th>Fecha</th><th>Asiento</th>'+(code===null?'<th>Cuenta</th>':'')+'<th>Socio</th><th>Referencia</th><th>Analítica</th><th style="text-align:right">Monto</th><th></th></tr></thead><tbody>'
@@ -3843,7 +3870,7 @@ function abrirDetallePyg(area,code,ci,soloReal){
  m.style.display='flex';
 }
 function cerrarDetallePyg(){const m=document.getElementById('pygDrill');if(m)m.style.display='none';}
-/* ========= P&G CONSOLIDADO: detalle del FORECAST (oct–dic) por proyecto y categoría ========= */
+/* ========= P&G CONSOLIDADO: detalle del FORECAST (después del corte) por proyecto y categoría ========= */
 function modalPygDrill(){
  let m=document.getElementById('pygDrill');
  if(!m){m=document.createElement('div');m.id='pygDrill';m.style.cssText='position:fixed;inset:0;background:rgba(8,40,74,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px';m.onclick=e=>{if(e.target===m)cerrarDetallePyg();};document.body.appendChild(m);document.addEventListener('keydown',e=>{if(e.key==='Escape')cerrarDetallePyg();});}
@@ -3863,7 +3890,7 @@ function analisisProyectoForecast(po,fIdx){
  const enPyg=cosPrev+cosReal26,factSinCosto=Math.max(t.re-enPyg,0);
  const respaldo=t.abierta+factSinCosto,sinRespaldo=Math.max(cos-respaldo,0);
  const alertas=[];
- if(cos>ing+0.005)alertas.push({t:'danger',x:'Margen negativo en el tramo oct–dic: '+money(ing-cos)});
+ if(cos>ing+0.005)alertas.push({t:'danger',x:'Margen negativo en el tramo '+TXT_FCL+': '+money(ing-cos)});
  if(ing<-0.005)alertas.push({t:'warn',x:'Reversa de ingreso: ya se facturó más que el avance al 31-dic'});
  if(eacG>0&&eacAct.v>0&&Math.abs(eacG-eacAct.v)/eacAct.v>0.01)alertas.push({t:'warn',x:'El forecast se guardó con un costo total (EAC) de '+money(eacG)+', pero hoy el EAC sugerido es '+money(eacAct.v)+'. Vuelve a guardar el proyecto en Forecast por avance.'});
  if(sinRespaldo>1)alertas.push({t:'danger',x:'Costo sin OC abierta ni factura que lo respalde: '+money(sinRespaldo)});
@@ -3873,7 +3900,7 @@ function analisisProyectoForecast(po,fIdx){
 }
 function abrirDetalleForecast(area,code,ci){
  const st=STATE.pygUltimo,col=st?.cols[ci];if(!col)return;
- const fIdx=col.idx.filter(i=>i>=9),rIdx=col.idx.filter(i=>i<9);
+ const fIdx=col.idx.filter(i=>i>=CORTE_N),rIdx=col.idx.filter(i=>i<CORTE_N);
  const areaDe=d=>d.area==='income'&&esOtroIngreso(d.code)?'otherIncome':d.area;
  const suma=(d,idx)=>idx.reduce((a,i)=>a+number(d.values[i]),0);
  const dets=st.f.details.filter(d=>areaDe(d)===area&&(code===null||String(d.code)===String(code)));
@@ -3899,12 +3926,12 @@ function abrirDetalleForecast(area,code,ci){
    +'<div><b>Cómo se calcula el ingreso</b><table style="width:100%">'
    +'<tr><td>Contrato × avance al 31-dic ('+p.av31+'%)</td>'+td(p.contrato*p.av31/100)+'</tr>'
    +'<tr><td>(−) Reconocido hasta 2025</td>'+td(-p.ingPrev)+'</tr>'
-   +'<tr><td>(−) Facturado / reconocido 2026 (ene–sep)</td>'+td(-p.ingReal26)+'</tr>'
+   +'<tr><td>(−) Facturado / reconocido 2026 ('+TXT_REAL+')</td>'+td(-p.ingReal26)+'</tr>'
    +'<tr style="font-weight:700"><td>= Ingreso forecast</td>'+td(p.ing)+'</tr></table></div>'
    +'<div><b>Cómo se calcula el costo</b><table style="width:100%">'
    +'<tr><td>Costo total estimado (EAC '+money(p.eacG)+') × '+p.av31+'%</td>'+td(p.costoTotEst)+'</tr>'
    +'<tr><td>(−) Costo reconocido hasta 2025</td>'+td(-p.cosPrev)+'</tr>'
-   +'<tr><td>(−) Costo real 2026 en P&amp;G (ene–sep)</td>'+td(-p.cosReal26)+'</tr>'
+   +'<tr><td>(−) Costo real 2026 en P&amp;G ('+TXT_REAL+')</td>'+td(-p.cosReal26)+'</tr>'
    +'<tr style="font-weight:700"><td>= Costo forecast</td>'+td(p.cos)+'</tr></table>'
    +'<div class="report-note" style="margin:4px 0 0">EAC hoy: '+money(p.eacAct.v)+' · '+escapeHtml(p.eacAct.fuente)+'</div></div></div>':'<p class="report-note">No hay forecast guardado para esta PO en los meses de la columna.</p>';
   const cat=p.cats.length?'<b>Costo por categoría (presupuesto SharePoint vs Odoo)</b><table style="width:100%;margin-top:4px"><thead><tr><th>Categoría</th><th style="text-align:right">Presupuesto aterrizado</th><th style="text-align:right">Real facturado</th><th style="text-align:right">OC abiertas</th><th style="text-align:right">Por comprometer (sin OC)</th><th style="text-align:right">Sobre presupuesto</th></tr></thead><tbody>'
@@ -3920,10 +3947,10 @@ function abrirDetalleForecast(area,code,ci){
  const m=modalPygDrill();
  m.innerHTML='<style>#pygDrill td,#pygDrill th{min-width:0!important}#pygDrill td{padding:6px 8px;white-space:normal}</style><div style="background:#fff;border-radius:12px;max-width:1250px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)">'
   +'<div style="padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start"><div style="flex:1"><h3 style="margin:0 0 4px">'+escapeHtml(titulo)+' · de dónde sale</h3>'
-  +'<div class="report-note" style="margin:0">'+(rIdx.length?'Real Odoo ene–sep '+money(real)+' + ':'')+'Forecast '+money(totalF)+' = '+money(totalF+real)
+  +'<div class="report-note" style="margin:0">'+(rIdx.length?'Real Odoo '+TXT_REAL+' '+money(real)+' + ':'')+'Forecast '+money(totalF)+' = '+money(totalF+real)
   +(vCelda==null?'':(Math.abs(dif)<1?' · <span style="color:#1b7f4b">✓ cuadra con la celda</span>':' · <span style="color:#c62839">⚠️ no cuadra con la celda ('+money(vCelda)+', diferencia '+money(dif)+')</span>'))
   +(proys.length?' · '+proys.length+' proyecto(s), '+nP+' con alertas':'')+'</div></div>'
-  +(rIdx.length?'<button class="btn-secondary" onclick="abrirDetallePyg(\''+area+'\','+(code===null?'null':'\''+String(code).replace(/[^\w.:-]/g,'')+'\'')+','+ci+',true)">Ver asientos reales ene–sep</button>':'')
+  +(rIdx.length?'<button class="btn-secondary" onclick="abrirDetallePyg(\''+area+'\','+(code===null?'null':'\''+String(code).replace(/[^\w.:-]/g,'')+'\'')+','+ci+',true)">Ver asientos reales '+TXT_REAL+'</button>':'')
   +'<button class="btn-secondary" onclick="descargarDetalleForecast()">Descargar Excel</button>'
   +'<button class="btn-secondary" onclick="cerrarDetallePyg()">✕</button></div>'
   +'<div style="overflow:auto;padding:0 20px 16px">'
@@ -3942,11 +3969,11 @@ async function descargarDetalleForecast(){
  const d=STATE.fcDrill;if(!d)return;
  try{
   const X=await cargarSheetJS(),r2=v=>Math.round(number(v)*100)/100;
-  const p1=d.proys.map(p=>({'PO':p.po,'Proyecto':p.nombre||'','Avance hoy %':p.avHoy,'Avance 31-dic %':p.av31,'Contrato':r2(p.contrato),'Ingreso reconocido hasta 2025':r2(p.ingPrev),'Ingreso 2026 ene-sep':r2(p.ingReal26),'Ingreso forecast':r2(p.ing),'EAC guardado':r2(p.eacG),'EAC actual':r2(p.eacAct.v),'Costo total estimado al avance':r2(p.costoTotEst),'Costo reconocido hasta 2025':r2(p.cosPrev),'Costo 2026 ene-sep':r2(p.cosReal26),'Costo forecast':r2(p.cos),'Margen forecast':r2(p.margen),'OC abiertas':r2(p.t.abierta),'Facturado sin pasar a costo':r2(p.factSinCosto),'Costo sin respaldo':r2(p.sinRespaldo),'Nota':p.nota,'Alertas':p.alertas.map(a=>a.x).join(' | ')}));
+  const p1=d.proys.map(p=>({'PO':p.po,'Proyecto':p.nombre||'','Avance hoy %':p.avHoy,'Avance 31-dic %':p.av31,'Contrato':r2(p.contrato),'Ingreso reconocido hasta 2025':r2(p.ingPrev),['Ingreso 2026 '+TXT_REAL]:r2(p.ingReal26),'Ingreso forecast':r2(p.ing),'EAC guardado':r2(p.eacG),'EAC actual':r2(p.eacAct.v),'Costo total estimado al avance':r2(p.costoTotEst),'Costo reconocido hasta 2025':r2(p.cosPrev),['Costo 2026 '+TXT_REAL]:r2(p.cosReal26),'Costo forecast':r2(p.cos),'Margen forecast':r2(p.margen),'OC abiertas':r2(p.t.abierta),'Facturado sin pasar a costo':r2(p.factSinCosto),'Costo sin respaldo':r2(p.sinRespaldo),'Nota':p.nota,'Alertas':p.alertas.map(a=>a.x).join(' | ')}));
   const p2=d.proys.flatMap(p=>p.cats.map(c=>({'PO':p.po,'Proyecto':p.nombre||'','Categoría':c.rubro,'Presupuesto aterrizado':r2(c.p),'Real facturado':r2(c.re),'OC abiertas':r2(c.abierta),'Por comprometer (sin OC)':r2(c.sinOc),'Sobre presupuesto':r2(c.sobre)})));
   const p3=d.otros.map(o=>({'Concepto':(/^\d/.test(o.code)?o.code+' ':'')+(o.name||o.code),'Fuente':o.source||'','Monto':r2(o.v)}));
   const wb=X.utils.book_new();
-  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Detalle del forecast — '+d.titulo],['Generado',new Date().toLocaleString('es-EC')],['Real ene–sep',r2(d.real)],['Forecast',r2(d.totalF)],['Total',r2(d.real+d.totalF)],['Valor en la celda',d.vCelda==null?'':r2(d.vCelda)]]),'Resumen');
+  X.utils.book_append_sheet(wb,X.utils.aoa_to_sheet([['Detalle del forecast — '+d.titulo],['Generado',new Date().toLocaleString('es-EC')],['Real '+TXT_REAL,r2(d.real)],['Forecast',r2(d.totalF)],['Total',r2(d.real+d.totalF)],['Valor en la celda',d.vCelda==null?'':r2(d.vCelda)]]),'Resumen');
   X.utils.book_append_sheet(wb,X.utils.json_to_sheet(p1.length?p1:[{'Sin proyectos':''}]),'Proyectos');
   X.utils.book_append_sheet(wb,X.utils.json_to_sheet(p2.length?p2:[{'Sin categorías':''}]),'Costo por categoría');
   X.utils.book_append_sheet(wb,X.utils.json_to_sheet(p3.length?p3:[{'Sin otros conceptos':''}]),'Otros conceptos');
@@ -4027,7 +4054,7 @@ function renderConsolidated(){
  }
  document.getElementById('consolidatedBody').innerHTML=html;
  const alcance=filtro?'Filtro: '+filtro.label:'Toda Energycontrol';
- document.getElementById('consolidatedPeriod').textContent=(realMode?'Real Odoo · usa el mes de la cabecera':'Enero–septiembre: real Odoo · Octubre–diciembre: '+(filtro?'forecast guardado de la PO (avance / PPA)':'presupuesto Excel + escenarios aplicados'))+' · '+alcance;
+ document.getElementById('consolidatedPeriod').textContent=(realMode?'Real Odoo · usa el mes de la cabecera':cap1(TXT_REAL_L)+': real Odoo · '+cap1(TXT_FC_L)+': '+(filtro?'forecast guardado de la PO (avance / PPA)':'presupuesto Excel + escenarios aplicados'))+' · '+alcance;
  document.getElementById('consolidatedAllocation').textContent=filtro
   ?'Vista filtrada: solo ingresos, costos y gastos que en Odoo tienen la analítica seleccionada (su parte de la distribución). No incluye gastos fijos del presupuesto ni costos sin analítica, por eso el resultado es una contribución y no una utilidad neta.'
   :forecastStatus(f)+' Participación (15%) e IR (25%) son estimaciones simples sobre la utilidad contable: no consideran gastos no deducibles, deducciones ni conciliación tributaria.';
@@ -4049,9 +4076,9 @@ function renderExpensePlan(){
  const f=forecastModel();document.getElementById('expensePlanSummary').textContent=!f.ready?forecastStatus(f):FORECAST_MONTHS.map(m=>monthName(m)+': '+money((STATE.fixedBudget||[]).filter(r=>r.period===m).reduce((sum,r)=>sum+number(budgetEntry(r).amount),0))).join(' · ');
 }
 function renderClosingForecast(){
- const f=forecastModel(),actual=accountingTotals(STATE.analytic.filter(r=>String(r.fecha).startsWith('2026-')&&String(r.fecha).slice(0,7)<='2026-09'));
- document.getElementById('forecastPeriod').textContent='Real enero–septiembre + forecast octubre–diciembre = cierre al 31/12/2026';
- const mR=pygConsolidadoModelo({filtro:null,realMode:false,cols:[{idx:[0,1,2,3,4,5,6,7,8],agg:true,forecast:false},{idx:[9,10,11],agg:false,forecast:true},{idx:[...Array(12).keys()],agg:true,forecast:true}]});
+ const f=forecastModel(),actual=accountingTotals(STATE.analytic.filter(r=>enRealCorte(r.fecha)));
+ document.getElementById('forecastPeriod').textContent='Real '+TXT_REAL_L+' + forecast '+TXT_FC_L+' = cierre al 31/12/2026';
+ const mR=pygConsolidadoModelo({filtro:null,realMode:false,cols:[{idx:IDX_REAL,agg:true,forecast:false},{idx:IDX_FC,agg:false,forecast:true},{idx:[...Array(12).keys()],agg:true,forecast:true}]});
  document.getElementById('closingForecastBody').innerHTML=mR.filas.map(fi=>{const fuerte=fi.cls?'font-weight:700;background:#eef1f5':'',cur=fi.tipo==='pct'?'font-style:italic;color:#4b5565':'';return '<tr><th style="'+fuerte+cur+'">'+escapeHtml(fi.label)+'</th>'+fi.valores.map(x=>'<td style="'+fuerte+cur+'" class="'+(x.neg?'money-negative':'')+'">'+x.txt+'</td>').join('')+'</tr>';}).join('');
  document.getElementById('closingForecastStatus').textContent=forecastStatus(f);
  document.getElementById('scenarioList').innerHTML=f.scenarios.length?f.scenarios.map(s=>'<tr><td style="white-space:normal;min-width:220px"><b>'+escapeHtml(String(s.code))+'</b>'+(poNombre(s.code)!==String(s.code)?' - '+escapeHtml(poNombre(s.code).replace(String(s.code)+' - ','')):'')+'</td><td>'+percentPoints(s.avance)+' · '+monthName(s.month)+'</td><td class="'+(s.income<0?'money-negative':'')+'">'+money(s.income)+'</td><td class="'+(s.cost<0?'money-negative':'')+'">'+money(s.cost)+'</td><td>'+money(s.income-s.cost)+'</td><td>'+escapeHtml(s.nota||'')+'</td><td><button class="btn-secondary" onclick="editarSimulacion(\''+escapeHtml(s.code)+'\')" aria-label="Editar '+escapeHtml(s.code)+'">✎</button> <button class="btn-secondary" onclick="eliminarSimulacion(\''+s.id+'\',\''+escapeHtml(s.code)+'\')" aria-label="Eliminar '+escapeHtml(s.code)+'">🗑</button></td></tr>').join(''):'<tr><td colspan="7">Aún no hay proyectos guardados. Usa Simular para agregarlos.</td></tr>';
@@ -4083,7 +4110,7 @@ async function descargarPygConsolidado(){
   const X=await cargarSheetJS(),wb=X.utils.book_new(),fmtMoney='#,##0.00;[Red]-#,##0.00';
   const titulo=[
    ['ENERGYCONTROL · P&G consolidado · '+(realMode?'Real Odoo':'Cierre 2026 proyectado')+(filtro?' · '+filtro.label:' · Toda Energycontrol')],
-   [realMode?'Real Odoo por mes':'Ene–Sep: real Odoo · Oct–Dic: forecast (presupuesto Excel + proyectos guardados en Supabase)'],
+   [realMode?'Real Odoo por mes':cap1(TXT_REAL)+': real Odoo · '+TXT_FC+': forecast (presupuesto Excel + proyectos guardados en Supabase)'],
    ['Generado: '+new Date().toLocaleString('es-EC')],
    []
   ];
@@ -4095,20 +4122,20 @@ async function descargarPygConsolidado(){
   ws['!cols']=[{wch:55},{wch:12},...cab.slice(2).map(()=>({wch:17}))];
   X.utils.book_append_sheet(wb,ws,'PyG consolidado');
   if(!realMode&&!filtro){
-   const proy=(STATE.savedSims||[]).map(s=>({'PO':s.proyecto_codigo,'Proyecto':projectInfo(s.proyecto_codigo).proyecto_nombre||'','Tipo':'Avance de obra','Mes':monthName(String(s.mes)),'Avance al 31-dic %':number(s.avance_acumulado),'Contrato':number(s.monto_contrato),'Ingreso Oct–Dic':number(s.ingreso),'Costo Oct–Dic':number(s.costo),'Efecto en utilidad':number(s.ingreso)-number(s.costo),'Comentario del administrador':s.nota||''}));
+   const proy=(STATE.savedSims||[]).map(s=>({'PO':s.proyecto_codigo,'Proyecto':projectInfo(s.proyecto_codigo).proyecto_nombre||'','Tipo':'Avance de obra','Mes':monthName(String(s.mes)),'Avance al 31-dic %':number(s.avance_acumulado),'Contrato':number(s.monto_contrato),['Ingreso '+TXT_FC]:number(s.ingreso),['Costo '+TXT_FC]:number(s.costo),'Efecto en utilidad':number(s.ingreso)-number(s.costo),'Comentario del administrador':s.nota||''}));
    const ppa=new Map();
    for(const r of STATE.ppaRows||[]){const code=String(r.fuente_ref).slice(4),g=ppa.get(code)||{ing:0,cos:0,meses:[]};g.ing+=number(r.ingreso);g.cos+=number(r.costo);if(number(r.ingreso)||number(r.costo))g.meses.push(monthName(String(r.mes)));ppa.set(code,g);}
-   for(const [code,g] of ppa)proy.push({'PO':code,'Proyecto':STATE.names?.[code]||projectInfo(code).proyecto_nombre||'','Tipo':'PPA venta de energía','Mes':g.meses.join(', ')||'Inicia después de 2026','Avance al 31-dic %':'','Contrato':'','Ingreso Oct–Dic':g.ing,'Costo Oct–Dic':g.cos,'Efecto en utilidad':g.ing-g.cos,'Comentario del administrador':''});
-   if((STATE.resRows||[]).length){const ing=STATE.resRows.reduce((a,r)=>a+number(r.ingreso),0),cos=STATE.resRows.reduce((a,r)=>a+number(r.costo),0);proy.push({'PO':'RESIDENCIAL','Proyecto':'Provisión ventas residenciales','Tipo':'Provisión','Mes':STATE.resRows.map(r=>monthName(String(r.mes))).join(', '),'Avance al 31-dic %':'','Contrato':'','Ingreso Oct–Dic':ing,'Costo Oct–Dic':cos,'Efecto en utilidad':ing-cos,'Comentario del administrador':''});}
-   const tIng=proy.reduce((a,p)=>a+number(p['Ingreso Oct–Dic']),0),tCos=proy.reduce((a,p)=>a+number(p['Costo Oct–Dic']),0);
-   proy.push({'PO':'TOTAL','Proyecto':'','Tipo':'','Mes':'','Avance al 31-dic %':'','Contrato':'','Ingreso Oct–Dic':tIng,'Costo Oct–Dic':tCos,'Efecto en utilidad':tIng-tCos,'Comentario del administrador':''});
+   for(const [code,g] of ppa)proy.push({'PO':code,'Proyecto':STATE.names?.[code]||projectInfo(code).proyecto_nombre||'','Tipo':'PPA venta de energía','Mes':g.meses.join(', ')||'Inicia después de 2026','Avance al 31-dic %':'','Contrato':'',['Ingreso '+TXT_FC]:g.ing,['Costo '+TXT_FC]:g.cos,'Efecto en utilidad':g.ing-g.cos,'Comentario del administrador':''});
+   if((STATE.resRows||[]).length){const ing=STATE.resRows.reduce((a,r)=>a+number(r.ingreso),0),cos=STATE.resRows.reduce((a,r)=>a+number(r.costo),0);proy.push({'PO':'RESIDENCIAL','Proyecto':'Provisión ventas residenciales','Tipo':'Provisión','Mes':STATE.resRows.map(r=>monthName(String(r.mes))).join(', '),'Avance al 31-dic %':'','Contrato':'',['Ingreso '+TXT_FC]:ing,['Costo '+TXT_FC]:cos,'Efecto en utilidad':ing-cos,'Comentario del administrador':''});}
+   const tIng=proy.reduce((a,p)=>a+number(p['Ingreso '+TXT_FC]),0),tCos=proy.reduce((a,p)=>a+number(p['Costo '+TXT_FC]),0);
+   proy.push({'PO':'TOTAL','Proyecto':'','Tipo':'','Mes':'','Avance al 31-dic %':'','Contrato':'',['Ingreso '+TXT_FC]:tIng,['Costo '+TXT_FC]:tCos,'Efecto en utilidad':tIng-tCos,'Comentario del administrador':''});
    const ws2=X.utils.json_to_sheet(proy);formatoNumeros(X,ws2,fmtMoney);
    ws2['!cols']=[12,40,20,22,16,16,16,16,16,60].map(w=>({wch:w}));
    X.utils.book_append_sheet(wb,ws2,'Proyectos en el cierre');
    const resC=[],rubC=[];
    for(const s of STATE.savedSims||[]){
     const r=favFila(s.proyecto_codigo),{cats,t,enPyg,sinPasar}=resumenCostoProyecto(r),nom=r.nombre||'';
-    resC.push({'PO':r.code,'Proyecto':nom,'Avance al 31-dic %':r.a,'Costo total del proyecto':r.E,'Costo acumulado al 31-dic':r.cosAcum,'Ya en P&G (501)':enPyg,'Costo a registrar Oct–Dic':r.cosFalta,'Gastado (Control de Operaciones)':cats.length?t.re:'','Comprado sin pasar a costo':cats.length?sinPasar:'','OC abiertas':cats.length?t.abierta:'','Presupuesto sin OC':cats.length?t.sinOc:'','Sobrecosto detectado':cats.length?t.sobre:'','Presupuesto aterrizado SP':cats.length?t.p:'','Fuente del costo total':r.eacFuente});
+    resC.push({'PO':r.code,'Proyecto':nom,'Avance al 31-dic %':r.a,'Costo total del proyecto':r.E,'Costo acumulado al 31-dic':r.cosAcum,'Ya en P&G (501)':enPyg,['Costo a registrar '+TXT_FC]:r.cosFalta,'Gastado (Control de Operaciones)':cats.length?t.re:'','Comprado sin pasar a costo':cats.length?sinPasar:'','OC abiertas':cats.length?t.abierta:'','Presupuesto sin OC':cats.length?t.sinOc:'','Sobrecosto detectado':cats.length?t.sobre:'','Presupuesto aterrizado SP':cats.length?t.p:'','Fuente del costo total':r.eacFuente});
     for(const x of cats)rubC.push({'PO':r.code,'Proyecto':nom,'Rubro':x.rubro,'Presupuesto SP':x.p,'Gastado (facturas + salidas)':x.re,'OC abiertas':x.abierta,'Por gastar sin OC':x.sinOc,'Sobrecosto':x.sobre});
    }
    const ws4=X.utils.json_to_sheet(resC.length?resC:[{'PO':'Sin proyectos guardados'}]);formatoNumeros(X,ws4,fmtMoney);
@@ -4127,8 +4154,8 @@ async function descargarPygConsolidado(){
     [forecastStatus(f)],
     [],
     ['Cuadre','Hoja Proyectos','P&G consolidado','Diferencia'],
-    ['Ingreso de proyectos Oct–Dic',tIng,ingP,tIng-ingP],
-    ['Costo de proyectos Oct–Dic',tCos,cosP,tCos-cosP],
+    ['Ingreso de proyectos '+TXT_FC,tIng,ingP,tIng-ingP],
+    ['Costo de proyectos '+TXT_FC,tCos,cosP,tCos-cosP],
     [cuadra?'Cuadra ✓':'NO CUADRA: revisar antes de presentar'],
     [],
     ['Fuente Odoo = contabilidad real · Excel = presupuesto de gastos fijos · Simulación = forecast por avance · PPA = venta de energía · Provisión = ventas residenciales · Manual = otros ingresos/costos escritos en pantalla (no se guardan).']
@@ -4245,10 +4272,10 @@ function favFila(code){
  if(ing.saldo>0)al.push(['warn','Saldo de reconocimiento por reversar en CxC: '+money(ing.saldo)]);
  const comentario=ed.nota!==undefined?ed.nota:(saved?.nota||'');
  if(a<100&&a>0&&!String(comentario).trim())al.push(['warn','Sin comentario: ¿por qué no cierra al 100%?']);
- const nota=(Math.abs(post.income)>1||Math.abs(post.cost)>1)?'Odoo ya registró desde octubre: ingreso '+money(post.income)+' · costo '+money(post.cost)+'. Falta registrar hasta el 31-dic: ingreso '+money(ingFalta-post.income)+' · costo '+money(cosFalta-post.cost)+'.':'';
+ const nota=(Math.abs(post.income)>1||Math.abs(post.cost)>1)?'Odoo ya registró después del corte ('+TXT_FCL+'): ingreso '+money(post.income)+' · costo '+money(post.cost)+'. Falta registrar hasta el 31-dic: ingreso '+money(ingFalta-post.income)+' · costo '+money(cosFalta-post.cost)+'.':'';
  return {code,nombre:p.proyecto_nombre||STATE.names[code]||'',C,hoy,a,E,eacFuente,margen:C>0&&E>0?(C-E)/C:null,
   ingAcum,ingPrevio:ing.total,ing2026,ingReg:real.income,ingFalta,cosAcum,cosPrevio:cos.total,cos2026,cosReg:real.cost,cosFalta,
-  efecto:ingFalta-cosFalta,res2026:ing2026-cos2026,saved,dirty:!!STATE.favEdits[code]||(!!saved&&C>0&&Math.abs(number(saved.monto_contrato)-C)>0.005),saving:STATE.favSaving.has(code),
+  efecto:ingFalta-cosFalta,res2026:ing2026-cos2026,saved,dirty:!!STATE.favEdits[code]||(!!saved&&C>0&&Math.abs(number(saved.monto_contrato)-C)>0.005)||(!!saved&&(String(saved.fecha_corte||'').slice(0,10)!==CORTE_FECHA||Math.abs(number(saved.ingreso)-ingFalta)>0.5||Math.abs(number(saved.costo)-cosFalta)>0.5)),saving:STATE.favSaving.has(code),
   ingSaldo:ing.saldo,cosSaldo:cos.saldo,al,nota,comentario,valido:C>0&&E>0&&a>=0&&a<=100};
 }
 
@@ -4274,7 +4301,7 @@ const SIMP_FILAS=[
  {k:'net',l:'Utilidad neta estimada',cls:'pyg-benefit',tot:1},
  {r:'net',l:'Margen neto',tot:1}];
 function simpModelo(filtro){
- const m=pygConsolidadoModelo({filtro,realMode:false,cols:[{idx:[0,1,2,3,4,5,6,7,8],agg:true,forecast:false,label:'',sub:''},{idx:[...Array(12).keys()],agg:true,forecast:true,label:'',sub:''}]});
+ const m=pygConsolidadoModelo({filtro,realMode:false,cols:[{idx:IDX_REAL,agg:true,forecast:false,label:'',sub:''},{idx:[...Array(12).keys()],agg:true,forecast:true,label:'',sub:''}]});
  return {real:m.cols[0].d,cierre:m.cols[1].d,noDisp:!!m.cols[1].noDisp};
 }
 function simpCacheOk(){
@@ -4312,8 +4339,8 @@ function simpCalcular(){
   c.ed=simpEditado(c.code);c.mot=String(STATE.simPyg.motivos?.[c.code]||'').trim();
   const al=[];
   if(c.ed&&!c.mot)al.push(['danger','Falta el motivo del ajuste']);
-  if(c.real&&s.cost<number(c.real.cost)-0.5)al.push(['danger','Costo menor al ya registrado en Odoo ene–sep ('+money(c.real.cost)+'): ese costo no se puede quitar']);
-  if(c.real&&c.ed&&s.income<number(c.real.income)-0.5)al.push(['warn','Ingreso menor al ya registrado ene–sep ('+money(c.real.income)+'): implica una reversa']);
+  if(c.real&&s.cost<number(c.real.cost)-0.5)al.push(['danger','Costo menor al ya registrado en Odoo '+TXT_REAL+' ('+money(c.real.cost)+'): ese costo no se puede quitar']);
+  if(c.real&&c.ed&&s.income<number(c.real.income)-0.5)al.push(['warn','Ingreso menor al ya registrado '+TXT_REAL+' ('+money(c.real.income)+'): implica una reversa']);
   if(c.ed&&c.code!=='RESTO'&&c.d.gross<0)al.push(['warn','Pérdida bruta en el escenario']);
   c.al=al;
  }
@@ -4416,7 +4443,7 @@ async function guardarEscenarioSimPyg(){
   const {data:{user}}=await sb.auth.getUser();
   let r;
   if(STATE.simPyg.id)r=await sb.from('forecast_escenarios').update({nombre,overrides,descripcion,actualizado_en:new Date().toISOString()}).eq('id',STATE.simPyg.id).select('id').single();
-  else r=await sb.from('forecast_escenarios').insert({nombre,tipo:'personalizado',fecha_corte:'2026-09-30',overrides,descripcion,es_activo:false,creado_por:user?.id||null}).select('id').single();
+  else r=await sb.from('forecast_escenarios').insert({nombre,tipo:'personalizado',fecha_corte:CORTE_FECHA,overrides,descripcion,es_activo:false,creado_por:user?.id||null}).select('id').single();
   if(r.error)throw r.error;
   STATE.simPyg.id=r.data.id;STATE.simPyg.nombre=nombre;STATE.simPyg.sucio=false;
   await listarEscenariosSimPyg();toast('Escenario "'+nombre+'" guardado.');
@@ -4570,8 +4597,8 @@ function favDetalleHtml(r){
   +'<div><h4 style="margin:0 0 6px">¿De dónde sale el costo del forecast?</h4><div class="table-wrap" style="max-height:none"><table><tbody>'
   +lin('Costo total del proyecto',r.E,escapeHtml(r.eacFuente))
   +lin('× Avance al 31-dic',r.cosAcum,percentPoints(r.a)+(r.E>r.C&&r.C>0?' · incluye la pérdida completa (costo &gt; contrato)':''))
-  +lin('− Ya en el P&G (cuenta 501)',enPyg,'2025: '+money(r.cosPrevio)+' · ene–sep 2026: '+money(r.cosReg))
-  +lin('= Costo a registrar Oct–Dic',r.cosFalta,'Es el valor que entra al P&G consolidado',r.cosFalta<0)
+  +lin('− Ya en el P&G (cuenta 501)',enPyg,'2025: '+money(r.cosPrevio)+' · '+TXT_REAL+' 2026: '+money(r.cosReg))
+  +lin('= Costo a registrar '+TXT_FC,r.cosFalta,'Es el valor que entra al P&G consolidado',r.cosFalta<0)
   +'<tr><td colspan="3" style="background:#eef3f9;font-weight:700">Composición de lo gastado y comprometido</td></tr>'
   +lin('Gastado según Control de Operaciones',t.re,'Facturas de proveedor + salidas de bodega a la obra')
   +lin('· de eso, ya en el P&G',enPyg,'Contabilizado en 501 con la analítica del proyecto')
@@ -4616,7 +4643,7 @@ function renderForecastAvance(){setTimeout(ajustarStickyFav,0);
  document.getElementById('favFoot').innerHTML='<tr><td class="fav-sticky">Total ('+filas.length+')</td><td>'+money(T('C'))+'</td><td></td><td></td><td></td><td>'+money(T('E'))+'</td><td>'+favMargenTotal(filas)+'</td>'
   +['ingAcum','ingPrevio','ing2026','ingReg','ingFalta','cosAcum','cosPrevio','cos2026','cosReg','cosFalta','efecto'].map(k=>'<td class="'+(T(k)<0?'money-negative':'')+'">'+money(T(k))+'</td>').join('')+'<td></td><td></td></tr>';
  const enCierre=todas.filter(r=>r.saved&&!r.dirty),pend=todas.filter(r=>!r.saved||r.dirty);
- document.getElementById('favResumen').textContent=enCierre.length+' de '+todas.length+' proyectos en el cierre · Efecto Oct–Dic guardado: '+money(enCierre.reduce((s,r)=>s+r.efecto,0));
+ document.getElementById('favResumen').textContent=enCierre.length+' de '+todas.length+' proyectos en el cierre · Efecto '+TXT_FC+' guardado: '+money(enCierre.reduce((s,r)=>s+r.efecto,0));
  const nPpa=ppaCodigos().size;
  document.getElementById('favNota').textContent=(nPpa?nPpa+' PPA se proyectan aparte, en "Contratos PPA" (abajo). ':'')+(pend.length?pend.length+' proyecto(s) aún no están en el cierre: sus números se muestran pero no suman en el P&G consolidado hasta guardarlos (al editar se guardan solos).':'Todos los proyectos están guardados en el cierre.');
  document.getElementById('favGuardarTodos').disabled=!pend.some(r=>r.valido)||STATE.favSaving.size>0;
@@ -4638,7 +4665,7 @@ function ppaCalc(c){
  const calc=kwh*disp/100*tar/12;
  const manual=c.mensual_manual!==undefined&&c.mensual_manual!==null&&c.mensual_manual!=='';
  const mensual=manual?number(c.mensual_manual):calc;
- const ini=c.inicio||'2026-10';
+ const ini=c.inicio||FORECAST_MONTHS[0].slice(0,7);
  const meses=FORECAST_MONTHS.map(x=>x.slice(0,7)).filter(x=>x>=ini);
  return {kwh,disp,tar,calc,manual,mensual,ini,meses,costo:number(c.costo_mensual),total:mensual*meses.length};
 }
@@ -4665,19 +4692,19 @@ function renderPpa(){
    +'<td>'+inp(c.code,'mensual_manual',k.mensual?k.mensual.toFixed(2):'','type="number" min="0" step="0.01" style="width:110px"')+(k.manual?'<button class="fav-hoy" title="Volver al cálculo" onclick="ppaEditar(\''+code+'\',\'mensual_manual\',\'\')">↺</button>':'')+'</td>'
    +'<td>'+inp(c.code,'costo_mensual',c.costo_mensual??'','type="number" min="0" step="0.01" style="width:100px"')+'</td>'
    +'<td>'+(()=>{const ld=ppaLeadDe(c);return '<select class="fav-in" style="width:230px;text-align:left" onchange="ppaEditar(\''+code+'\',\'lead_id\',this.value)"><option value="">— sin vincular —</option>'+ppaLeads().map(l=>'<option value="'+l.lead_id+'"'+(ld&&Number(ld.lead_id)===Number(l.lead_id)?' selected':'')+'>'+escapeHtml(String(l.nombre||'').slice(0,42)+(l.proyecto_codigo?' · PO '+l.proyecto_codigo:''))+'</option>').join('')+'</select>';})()+'</td>'
-   +'<td>'+(k.meses.length?k.meses.map(m=>['Oct','Nov','Dic'][Number(m.slice(5))-10]).join(', '):'—')+'</td>'
+   +'<td>'+(k.meses.length?k.meses.map(m=>mesFcCorto(m)).join(', '):'—')+'</td>'
    +'<td><b>'+money(k.total)+'</b>'+(k.costo?'<br><small class="report-note">costo '+money(k.costo*k.meses.length)+'</small>':'')+'</td>'
    +'<td class="fav-alert" style="min-width:200px">'+estado+(avisos.length?'<div style="margin-top:4px">'+avisos.join(' ')+'</div>':'')+'</td>'
    +'<td style="white-space:nowrap"><button class="btn-secondary" title="Tabla de generación" onclick="abrirGenPpa(\''+code+'\')">📈 Generación</button> '+(c.dirty?'<button class="btn-primary" onclick="ppaGuardar(\''+code+'\')">Guardar</button> ':'')+'<button class="btn-secondary" title="Quitar del cierre" onclick="ppaEliminar(\''+code+'\')">🗑</button></td></tr>';
  }).join('')||'<tr><td colspan="12">Aún no hay contratos PPA. Escribe la PO y pulsa “+ Agregar PPA”.</td></tr>';
  const guardados=cs.filter(c=>c.saved&&!c.dirty);
- document.getElementById('ppaResumen').textContent=guardados.length+' PPA en el cierre · Ingreso Oct–Dic: '+money(guardados.reduce((s,c)=>s+ppaCalc(c).total,0));
+ document.getElementById('ppaResumen').textContent=guardados.length+' PPA en el cierre · Ingreso '+TXT_FC+': '+money(guardados.reduce((s,c)=>s+ppaCalc(c).total,0));
 }
 function ppaNuevo(){
  const el=document.getElementById('ppaNuevoPo'),code=String(el.value||'').trim().match(/\d{3,4}/)?.[0];
  if(!code){toast('Escribe el número de PO del PPA (ej. 1756).');return;}
  if(ppaConfigs().some(c=>c.code===code)){toast('La PO '+code+' ya está en la lista de PPA.');return;}
- STATE.ppaDraft[code]={disponibilidad:95,inicio:'2026-10'};el.value='';renderPpa();
+ STATE.ppaDraft[code]={disponibilidad:95,inicio:FORECAST_MONTHS[0].slice(0,7)};el.value='';renderPpa();
 }
 function ppaEditar(code,campo,valor){
  const actual=ppaConfigs().find(c=>c.code===code)||{};
@@ -4699,9 +4726,9 @@ async function ppaGuardar(code){
   const {data:{user}}=await sb.auth.getUser();
   if(c.ids.length){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).in('id',c.ids);if(del.error)throw del.error;}
   const detalle={kwh_anual:k.kwh||null,disponibilidad:k.disp,tarifa:k.tar||null,inicio:k.ini,mensual_manual:k.manual?k.mensual:'',costo_mensual:k.costo||'',ingreso_mensual_calculado:Number(k.calc.toFixed(2)),lead_id:ppaLeadDe(c)?.lead_id||'',generacion:Array.isArray(c.generacion)&&c.generacion.length?c.generacion.map(number):null,plazo:c.plazo||null};
-  const filas=(k.meses.length?k.meses:[]).map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code,mes:m+'-01',ingreso:Number(k.mensual.toFixed(2)),costo:Number(k.costo.toFixed(2)),fuente_ref:'PPA:'+code,fecha_corte:'2026-09-30',detalle}));
+  const filas=(k.meses.length?k.meses:[]).map(m=>({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code,mes:m+'-01',ingreso:Number(k.mensual.toFixed(2)),costo:Number(k.costo.toFixed(2)),fuente_ref:'PPA:'+code,fecha_corte:CORTE_FECHA,detalle}));
   // Si inicia después de 2026 se guarda una fila en $0 solo para conservar la configuración (tabla de generación, tarifa, plazo).
-  if(!filas.length)filas.push({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code+' (inicia después de 2026)',mes:'2026-12-01',ingreso:0,costo:0,fuente_ref:'PPA:'+code,fecha_corte:'2026-09-30',detalle});
+  if(!filas.length)filas.push({escenario_id:STATE.escenarioBaseId,tipo:'ajuste',proyecto_codigo:code,concepto:'PPA venta de energía PO '+code+' (inicia después de 2026)',mes:'2026-12-01',ingreso:0,costo:0,fuente_ref:'PPA:'+code,fecha_corte:CORTE_FECHA,detalle});
   const ins=await sb.from('forecast_movimientos').insert(filas);if(ins.error)throw ins.error;
   if(!k.meses.length)toast('PO '+code+' guardada: inicia después de 2026, no suma en el cierre (queda la configuración).');
   delete STATE.ppaDraft[code];
@@ -4750,14 +4777,14 @@ function abrirGenPpa(code){
  document.getElementById('genTarifa').value=number(c.tarifa)||base.tarifa||'';
  document.getElementById('genDisp').value=c.disponibilidad===undefined||c.disponibilidad===null||c.disponibilidad===''?95:number(c.disponibilidad);
  document.getElementById('genPlazo').value=number(c.plazo)||base.plazo||gen.length||'';
- document.getElementById('genInicio').value=c.inicio&&c.inicio!=='2027-01'?c.inicio:(c.inicio||'2026-10');
+ document.getElementById('genInicio').value=c.inicio&&c.inicio!=='2027-01'?c.inicio:(c.inicio||FORECAST_MONTHS[0].slice(0,7));
  document.getElementById('genTexto').value=gen.map(v=>v.toLocaleString('es-EC',{minimumFractionDigits:2,maximumFractionDigits:2})).join('\n');
  genRender();
  document.getElementById('ppaGenDialog').showModal();
 }
 function genCalcular(){
  const tar=number(document.getElementById('genTarifa').value),disp=number(document.getElementById('genDisp').value),plazo=Math.round(number(document.getElementById('genPlazo').value));
- const ini=document.getElementById('genInicio').value||'2026-10';
+ const ini=document.getElementById('genInicio').value||FORECAST_MONTHS[0].slice(0,7);
  const gen=genLeerTabla();
  const anios=Math.min(plazo||gen.length,gen.length);
  const filas=[];const cal={};
@@ -4829,9 +4856,9 @@ async function guardarFav(code,silencioso){
   if(previo){const del=await sb.from('forecast_movimientos').update({eliminado_en:new Date().toISOString(),eliminado_por:user?.id||null}).eq('id',previo.id);if(del.error)throw del.error;}
   const ins=await sb.from('forecast_movimientos').insert({
    escenario_id:STATE.escenarioBaseId,tipo:'proyecto',proyecto_codigo:code,concepto:'Forecast por avance PO '+code,
-   mes:previo?String(previo.mes).slice(0,10):'2026-12-01',
+   mes:previo&&String(previo.mes).slice(0,7)>CORTE_MES?String(previo.mes).slice(0,10):'2026-12-01',
    avance_acumulado:Number(r.a.toFixed(2)),monto_contrato:r.C,ingreso_reconocido_previo:r.ingPrevio,costo_reconocido_previo:r.cosPrevio,
-   ingreso:Number(r.ingFalta.toFixed(2)),costo:Number(r.cosFalta.toFixed(2)),nota:String(r.comentario||'').trim()||null,fecha_corte:'2026-09-30',
+   ingreso:Number(r.ingFalta.toFixed(2)),costo:Number(r.cosFalta.toFixed(2)),nota:String(r.comentario||'').trim()||null,fecha_corte:CORTE_FECHA,
    detalle:{origen:'forecast_por_avance',costo_total_estimado:Number(r.cosAcum.toFixed(2)),costo_proyecto_eac:Number(r.E.toFixed(2)),avance_hoy:r.hoy,ingreso_neto_2026:r.ingReg,costo_neto_2026:r.cosReg,saldo_ingreso_por_reversar:r.ingSaldo,saldo_costo_por_reversar:r.cosSaldo}
   });
   if(ins.error)throw ins.error;
@@ -5399,7 +5426,6 @@ function cerrarSimulador(){
 
 
 /* SIMULADOR · reconocimiento por avance (opción B) */
-const FORECAST_CUTOFF='2026-09';
 async function cargarForecastGuardado(){
  try{
   const esc=await sb.from('forecast_escenarios').select('id,tipo').eq('tipo','base').limit(1);
@@ -5518,21 +5544,21 @@ function renderLedger(s){
  if(s.contrato>0){
   const dif=(pctRec-avance)*100;
   notaIng=Math.abs(dif)<0.05?'<div class="ledger-msg ok">Lo reconocido coincide con el avance.</div>'
-   :dif>0?'<div class="ledger-msg warn">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: reconociste <b>'+money(recon-s.ingAcum)+'</b> de más. En Oct–Dic corresponde una reversa.</div>'
-   :'<div class="ledger-msg ok">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: faltan <b>'+money(s.ingAcum-recon)+'</b> por reconocer en Oct–Dic.</div>';
+   :dif>0?'<div class="ledger-msg warn">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: reconociste <b>'+money(recon-s.ingAcum)+'</b> de más. En '+TXT_FC+' corresponde una reversa.</div>'
+   :'<div class="ledger-msg ok">Llevas reconocido el <b>'+pctOf(recon,s.contrato)+'</b> del contrato y la obra va en <b>'+percentPoints(s.avance)+'</b>: faltan <b>'+money(s.ingAcum-recon)+'</b> por reconocer en '+TXT_FC+'.</div>';
  }
  const costoProyecto=Math.max(presupuestoProyecto(s.code)||0,s.costoTotal,s.avance>0?s.costoTotal/avance:0);
  const post=projectRealAfterCutoff(s.code);
- const notaPost=(Math.abs(post.cost)>1||Math.abs(post.income)>1)?'<div class="ledger-msg ok">Odoo ya registró después de septiembre: ingreso <b>'+money(post.income)+'</b> y costo <b>'+money(post.cost)+'</b>. Falta por registrar hasta el 31-dic: ingreso <b>'+money(s.ingPend-post.income)+'</b> y costo <b>'+money(s.costPend-post.cost)+'</b>.</div>':'';
+ const notaPost=(Math.abs(post.cost)>1||Math.abs(post.income)>1)?'<div class="ledger-msg ok">Odoo ya registró después del corte ('+TXT_FCL+'): ingreso <b>'+money(post.income)+'</b> y costo <b>'+money(post.cost)+'</b>. Falta por registrar hasta el 31-dic: ingreso <b>'+money(s.ingPend-post.income)+'</b> y costo <b>'+money(s.costPend-post.cost)+'</b>.</div>':'';
  el.innerHTML=bloque('Ingreso: cómo se reparte el contrato',s.contrato,[
    {t:'Reconocido en 2025',v:s.ingPrevio,c:'#8aa4c8'},
-   {t:'Reconocido 2026 ene–sep (Odoo)',v:s.ing2026,c:'#2b72cf'},
-   {t:'Oct–Dic 2026 según avance',v:s.ingPend,c:'#7757e8',b:true},
+   {t:'Reconocido 2026 '+TXT_REAL+' (Odoo)',v:s.ing2026,c:'#2b72cf'},
+   {t:TXT_FC+' 2026 según avance',v:s.ingPend,c:'#7757e8',b:true},
    {t:'Queda para 2027 en adelante',v:s.contrato-s.ingAcum,c:'#d7dde8'}],notaIng)
   +bloque('Costo: cómo se reparte el costo total',costoProyecto,[
    {t:'Reconocido en 2025',v:s.cosPrevio,c:'#e9b48a'},
-   {t:'Registrado 2026 ene–sep (Odoo, cuenta 501)',v:s.cost2026,c:'#f58a33'},
-   {t:'Oct–Dic 2026',v:s.costPend,c:'#c0562a',b:true},
+   {t:'Registrado 2026 '+TXT_REAL+' (Odoo, cuenta 501)',v:s.cost2026,c:'#f58a33'},
+   {t:TXT_FC+' 2026',v:s.costPend,c:'#c0562a',b:true},
    {t:'Queda para 2027 en adelante',v:costoProyecto-s.costoTotal,c:'#f1e3d6'}],
    notaPost+(Math.abs(s.cost2026)<Math.abs(s.ing2026)*0.2&&s.ing2026>0&&Math.abs(post.cost)<Math.abs(s.costPend)*0.5?'<div class="ledger-msg warn">En 2026 hay '+money(s.ing2026)+' de ingreso pero solo '+money(s.cost2026)+' de costo en la cuenta 501: el costo del año puede estar en inventario u obra en proceso. Confírmalo con contabilidad.</div>':''));
 }
@@ -5559,7 +5585,7 @@ async function guardarSimulacion(){
   const ins=await sb.from('forecast_movimientos').insert({
    escenario_id:STATE.escenarioBaseId,tipo:'proyecto',proyecto_codigo:s.code,concepto:'Simulación PO '+s.code,mes:s.month,
    avance_acumulado:s.avance,monto_contrato:s.contrato,ingreso_reconocido_previo:s.ingPrevio,costo_reconocido_previo:s.cosPrevio,
-   ingreso:Number(s.ingPend.toFixed(2)),costo:Number(s.costPend.toFixed(2)),nota:s.nota||null,fecha_corte:'2026-09-30',
+   ingreso:Number(s.ingPend.toFixed(2)),costo:Number(s.costPend.toFixed(2)),nota:s.nota||null,fecha_corte:CORTE_FECHA,
    detalle:{costo_total_estimado:s.costoTotal,ingreso_neto_2026:s.ing2026,costo_neto_2026:s.cost2026,saldo_ingreso_por_reversar:s.ingSaldo,saldo_costo_por_reversar:s.cosSaldo}
   });
   if(ins.error)throw ins.error;
