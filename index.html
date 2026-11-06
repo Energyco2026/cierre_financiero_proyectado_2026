@@ -1050,7 +1050,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 07:00</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 09:30</div>
 
         </div>
 
@@ -4148,7 +4148,7 @@ async function descargarPygConsolidado(){
  btn.disabled=true;btn.textContent='Generando…';
  try{
   const ExcelJS=await cargarExcelJS(),wb=new ExcelJS.Workbook();wb.creator='ENERGYCONTROL';wb.calcProperties={fullCalcOnLoad:true};wb.created=new Date();
-  const ws=wb.addWorksheet('PyG consolidado',{properties:{outlineProperties:{summaryBelow:false,summaryRight:false}}});
+  const ws=wb.addWorksheet('PyG consolidado',{properties:{outlineLevelRow:1,outlineProperties:{summaryBelow:false,summaryRight:false}}});
   const nC=cols.length+1,gris={argb:'FF6D7A8E'};
   ws.addRow(['ENERGYCONTROL · P&G consolidado · '+(realMode?'Real Odoo':'Cierre 2026 proyectado')+(filtro?' · '+filtro.label:' · Toda Energycontrol')]).font={bold:true,size:14,color:{argb:'FF08284A'}};
   ws.addRow([document.getElementById('consolidatedPeriod').textContent]).font={size:10,color:gris};
@@ -4198,7 +4198,7 @@ async function descargarPygConsolidado(){
    // Cuentas de detalle: agrupadas (+/−) igual que el ▸ de la pantalla
    for(const d of fi.detalle){
     const dr=ws.addRow(['   '+d.label]),rr=dr.number;
-    dr.outlineLevel=1;dr.hidden=!STATE.closingExpanded?.has(fi.area);
+    dr.outlineLevel=1;if(!STATE.closingExpanded?.has(fi.area))dr.hidden=true;
     dr.getCell(1).font={size:10,color:{argb:'FF172033'}};dr.getCell(1).alignment={indent:2};dr.getCell(1).border=XL.linea;
     cols.forEach((c,j)=>{const cel=dr.getCell(j+2),x=d.valores[j];estilo(cel,c,{detalle:true});cel.font={size:10,color:{argb:'FF172033'},bold:c.agg};
      const fo=c.agg?sumaAgg(c,rr):null;cel.value=fo?{formula:fo,result:number(x.v)}:number(x.v);cel.numFmt=XL.money;});
@@ -4209,15 +4209,17 @@ async function descargarPygConsolidado(){
   ws.addRow([]);
   const nota=ws.addRow([document.getElementById('consolidatedAllocation').textContent]);nota.getCell(1).font={size:9,color:gris};
   ws.addRow(['Las cuentas de detalle están agrupadas: use + / − a la izquierda para desplegarlas. Los acumulados, subtotales y márgenes son fórmulas.']).getCell(1).font={size:9,color:gris};
-  ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+  ws.pageSetup={orientation:'landscape'};
 
   if(!realMode&&!filtro){
    const kI='Ingreso '+TXT_FC,kC='Costo '+TXT_FC;
    const proy=(STATE.savedSims||[]).map(s=>({'PO':s.proyecto_codigo,'Proyecto':projectInfo(s.proyecto_codigo).proyecto_nombre||'','Tipo':'Avance de obra','Mes':monthName(String(s.mes)),'Avance al 31-dic %':number(s.avance_acumulado),'Contrato':number(s.monto_contrato),[kI]:number(s.ingreso),[kC]:number(s.costo),'Efecto en utilidad':0,'Comentario del administrador':s.nota||''}));
    const ppa=new Map();
-   for(const r of STATE.ppaRows||[]){const code=String(r.fuente_ref).slice(4),g=ppa.get(code)||{ing:0,cos:0,meses:[]};g.ing+=number(r.ingreso);g.cos+=number(r.costo);if(number(r.ingreso)||number(r.costo))g.meses.push(monthName(String(r.mes)));ppa.set(code,g);}
+   const fc=r=>String(r.mes).slice(0,7)>CORTE_MES; // solo meses del forecast: los meses hasta el corte ya son real Odoo
+   for(const r of (STATE.ppaRows||[]).filter(fc)){const code=String(r.fuente_ref).slice(4),g=ppa.get(code)||{ing:0,cos:0,meses:[]};g.ing+=number(r.ingreso);g.cos+=number(r.costo);if(number(r.ingreso)||number(r.costo))g.meses.push(monthName(String(r.mes)));ppa.set(code,g);}
    for(const [code,g] of ppa)proy.push({'PO':code,'Proyecto':STATE.names?.[code]||projectInfo(code).proyecto_nombre||'','Tipo':'PPA venta de energía','Mes':g.meses.join(', ')||'Inicia después de 2026','Avance al 31-dic %':null,'Contrato':null,[kI]:g.ing,[kC]:g.cos,'Efecto en utilidad':0,'Comentario del administrador':''});
-   if((STATE.resRows||[]).length){const ing=STATE.resRows.reduce((a,r)=>a+number(r.ingreso),0),cos=STATE.resRows.reduce((a,r)=>a+number(r.costo),0);proy.push({'PO':'RESIDENCIAL','Proyecto':'Provisión ventas residenciales','Tipo':'Provisión','Mes':STATE.resRows.map(r=>monthName(String(r.mes))).join(', '),'Avance al 31-dic %':null,'Contrato':null,[kI]:ing,[kC]:cos,'Efecto en utilidad':0,'Comentario del administrador':''});}
+   const resFc=(STATE.resRows||[]).filter(fc);
+   if(resFc.length){const ing=resFc.reduce((a,r)=>a+number(r.ingreso),0),cos=resFc.reduce((a,r)=>a+number(r.costo),0);proy.push({'PO':'RESIDENCIAL','Proyecto':'Provisión ventas residenciales','Tipo':'Provisión','Mes':resFc.map(r=>monthName(String(r.mes))).join(', '),'Avance al 31-dic %':null,'Contrato':null,[kI]:ing,[kC]:cos,'Efecto en utilidad':0,'Comentario del administrador':''});}
    const hp=xlHoja(wb,'Proyectos en el cierre',proy,{total:true,plano:['Avance al 31-dic %'],sinTotal:['Contrato'],anchos:{'Proyecto':40,'Comentario del administrador':60,'Tipo':20}});
    const cI=colL(hp.cab.indexOf(kI)+1),cC=colL(hp.cab.indexOf(kC)+1),cE=hp.cab.indexOf('Efecto en utilidad')+1;
    proy.forEach((p,i)=>{const r=i+2;hp.ws.getCell(r,cE).value={formula:cI+r+'-'+cC+r,result:number(p[kI])-number(p[kC])};});
