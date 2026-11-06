@@ -1050,7 +1050,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 15:00</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 15:10</div>
 
         </div>
 
@@ -5840,7 +5840,7 @@ async function descargarPygAnalitica(){
    'Total de selección cuenta cada distribución una sola vez: NO es la suma de las columnas (un movimiento puede estar en analíticas de distintos planes).',
    'La hoja "Movimientos" tiene cada línea contable; su total de "Efecto en beneficio" debe ser igual al Beneficio Total de selección.'])
    ws.addRow([t]).getCell(1).font={size:9,color:gris};
-  ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+  ws.pageSetup={orientation:'landscape'};
 
   const odoo='https://semgroup.odoo.com/mail/view?model=account.move&res_id=';
   const orden=rows.slice().sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||String(a.move_name||'').localeCompare(String(b.move_name||'')));
