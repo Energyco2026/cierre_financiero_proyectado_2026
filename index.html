@@ -1050,7 +1050,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 15:10</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 15:30</div>
 
         </div>
 
@@ -1440,7 +1440,7 @@ td.fav-com-td{white-space:normal!important}
 </div>
 <div id="tab-proyeccion" class="tab-content hidden">
  <h3>Proyección de cierre 2026</h3><p id="forecastPeriod" class="report-note"></p>
- <div class="filters-row"><label>Otros ingresos pendientes en diciembre <input id="forecastRevenue" type="number" min="0" step="0.01" class="filter-input" placeholder="Estimar, incluso cero" oninput="renderConsolidated();renderClosingForecast()"></label><label>Otros costos pendientes en diciembre <input id="forecastCost" type="number" min="0" step="0.01" class="filter-input" placeholder="Sin duplicar OC ni Excel" oninput="renderConsolidated();renderClosingForecast()"></label><button class="btn" onclick="abrirSimulador()">Simular proyecto / OC</button></div>
+ <div class="filters-row"><label>Otros ingresos pendientes en diciembre <input id="forecastRevenue" type="number" min="0" step="0.01" class="filter-input" placeholder="Estimar, incluso cero" oninput="renderConsolidated();renderClosingForecast()"></label><label>Otros costos pendientes en diciembre <input id="forecastCost" type="number" min="0" step="0.01" class="filter-input" placeholder="Sin duplicar OC ni Excel" oninput="renderConsolidated();renderClosingForecast()"></label><button class="btn" onclick="abrirSimulador()">Simular proyecto / OC</button><button class="btn-secondary" id="btnCierreXls" onclick="descargarProyeccionCierre()">⬇ Descargar Excel</button></div>
  <div class="table-wrap"><table><thead><tr><th>Concepto</th><th>Real <span class="t-real-l">enero–octubre</span></th><th>Forecast <span class="t-fc-l">noviembre–diciembre</span></th><th>Cierre 2026</th></tr></thead><tbody id="closingForecastBody"></tbody></table></div>
  <p id="closingForecastStatus" class="report-note"></p>
  <h4>Proyectos guardados en el escenario Base</h4><div class="table-wrap"><table><thead><tr><th>Proyecto</th><th>Avance · mes</th><th>Ingreso a registrar</th><th>Costo a registrar</th><th>Efecto en utilidad</th><th>Nota</th><th></th></tr></thead><tbody id="scenarioList"></tbody></table></div>
@@ -4254,6 +4254,68 @@ async function descargarPygConsolidado(){
  finally{btn.disabled=false;btn.textContent=txt;}
 }
 /* ========= EXCEL: VENTAS CRM (lo que se ve con los filtros, formulado) ========= */
+/* ========= EXCEL: PROYECCIÓN DE CIERRE 2026 (igual a la pantalla y con fórmulas) ========= */
+async function descargarProyeccionCierre(){
+ const f=forecastModel();
+ if(!f.ready){toast('El presupuesto no está cargado: el cierre no está completo y no se descarga.');return;}
+ const btn=document.getElementById('btnCierreXls'),txt=btn.textContent;btn.disabled=true;btn.textContent='Generando…';
+ try{
+  const mR=pygConsolidadoModelo({filtro:null,realMode:false,cols:[{idx:IDX_REAL,agg:true,forecast:false},{idx:IDX_FC,agg:false,forecast:true},{idx:[...Array(12).keys()],agg:true,forecast:true}]});
+  const ExcelJS=await cargarExcelJS(),wb=new ExcelJS.Workbook();wb.creator='ENERGYCONTROL';wb.created=new Date();wb.calcProperties={fullCalcOnLoad:true};
+  const ws=wb.addWorksheet('Proyección de cierre'),gris={argb:'FF6D7A8E'};
+  ws.addRow(['ENERGYCONTROL · Proyección de cierre 2026']).font={bold:true,size:14,color:{argb:'FF08284A'}};
+  ws.addRow(['Real '+TXT_REAL_L+' + forecast '+TXT_FC_L+' = cierre al 31/12/2026']).font={size:10,color:gris};
+  ws.addRow(['Generado: '+new Date().toLocaleString('es-EC')+' · Corte del real: '+MES_LARGO[CORTE_N-1]+' 2026']).font={size:10,color:gris};
+  const r1=ws.addRow(['Tasa participación trabajadores (editable)',PYG_TASA_PART]),r2=ws.addRow(['Tasa impuesto a la renta (editable)',PYG_TASA_IR]);
+  for(const r of [r1,r2]){r.getCell(1).font={size:10,color:gris};const c=r.getCell(2);c.numFmt='0%';c.fill=XL.fill('FFF4C2');c.font={bold:true};}
+  const celPart='$B$'+r1.number,celIr='$B$'+r2.number;
+  ws.addRow([]);
+  const hr=ws.addRow(['Concepto','Real '+TXT_REAL_L,'Forecast '+TXT_FC_L,'Cierre 2026']);xlEncabezado(hr,32);
+  for(let j=2;j<=4;j++)hr.getCell(j).alignment={wrapText:true,vertical:'middle',horizontal:'right'};
+  hr.getCell(3).fill=XL.fill('EDF7E5');hr.getCell(4).fill=XL.fill('E7EDFF');
+  const filaDe={},derivadas={gross:g=>g('income')+'-'+g('cost'),operating:g=>g('gross')+'-'+g('sales')+'-'+g('admin'),
+   uap:g=>g('operating')+'+'+g('otherIncome')+'-'+g('finance')+'-'+g('other'),
+   part:g=>'MAX(0,'+g('uap')+')*'+celPart,ir:g=>'MAX(0,'+g('uap')+'-'+g('part')+')*'+celIr,net:g=>g('uap')+'-'+g('part')+'-'+g('ir')};
+  for(const fi of mR.filas){
+   const total=!!fi.cls,ratio=fi.tipo==='pct',row=ws.addRow([fi.label]),r=row.number;
+   if(fi.key)filaDe[fi.key]=r;
+   row.getCell(1).font={size:10,bold:total,italic:ratio,color:{argb:ratio?'FF4B5565':'FF172033'}};row.getCell(1).border=XL.linea;
+   if(total)row.getCell(1).fill=XL.fill('D7D9DC');
+   [0,1,2].forEach(i=>{
+    const j=i+2,L=colL(j),cel=row.getCell(j),x=fi.valores[i];
+    cel.border=XL.linea;cel.alignment={horizontal:'right',vertical:'middle'};
+    cel.font={size:10,bold:total||i===2,italic:ratio,color:{argb:ratio?'FF4B5565':'FF172033'}};
+    if(i===2)cel.fill=XL.fill('E7EDFF');else if(i===1)cel.fill=XL.fill('EDF7E5');else if(total)cel.fill=XL.fill('D7D9DC');
+    if(fi.soloAgg&&i===1){cel.value='—';cel.font={size:10,color:{argb:'FF98A2B3'}};return;}
+    if(ratio){const I=L+filaDe.income;cel.value={formula:'IF('+I+'>0,'+L+filaDe[fi.ratio]+'/'+I+',"n/a")',result:x.v==null?'n/a':x.v};cel.numFmt=XL.pct;return;}
+    let formula=null;
+    if(derivadas[fi.key])formula=derivadas[fi.key](k=>L+filaDe[k]);
+    else if(i===2)formula='B'+r+'+C'+r;
+    cel.value=formula?{formula,result:number(x.v)}:number(x.v);cel.numFmt=XL.money;
+   });
+  }
+  ws.getColumn(1).width=52;[2,3,4].forEach(j=>ws.getColumn(j).width=20);
+  ws.views=[{state:'frozen',xSplit:1,ySplit:hr.number}];
+  ws.addRow([]);
+  ws.addRow([forecastStatus(f)]).getCell(1).font={size:9,color:gris};
+  ws.addRow(['Cierre 2026 = Real + Forecast. Subtotales, márgenes, participación e IR son fórmulas; cambie las tasas en amarillo para recalcular. Participación e IR son estimaciones simples (sin gastos no deducibles ni conciliación tributaria).']).getCell(1).font={size:9,color:gris};
+  const mi=document.getElementById('forecastRevenue').value,mc=document.getElementById('forecastCost').value;
+  ws.addRow(['Otros ingresos pendientes en diciembre (escrito en pantalla): '+(mi===''?'vacío':money(mi))+' · Otros costos pendientes: '+(mc===''?'vacío':money(mc))]).getCell(1).font={size:9,color:gris};
+  ws.pageSetup={orientation:'portrait'};
+
+  // Hoja 2: proyectos guardados en el escenario Base
+  const kI='Ingreso a registrar',kC='Costo a registrar';
+  const proy=f.scenarios.map(s=>({'PO':String(s.code),'Proyecto':String(poNombre(s.code)).replace(String(s.code)+' - ',''),'Avance al 31-dic %':number(s.avance),'Mes':monthName(s.month),[kI]:number(s.income),[kC]:number(s.cost),'Efecto en utilidad':0,'Nota':s.nota||''}));
+  const hp=xlHoja(wb,'Proyectos guardados',proy.length?proy:[{'PO':'Sin proyectos guardados'}],{total:proy.length>0,plano:['Avance al 31-dic %'],anchos:{'Proyecto':40,'Nota':60}});
+  if(proy.length){const cI=colL(hp.cab.indexOf(kI)+1),cC=colL(hp.cab.indexOf(kC)+1),cE=hp.cab.indexOf('Efecto en utilidad')+1;
+   proy.forEach((p,i)=>{const r=i+2;hp.ws.getCell(r,cE).value={formula:cI+r+'-'+cC+r,result:p[kI]-p[kC]};hp.ws.getCell(r,cE).numFmt=XL.money;});
+   if(hp.filaTotal){const L=colL(cE);hp.ws.getCell(hp.filaTotal,cE).value={formula:'SUM('+L+'2:'+L+(proy.length+1)+')',result:proy.reduce((a,p)=>a+p[kI]-p[kC],0)};hp.ws.getCell(hp.filaTotal,cE).numFmt=XL.money;}}
+
+  await guardarLibro(wb,'Proyeccion_cierre_2026_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast('Excel de la proyección de cierre descargado.');
+ }catch(e){toast('No se pudo generar el Excel: '+e.message);}
+ finally{btn.disabled=false;btn.textContent=txt;}
+}
 async function descargarCrm(){
  const v=STATE.crmVista;
  if(!v||!v.rows.length){toast('No hay ventas para descargar con estos filtros.');return;}
