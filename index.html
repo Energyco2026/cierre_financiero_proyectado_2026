@@ -1050,7 +1050,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 09:30</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 15:00</div>
 
         </div>
 
@@ -5755,6 +5755,112 @@ boot();
 
 
 
+</script>
+
+<script>
+/* ========= EXCEL: P&G POR ANALÍTICA (botón + función, igual a la pantalla y con fórmulas) ========= */
+(function(){
+ const ref=document.getElementById('btnSinAnalitica');
+ if(ref&&!document.getElementById('btnPygAnaXls'))ref.insertAdjacentHTML('afterend',' <button class="btn-secondary" id="btnPygAnaXls" onclick="descargarPygAnalitica()" title="Descarga en Excel el P&G por analítica con los filtros actuales, en el mismo formato y con fórmulas">⬇ Descargar Excel</button>');
+})();
+async function descargarPygAnalitica(){
+ const cols=STATE.pygColumns||[],rows=STATE.pygReportRows||[],F=STATE.pygReportFilters||{};
+ if(!F.period||F.period.invalid){toast('Corrige el rango Desde/Hasta antes de descargar.');return;}
+ if(!cols.length){toast('No hay analíticas para descargar con estos filtros.');return;}
+ const btn=document.getElementById('btnPygAnaXls'),txt=btn.textContent;btn.disabled=true;btn.textContent='Generando…';
+ try{
+  const ExcelJS=await cargarExcelJS(),wb=new ExcelJS.Workbook();wb.creator='ENERGYCONTROL';wb.created=new Date();wb.calcProperties={fullCalcOnLoad:true};
+  const pick=new Set(cols.map(c=>c.id)),search=F.search||'',project=F.project||'ALL';
+  const valores=sub=>{const v=analyticMatrix(sub,'ALL','ALL',search,project,pick),m=new Map(v.map(x=>[x.id,x]));return [...cols.map(c=>m.get(c.id)||{income:0,expense:0}),v.total];};
+  const val=(g,type)=>type==='income'?g.income:g.expense;
+  const nC=cols.length+2,gris={argb:'FF6D7A8E'};
+  const el=id=>document.getElementById(id),txtOpc=id=>el(id).selectedOptions[0]?.text||'';
+  const filtros=['Período: '+F.period.label];
+  if(el('pygSufijo').value!=='ALL')filtros.push('Año de la PO: '+txtOpc('pygSufijo'));
+  if(el('pygMinIng').value!=='')filtros.push('Ingresos mayores a '+money(el('pygMinIng').value));
+  if(el('pygMinEgr').value!=='')filtros.push('Egresos mayores a '+money(el('pygMinEgr').value));
+  if(el('pygBenef').value!=='ALL')filtros.push('Beneficio: '+txtOpc('pygBenef'));
+  if(el('pygEstadoFin').value!=='ALL')filtros.push('Estado financiero: '+txtOpc('pygEstadoFin'));
+  if(STATE.pygTipos.size)filtros.push('Tipo de venta: '+[...STATE.pygTipos].join(', '));
+  if(STATE.pygPick.size)filtros.push(STATE.pygPick.size+' analíticas marcadas');
+  if(search)filtros.push('Búsqueda: '+search);
+
+  const ws=wb.addWorksheet('PyG por analítica',{properties:{outlineLevelRow:2,outlineProperties:{summaryBelow:false,summaryRight:false}}});
+  ws.addRow(['ENERGYCONTROL · Estado de pérdidas y ganancias por analítica']).font={bold:true,size:14,color:{argb:'FF08284A'}};
+  ws.addRow(['Filtros: '+filtros.join(' · ')]).font={size:10,color:gris};
+  ws.addRow(['Generado: '+new Date().toLocaleString('es-EC')+' · '+cols.length+' analíticas · Importes de Odoo contabilizados']).font={size:10,color:gris};
+  ws.addRow([]);
+  const hr=ws.addRow(['Concepto / cuenta contable',...cols.map(c=>normalizarPO(c.name)+(nombreAnalitica(c.name)?'\n'+nombreAnalitica(c.name):'')),'Total de selección']);
+  xlEncabezado(hr,46);
+  for(let j=2;j<=nC;j++)hr.getCell(j).alignment={wrapText:true,vertical:'middle',horizontal:'right'};
+
+  const pintar=(row,{bg,bold,nivel})=>{
+   row.eachCell({includeEmpty:true},(c,n)=>{c.border=XL.linea;c.font={size:10,bold:!!bold,color:{argb:'FF172033'}};if(bg)c.fill=XL.fill(bg);if(n>1){c.numFmt=XL.money;c.alignment={horizontal:'right',vertical:'middle'};}});
+   row.getCell(1).alignment={indent:nivel*2,vertical:'middle',wrapText:true};
+  };
+  const nombresGrupo={"401":"INGRESOS DE ACTIVIDADES ORDINARIAS","403":"OTROS INGRESOS","501":"COSTO DE VENTAS Y PRODUCCIÓN","502":"GASTOS"};
+  const filaDe={};let c501=null;
+  for(const type of ['income','expense']){
+   const subset=rows.filter(r=>pygType(r)===type);
+   const tr=ws.addRow([type==='income'?'Total Ingresos':'Total Egresos',...valores(subset).map(g=>val(g,type))]);
+   pintar(tr,{bg:'D8DADE',bold:true,nivel:0});filaDe[type]=tr.number;
+   const filasGrupo=[];
+   for(const g of [...new Set(subset.map(pygGroup))].sort()){
+    const gRows=subset.filter(r=>pygGroup(r)===g),key=type+':'+g,gv=valores(gRows);
+    const gr=ws.addRow([g==='SIN_GRUPO'?'(Sin grupo)':g+' '+(nombresGrupo[g]||'CUENTAS CONTABLES'),...gv.map(x=>val(x,type))]);
+    gr.outlineLevel=1;if(!STATE.pygExpanded.has(type))gr.hidden=true;
+    pintar(gr,{bg:'F1F3F6',bold:true,nivel:1});filasGrupo.push(gr.number);
+    if(type==='expense'&&g==='501')c501={fila:gr.number,v:gv.map(x=>x.expense)};
+    const cuentas=[...new Map(gRows.map(r=>[pygAccount(r),r]))].sort((a,b)=>String(a[1].cuenta_codigo).localeCompare(String(b[1].cuenta_codigo)));
+    for(const [id,a] of cuentas){
+     const ar=ws.addRow([(a.cuenta_codigo||'')+' '+(a.cuenta_nombre||'Sin cuenta'),...valores(gRows.filter(r=>pygAccount(r)===id)).map(x=>val(x,type))]);
+     ar.outlineLevel=2;if(!STATE.pygExpanded.has(type)||!STATE.pygExpanded.has(key))ar.hidden=true;
+     pintar(ar,{nivel:2});
+    }
+    if(cuentas.length)for(let j=2;j<=nC;j++){const L=colL(j),c=gr.getCell(j);c.value={formula:'SUM('+L+(gr.number+1)+':'+L+(gr.number+cuentas.length)+')',result:c.value};}
+   }
+   if(filasGrupo.length)for(let j=2;j<=nC;j++){const L=colL(j),c=tr.getCell(j);c.value={formula:'SUM('+filasGrupo.map(n=>L+n).join(',')+')',result:c.value};}
+  }
+  const bv=valores(rows);
+  const br=ws.addRow(['Beneficio Total',...bv.map(g=>g.income-g.expense)]);
+  pintar(br,{bg:'D8DADE',bold:true,nivel:0});
+  for(let j=2;j<=nC;j++){const L=colL(j),c=br.getCell(j);c.value={formula:L+filaDe.income+'-'+L+filaDe.expense,result:c.value};c.border={top:{style:'medium',color:{argb:'FFA9C7ED'}},bottom:{style:'thin',color:{argb:'FFE3E9F2'}}};}
+  const margen=(label,num,res)=>{
+   const mr=ws.addRow([label]);
+   for(let j=2;j<=nC;j++){const L=colL(j),I=L+filaDe.income,inc=bv[j-2].income;
+    mr.getCell(j).value={formula:'IF('+I+'>0.005,('+num(L)+')/'+I+',"n/a")',result:inc>0.005?res(j-2)/inc:'n/a'};}
+   mr.eachCell({includeEmpty:true},(c,n)=>{c.fill=XL.fill('EAF3FF');c.font={size:10,italic:true,bold:n===1,color:{argb:'FF183C68'}};c.border=XL.linea;if(n>1){c.numFmt=XL.pct;c.alignment={horizontal:'right'};}});
+  };
+  margen('Margen bruto %',L=>L+filaDe.income+'-'+(c501?L+c501.fila:'0'),i=>bv[i].income-(c501?c501.v[i]:0));
+  margen('Margen de utilidad %',L=>L+br.number,i=>bv[i].income-bv[i].expense);
+  ws.getColumn(1).width=52;for(let j=2;j<=nC;j++)ws.getColumn(j).width=18;
+  ws.views=[{state:'frozen',xSplit:1,ySplit:hr.number}];
+  ws.addRow([]);
+  for(const t of ['Use + / − a la izquierda para desplegar grupos y cuentas. Subtotales, totales, beneficio y márgenes son fórmulas.',
+   'Total de selección cuenta cada distribución una sola vez: NO es la suma de las columnas (un movimiento puede estar en analíticas de distintos planes).',
+   'La hoja "Movimientos" tiene cada línea contable; su total de "Efecto en beneficio" debe ser igual al Beneficio Total de selección.'])
+   ws.addRow([t]).getCell(1).font={size:9,color:gris};
+  ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+
+  const odoo='https://semgroup.odoo.com/mail/view?model=account.move&res_id=';
+  const orden=rows.slice().sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))||String(a.move_name||'').localeCompare(String(b.move_name||'')));
+  const fechaUTC=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(Date.UTC(+m[1],+m[2]-1,+m[3])):null;};
+  const mov=orden.map(r=>{const t=pygType(r),imp=t==='income'?-number(r.saldo_analitico):number(r.saldo_analitico);return {
+   'Fecha':fechaUTC(r.fecha),'Asiento':r.move_name||'','Cuenta':r.cuenta_codigo||'','Nombre de la cuenta':r.cuenta_nombre||'',
+   'Tipo':t==='income'?'Ingreso':t==='expense'?'Egreso':'Otro','Grupo':pygGroup(r),'Tercero':r.partner_nombre||'','Referencia':r.ref||'',
+   'Analítica':String(r.analitica_nombre||'').split(' | ').map(normalizarPO).join(' | '),
+   'Debe de la línea':number(r.debito),'Haber de la línea':number(r.credito),'% asignado':number(r.porcentaje_analitico),
+   'Importe analítico':imp,'Efecto en beneficio':t==='income'?imp:t==='expense'?-imp:0,'Odoo':''};});
+  const hm=xlHoja(wb,'Movimientos',mov,{total:true,plano:['% asignado'],sinTotal:['Debe de la línea','Haber de la línea','Importe analítico'],anchos:{'Nombre de la cuenta':34,'Tercero':30,'Referencia':24,'Analítica':40,'Odoo':12}});
+  const cF=hm.cab.indexOf('Fecha')+1,cP=hm.cab.indexOf('% asignado')+1,cO=hm.cab.indexOf('Odoo')+1;
+  orden.forEach((r,i)=>{const n=i+2;hm.ws.getCell(n,cF).numFmt='dd/mm/yyyy';hm.ws.getCell(n,cP).numFmt='0.0%';
+   if(r.odoo_move_id){const c=hm.ws.getCell(n,cO);c.value={text:'Ver asiento',hyperlink:odoo+encodeURIComponent(r.odoo_move_id)};c.font={size:10,color:{argb:'FF146FE8'},underline:true};}});
+
+  await guardarLibro(wb,'PyG_por_analitica_'+(F.period.from||'')+'_a_'+(F.period.to||'')+'.xlsx');
+  toast('Excel del P&G por analítica descargado ('+cols.length+' analíticas).');
+ }catch(e){toast('No se pudo generar el Excel: '+e.message);}
+ finally{btn.disabled=false;btn.textContent=txt;}
+}
 </script>
 
 </body>
