@@ -1050,7 +1050,7 @@ td.fav-com-td{white-space:normal!important}
             <button class="logout" onclick="logout()">
                 Cerrar sesión
             </button>
-            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 13-oct-2026 17:10</div>
+            <div id="versionDashboard" style="font-size:11px;opacity:.6;margin-top:6px">Versión 06-nov-2026 07:00</div>
 
         </div>
 
@@ -1574,6 +1574,7 @@ td.fav-com-td{white-space:normal!important}
                   <details id="crmMes" class="ms" aria-label="Meses de cierre"><summary>Todos los meses</summary><div class="ms-panel"></div></details>
                   <select id="crmEstado" onchange="renderCrm()" aria-label="Estado"><option value="ALL">Todos los estados</option><option value="PEND">Sin simular</option><option value="SIM">Ya en el cierre</option></select>
                   <select id="crmPo" onchange="renderCrm()" aria-label="PO"><option value="ALL">Con y sin PO</option><option value="CON">Con PO en Odoo</option><option value="SIN">Sin PO en Odoo</option></select>
+                  <button class="btn-secondary" id="btnCrmXls" onclick="descargarCrm()">⬇ Descargar Excel</button>
                 </div>
                 <div id="crmTipos" class="filters-row" style="gap:8px;flex-wrap:wrap"></div>
                 <div id="crmResPanel" class="hidden" style="margin:6px 0 14px"></div>
@@ -2623,6 +2624,7 @@ function renderCrm(){
  selT.innerHTML='<option value="ALL">Todos los tipos</option>'+tipos.map(t=>'<option'+(t===tipoSel?' selected':'')+'>'+escapeHtml(t)+'</option>').join('');
  document.getElementById('crmTipos').innerHTML=tipos.map(t=>{const g=porTipo.get(t)||{n:0,m:0};return '<button class="btn-secondary" style="'+(t===tipoSel?'outline:2px solid #2b72cf;':'')+(t==='Sin tipo'?'border-color:#e0a400;':'')+'" onclick="setCrmTipo(\''+escapeHtml(t)+'\')" title="Filtrar por '+escapeHtml(t)+'"><b>'+escapeHtml(t)+'</b> · '+g.n+' · '+money(g.m)+'</button>';}).join('')+(tipoSel!=='ALL'?'<button class="btn-secondary" onclick="setCrmTipo(\'ALL\')">✕ Quitar filtro</button>':'')+(tipoSel==='PPA'?'<button class="btn-primary" onclick="irAPpa()">Contratos PPA en el cierre →</button>':'');
  const rowsT=rowsDelTipo.filter(enMeses);
+ STATE.crmVista={rows:rowsT,filtros:[document.getElementById('crmAnio').selectedOptions[0]?.text,tipoSel==='ALL'?'Todos los tipos':tipoSel,STATE.crmMonths.size?[...STATE.crmMonths].sort().join(', '):'Todos los meses',document.getElementById('crmEstado').selectedOptions[0]?.text,document.getElementById('crmPo').selectedOptions[0]?.text,q?'Búsqueda: '+q:''].filter(Boolean).join(' · ')};
  renderCrmPpaPanel(tipoSel==='PPA');
  renderCrmResPanel(tipoSel==='Residencial');
  body.innerHTML=rowsT.map(l=>{
@@ -3797,7 +3799,7 @@ function pygConsolidadoModelo(opts={}){
    }
    const v=c.d[e.key];return {txt:money(v),v,neg:v<-0.004};
   });
-  const fila={label:e.label,cls:e.cls||'',area:e.area||null,tipo:e.ratio?'pct':'money',nivel:0,valores,detalle:[]};
+  const fila={label:e.label,key:e.key||null,ratio:e.ratio||null,soloAgg:!!e.soloAgg,cls:e.cls||'',area:e.area||null,tipo:e.ratio?'pct':'money',nivel:0,valores,detalle:[]};
   if(e.area){
    fila.detalle=base.details.filter(d=>d.area===e.area)
     .map(d=>({code:d.code,area:e.area,label:(d.code||'')+' '+(d.name||''),fuente:d.source||'',valores:cols.map(c=>{if(c.noDisp)return {txt:'No disponible',v:null};const v=sumaDet(d,c);return {txt:money(v),v,neg:v<-0.004};})}))
@@ -4101,70 +4103,210 @@ function formatoNumeros(X,ws,fmt){
  const rg=X.utils.decode_range(ws['!ref']);
  for(let r=rg.s.r;r<=rg.e.r;r++)for(let c=rg.s.c;c<=rg.e.c;c++){const cel=ws[X.utils.encode_cell({r,c})];if(cel&&typeof cel.v==='number'&&!cel.z)cel.z=fmt;}
 }
+/* ========= EXCEL CON FORMATO Y FÓRMULAS (ExcelJS) ========= */
+function cargarExcelJS(){
+ if(window.ExcelJS)return Promise.resolve(window.ExcelJS);
+ return new Promise((ok,ko)=>{const sc=document.createElement('script');sc.src='https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js';sc.onload=()=>ok(window.ExcelJS);sc.onerror=()=>ko(new Error('No se pudo cargar el generador de Excel'));document.head.appendChild(sc);});
+}
+async function guardarLibro(wb,nombre){
+ const buf=await wb.xlsx.writeBuffer();
+ const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+ const a=document.createElement('a');a.href=url;a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+const XL={money:'"$"#,##0.00;[Red]-"$"#,##0.00',pct:'0.0%;[Red]-0.0%',fill:c=>({type:'pattern',pattern:'solid',fgColor:{argb:'FF'+c}}),linea:{bottom:{style:'thin',color:{argb:'FFE3E9F2'}}}};
+function colL(n){let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;}
+function xlSuma(cols,fila){
+ const ns=[...cols].sort((a,b)=>a-b),partes=[];let ini=ns[0],ant=ns[0];
+ for(const n of ns.slice(1).concat([null])){if(n!==null&&n===ant+1){ant=n;continue;}partes.push(ini===ant?colL(ini)+fila:colL(ini)+fila+':'+colL(ant)+fila);ini=n;ant=n;}
+ return 'SUM('+partes.join(',')+')';
+}
+function xlEncabezado(row,alto){row.font={bold:true,color:{argb:'FF4F6075'},size:10};row.fill=XL.fill('F7F9FC');row.alignment={wrapText:true,vertical:'middle'};row.height=alto||30;row.eachCell(c=>c.border={bottom:{style:'thin',color:{argb:'FFC9D6EA'}}});}
+// Hoja simple desde una lista de objetos, con fila TOTAL formulada (SUM) en las columnas numéricas.
+function xlHoja(wb,nombre,filas,opc={}){
+ const ws=wb.addWorksheet(nombre,{views:[{state:'frozen',ySplit:1}]});
+ if(!filas.length){ws.addRow(['Sin datos']);return {ws,cab:[],filaTotal:null};}
+ const cab=Object.keys(filas[0]),plano=opc.plano||[],sinTotal=new Set([...(opc.sinTotal||[]),...plano]);
+ ws.columns=cab.map(k=>({header:k,key:k,width:opc.anchos?.[k]||Math.min(50,Math.max(13,k.length+3))}));
+ filas.forEach(f=>ws.addRow(f));
+ xlEncabezado(ws.getRow(1));
+ const n=filas.length+1;
+ ws.eachRow((row,i)=>{if(i===1)return;row.eachCell(c=>{if(typeof c.value==='number')c.numFmt=plano.includes(cab[c.col-1])?'0.00':XL.money;c.border=XL.linea;c.alignment={vertical:'middle',wrapText:typeof c.value==='string'&&c.value.length>40};});});
+ let filaTotal=null;
+ if(opc.total){
+  const vals=cab.map((k,j)=>{if(j===0)return 'TOTAL';if(sinTotal.has(k)||!filas.some(f=>typeof f[k]==='number'))return null;const L=colL(j+1);return {formula:'SUM('+L+'2:'+L+n+')',result:filas.reduce((a,f)=>a+number(f[k]),0)};});
+  const r=ws.addRow(vals);r.font={bold:true};r.fill=XL.fill('EEF1F5');r.eachCell(c=>{if(c.col>1)c.numFmt=XL.money;});filaTotal=r.number;
+ }
+ ws.autoFilter={from:'A1',to:colL(cab.length)+n};
+ return {ws,cab,filaTotal};
+}
+/* ========= EXCEL: P&G CONSOLIDADO (igual a la pantalla y con fórmulas) ========= */
 async function descargarPygConsolidado(){
  const btn=document.getElementById('btnPygXls'),txt=btn.textContent;
- const {f,realMode,filtro,filas,encabezados,suma}=datosPygConsolidado();
+ const m=pygConsolidadoModelo(),{f,realMode,filtro,cols,filas}=m;
  if(!realMode&&!f.ready){toast('El presupuesto no está cargado: el cierre no está completo y no se descarga.');return;}
  btn.disabled=true;btn.textContent='Generando…';
  try{
-  const X=await cargarSheetJS(),wb=X.utils.book_new(),fmtMoney='#,##0.00;[Red]-#,##0.00';
-  const titulo=[
-   ['ENERGYCONTROL · P&G consolidado · '+(realMode?'Real Odoo':'Cierre 2026 proyectado')+(filtro?' · '+filtro.label:' · Toda Energycontrol')],
-   [realMode?'Real Odoo por mes':cap1(TXT_REAL)+': real Odoo · '+TXT_FC+': forecast (presupuesto Excel + proyectos guardados en Supabase)'],
-   ['Generado: '+new Date().toLocaleString('es-EC')],
-   []
-  ];
-  const cab=['Concepto / cuenta','Fuente',...encabezados];
-  const cuerpo=filas.map(r=>['   '.repeat(r.nivel)+r.label,r.fuente,...r.valores.map(v=>v==null?'':v)]);
-  const ws=X.utils.aoa_to_sheet([...titulo,cab,...cuerpo]);
-  const fila0=titulo.length+1;
-  filas.forEach((r,i)=>{for(let c=2;c<cab.length;c++){const cel=ws[X.utils.encode_cell({r:fila0+i,c})];if(cel&&typeof cel.v==='number')cel.z=r.tipo==='pct'?'0.0%':fmtMoney;}});
-  ws['!cols']=[{wch:55},{wch:12},...cab.slice(2).map(()=>({wch:17}))];
-  X.utils.book_append_sheet(wb,ws,'PyG consolidado');
+  const ExcelJS=await cargarExcelJS(),wb=new ExcelJS.Workbook();wb.creator='ENERGYCONTROL';wb.calcProperties={fullCalcOnLoad:true};wb.created=new Date();
+  const ws=wb.addWorksheet('PyG consolidado',{properties:{outlineProperties:{summaryBelow:false,summaryRight:false}}});
+  const nC=cols.length+1,gris={argb:'FF6D7A8E'};
+  ws.addRow(['ENERGYCONTROL · P&G consolidado · '+(realMode?'Real Odoo':'Cierre 2026 proyectado')+(filtro?' · '+filtro.label:' · Toda Energycontrol')]).font={bold:true,size:14,color:{argb:'FF08284A'}};
+  ws.addRow([document.getElementById('consolidatedPeriod').textContent]).font={size:10,color:gris};
+  ws.addRow(['Generado: '+new Date().toLocaleString('es-EC')+' · Corte del real: '+MES_LARGO[CORTE_N-1]+' 2026']).font={size:10,color:gris};
+  let celPart=null,celIr=null;
+  if(!filtro){
+   const r1=ws.addRow(['Tasa participación trabajadores (editable)',PYG_TASA_PART]),r2=ws.addRow(['Tasa impuesto a la renta (editable)',PYG_TASA_IR]);
+   for(const r of [r1,r2]){r.getCell(1).font={size:10,color:gris};const c=r.getCell(2);c.numFmt='0%';c.fill=XL.fill('FFF4C2');c.font={bold:true};}
+   celPart='$B$'+r1.number;celIr='$B$'+r2.number;
+  }
+  ws.addRow([]);
+  const hr=ws.addRow(['Concepto / cuenta',...cols.map(c=>c.label+'\n'+c.sub)]),filaCab=hr.number;
+  xlEncabezado(hr,34);
+  cols.forEach((c,j)=>{const cel=hr.getCell(j+2);cel.alignment={wrapText:true,vertical:'middle',horizontal:'right'};if(c.agg)cel.fill=XL.fill('E7EDFF');else if(c.forecast)cel.fill=XL.fill('EDF7E5');});
+  // Columna de Excel de cada mes (para que los acumulados sean SUM de los meses)
+  const colMes={};cols.forEach((c,j)=>{if(!c.agg)colMes[c.idx[0]]=j+2;});
+  const sumaAgg=(c,r)=>{const ms=c.idx.map(i=>colMes[i]);return ms.length&&ms.every(Boolean)?xlSuma(ms,r):null;};
+  const estilo=(cel,c,{total,ratio,detalle})=>{
+   cel.border=XL.linea;cel.alignment={horizontal:'right',vertical:'middle'};
+   cel.font={size:10,bold:!!(total||c.agg),italic:!!ratio,color:{argb:ratio?'FF4B5565':'FF172033'}};
+   if(c.agg)cel.fill=XL.fill('E7EDFF');else if(c.forecast)cel.fill=XL.fill('EDF7E5');else if(total)cel.fill=XL.fill('D7D9DC');
+  };
+  const textoGris=(cel,t)=>{cel.value=t;cel.font={size:10,color:{argb:'FF98A2B3'},italic:t==='n/a'};};
+  const filaDe={};
+  for(const fi of filas){
+   const total=!!fi.cls,ratio=fi.tipo==='pct';
+   const row=ws.addRow([fi.label]),r=row.number;
+   row.getCell(1).font={size:10,bold:total||!!fi.area,italic:ratio,color:{argb:ratio?'FF4B5565':'FF172033'}};
+   row.getCell(1).border=XL.linea;if(total)row.getCell(1).fill=XL.fill('D7D9DC');
+   if(fi.key)filaDe[fi.key]=r;
+   const nDet=fi.detalle.length;
+   cols.forEach((c,j)=>{
+    const L=colL(j+2),cel=row.getCell(j+2),x=fi.valores[j];
+    estilo(cel,c,{total,ratio});
+    if(fi.soloAgg&&!c.agg){textoGris(cel,'—');return;}
+    if(ratio){const I=L+filaDe.income;cel.value={formula:'IF('+I+'>0,'+L+filaDe[fi.ratio]+'/'+I+',"n/a")',result:x.v==null?'n/a':x.v};cel.numFmt=XL.pct;return;}
+    let formula=null;
+    if(fi.area&&nDet)formula='SUM('+L+(r+1)+':'+L+(r+nDet)+')';
+    else if(fi.area||!fi.key||!['gross','operating','uap','part','ir','net'].includes(fi.key))formula=c.agg?sumaAgg(c,r):null;
+    else{
+     const g=k=>L+filaDe[k];
+     formula={gross:g('income')+'-'+g('cost'),operating:g('gross')+'-'+g('sales')+'-'+g('admin'),uap:g('operating')+'+'+g('otherIncome')+'-'+g('finance')+'-'+g('other'),
+      part:'MAX(0,'+g('uap')+')*'+celPart,ir:'MAX(0,'+g('uap')+'-'+g('part')+')*'+celIr,net:g('uap')+'-'+g('part')+'-'+g('ir')}[fi.key];
+    }
+    cel.value=formula?{formula,result:number(x.v)}:(x.v==null?0:x.v);cel.numFmt=XL.money;
+   });
+   // Cuentas de detalle: agrupadas (+/−) igual que el ▸ de la pantalla
+   for(const d of fi.detalle){
+    const dr=ws.addRow(['   '+d.label]),rr=dr.number;
+    dr.outlineLevel=1;dr.hidden=!STATE.closingExpanded?.has(fi.area);
+    dr.getCell(1).font={size:10,color:{argb:'FF172033'}};dr.getCell(1).alignment={indent:2};dr.getCell(1).border=XL.linea;
+    cols.forEach((c,j)=>{const cel=dr.getCell(j+2),x=d.valores[j];estilo(cel,c,{detalle:true});cel.font={size:10,color:{argb:'FF172033'},bold:c.agg};
+     const fo=c.agg?sumaAgg(c,rr):null;cel.value=fo?{formula:fo,result:number(x.v)}:number(x.v);cel.numFmt=XL.money;});
+   }
+  }
+  ws.getColumn(1).width=52;for(let j=2;j<=nC;j++)ws.getColumn(j).width=16;
+  ws.views=[{state:'frozen',xSplit:1,ySplit:filaCab}];
+  ws.addRow([]);
+  const nota=ws.addRow([document.getElementById('consolidatedAllocation').textContent]);nota.getCell(1).font={size:9,color:gris};
+  ws.addRow(['Las cuentas de detalle están agrupadas: use + / − a la izquierda para desplegarlas. Los acumulados, subtotales y márgenes son fórmulas.']).getCell(1).font={size:9,color:gris};
+  ws.pageSetup={orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0};
+
   if(!realMode&&!filtro){
-   const proy=(STATE.savedSims||[]).map(s=>({'PO':s.proyecto_codigo,'Proyecto':projectInfo(s.proyecto_codigo).proyecto_nombre||'','Tipo':'Avance de obra','Mes':monthName(String(s.mes)),'Avance al 31-dic %':number(s.avance_acumulado),'Contrato':number(s.monto_contrato),['Ingreso '+TXT_FC]:number(s.ingreso),['Costo '+TXT_FC]:number(s.costo),'Efecto en utilidad':number(s.ingreso)-number(s.costo),'Comentario del administrador':s.nota||''}));
+   const kI='Ingreso '+TXT_FC,kC='Costo '+TXT_FC;
+   const proy=(STATE.savedSims||[]).map(s=>({'PO':s.proyecto_codigo,'Proyecto':projectInfo(s.proyecto_codigo).proyecto_nombre||'','Tipo':'Avance de obra','Mes':monthName(String(s.mes)),'Avance al 31-dic %':number(s.avance_acumulado),'Contrato':number(s.monto_contrato),[kI]:number(s.ingreso),[kC]:number(s.costo),'Efecto en utilidad':0,'Comentario del administrador':s.nota||''}));
    const ppa=new Map();
    for(const r of STATE.ppaRows||[]){const code=String(r.fuente_ref).slice(4),g=ppa.get(code)||{ing:0,cos:0,meses:[]};g.ing+=number(r.ingreso);g.cos+=number(r.costo);if(number(r.ingreso)||number(r.costo))g.meses.push(monthName(String(r.mes)));ppa.set(code,g);}
-   for(const [code,g] of ppa)proy.push({'PO':code,'Proyecto':STATE.names?.[code]||projectInfo(code).proyecto_nombre||'','Tipo':'PPA venta de energía','Mes':g.meses.join(', ')||'Inicia después de 2026','Avance al 31-dic %':'','Contrato':'',['Ingreso '+TXT_FC]:g.ing,['Costo '+TXT_FC]:g.cos,'Efecto en utilidad':g.ing-g.cos,'Comentario del administrador':''});
-   if((STATE.resRows||[]).length){const ing=STATE.resRows.reduce((a,r)=>a+number(r.ingreso),0),cos=STATE.resRows.reduce((a,r)=>a+number(r.costo),0);proy.push({'PO':'RESIDENCIAL','Proyecto':'Provisión ventas residenciales','Tipo':'Provisión','Mes':STATE.resRows.map(r=>monthName(String(r.mes))).join(', '),'Avance al 31-dic %':'','Contrato':'',['Ingreso '+TXT_FC]:ing,['Costo '+TXT_FC]:cos,'Efecto en utilidad':ing-cos,'Comentario del administrador':''});}
-   const tIng=proy.reduce((a,p)=>a+number(p['Ingreso '+TXT_FC]),0),tCos=proy.reduce((a,p)=>a+number(p['Costo '+TXT_FC]),0);
-   proy.push({'PO':'TOTAL','Proyecto':'','Tipo':'','Mes':'','Avance al 31-dic %':'','Contrato':'',['Ingreso '+TXT_FC]:tIng,['Costo '+TXT_FC]:tCos,'Efecto en utilidad':tIng-tCos,'Comentario del administrador':''});
-   const ws2=X.utils.json_to_sheet(proy);formatoNumeros(X,ws2,fmtMoney);
-   ws2['!cols']=[12,40,20,22,16,16,16,16,16,60].map(w=>({wch:w}));
-   X.utils.book_append_sheet(wb,ws2,'Proyectos en el cierre');
+   for(const [code,g] of ppa)proy.push({'PO':code,'Proyecto':STATE.names?.[code]||projectInfo(code).proyecto_nombre||'','Tipo':'PPA venta de energía','Mes':g.meses.join(', ')||'Inicia después de 2026','Avance al 31-dic %':null,'Contrato':null,[kI]:g.ing,[kC]:g.cos,'Efecto en utilidad':0,'Comentario del administrador':''});
+   if((STATE.resRows||[]).length){const ing=STATE.resRows.reduce((a,r)=>a+number(r.ingreso),0),cos=STATE.resRows.reduce((a,r)=>a+number(r.costo),0);proy.push({'PO':'RESIDENCIAL','Proyecto':'Provisión ventas residenciales','Tipo':'Provisión','Mes':STATE.resRows.map(r=>monthName(String(r.mes))).join(', '),'Avance al 31-dic %':null,'Contrato':null,[kI]:ing,[kC]:cos,'Efecto en utilidad':0,'Comentario del administrador':''});}
+   const hp=xlHoja(wb,'Proyectos en el cierre',proy,{total:true,plano:['Avance al 31-dic %'],sinTotal:['Contrato'],anchos:{'Proyecto':40,'Comentario del administrador':60,'Tipo':20}});
+   const cI=colL(hp.cab.indexOf(kI)+1),cC=colL(hp.cab.indexOf(kC)+1),cE=hp.cab.indexOf('Efecto en utilidad')+1;
+   proy.forEach((p,i)=>{const r=i+2;hp.ws.getCell(r,cE).value={formula:cI+r+'-'+cC+r,result:number(p[kI])-number(p[kC])};});
    const resC=[],rubC=[];
    for(const s of STATE.savedSims||[]){
     const r=favFila(s.proyecto_codigo),{cats,t,enPyg,sinPasar}=resumenCostoProyecto(r),nom=r.nombre||'';
-    resC.push({'PO':r.code,'Proyecto':nom,'Avance al 31-dic %':r.a,'Costo total del proyecto':r.E,'Costo acumulado al 31-dic':r.cosAcum,'Ya en P&G (501)':enPyg,['Costo a registrar '+TXT_FC]:r.cosFalta,'Gastado (Control de Operaciones)':cats.length?t.re:'','Comprado sin pasar a costo':cats.length?sinPasar:'','OC abiertas':cats.length?t.abierta:'','Presupuesto sin OC':cats.length?t.sinOc:'','Sobrecosto detectado':cats.length?t.sobre:'','Presupuesto aterrizado SP':cats.length?t.p:'','Fuente del costo total':r.eacFuente});
+    resC.push({'PO':r.code,'Proyecto':nom,'Avance al 31-dic %':r.a,'Costo total del proyecto':r.E,'Costo acumulado al 31-dic':r.cosAcum,'Ya en P&G (501)':enPyg,['Costo a registrar '+TXT_FC]:r.cosFalta,'Gastado (Control de Operaciones)':cats.length?t.re:null,'Comprado sin pasar a costo':cats.length?sinPasar:null,'OC abiertas':cats.length?t.abierta:null,'Presupuesto sin OC':cats.length?t.sinOc:null,'Sobrecosto detectado':cats.length?t.sobre:null,'Presupuesto aterrizado SP':cats.length?t.p:null,'Fuente del costo total':r.eacFuente});
     for(const x of cats)rubC.push({'PO':r.code,'Proyecto':nom,'Rubro':x.rubro,'Presupuesto SP':x.p,'Gastado (facturas + salidas)':x.re,'OC abiertas':x.abierta,'Por gastar sin OC':x.sinOc,'Sobrecosto':x.sobre});
    }
-   const ws4=X.utils.json_to_sheet(resC.length?resC:[{'PO':'Sin proyectos guardados'}]);formatoNumeros(X,ws4,fmtMoney);
-   ws4['!cols']=[10,36,12,16,16,16,16,18,18,14,16,16,18,60].map(w=>({wch:w}));
-   X.utils.book_append_sheet(wb,ws4,'Costo por proyecto');
-   const ws5=X.utils.json_to_sheet(rubC.length?rubC:[{'PO':'Sin rubros'}]);formatoNumeros(X,ws5,fmtMoney);
-   ws5['!cols']=[10,36,22,16,18,16,16,14].map(w=>({wch:w}));
-   if(rubC.length)ws5['!autofilter']={ref:X.utils.encode_range({s:{r:0,c:0},e:{r:rubC.length,c:7}})};
-   X.utils.book_append_sheet(wb,ws5,'Costo por rubro');
-   const fuentes=['Simulación','PPA','Provisión'];
-   const ingP=f.details.filter(d=>fuentes.includes(d.source)&&d.area==='income').reduce((a,d)=>a+suma(d.values),0);
-   const cosP=f.details.filter(d=>fuentes.includes(d.source)&&d.area==='cost').reduce((a,d)=>a+suma(d.values),0);
-   const cuadra=Math.abs(ingP-tIng)<0.05&&Math.abs(cosP-tCos)<0.05;
-   const ws3=X.utils.aoa_to_sheet([
-    ['Notas del reporte'],
-    [forecastStatus(f)],
-    [],
-    ['Cuadre','Hoja Proyectos','P&G consolidado','Diferencia'],
-    ['Ingreso de proyectos '+TXT_FC,tIng,ingP,tIng-ingP],
-    ['Costo de proyectos '+TXT_FC,tCos,cosP,tCos-cosP],
-    [cuadra?'Cuadra ✓':'NO CUADRA: revisar antes de presentar'],
-    [],
-    ['Fuente Odoo = contabilidad real · Excel = presupuesto de gastos fijos · Simulación = forecast por avance · PPA = venta de energía · Provisión = ventas residenciales · Manual = otros ingresos/costos escritos en pantalla (no se guardan).']
-   ]);
-   formatoNumeros(X,ws3,fmtMoney);ws3['!cols']=[{wch:40},{wch:18},{wch:18},{wch:18}];
-   X.utils.book_append_sheet(wb,ws3,'Notas');
+   xlHoja(wb,'Costo por proyecto',resC,{total:true,plano:['Avance al 31-dic %'],anchos:{'Proyecto':36,'Fuente del costo total':60}});
+   xlHoja(wb,'Costo por rubro',rubC,{total:true,anchos:{'Proyecto':36,'Rubro':24}});
+   // Notas y cuadre (formulado contra las otras hojas)
+   const fuentes=['Simulación','PPA','Provisión'],sum=v=>v.reduce((a,b)=>a+number(b),0);
+   const ingP=f.details.filter(d=>fuentes.includes(d.source)&&d.area==='income').reduce((a,d)=>a+sum(d.values),0);
+   const cosP=f.details.filter(d=>fuentes.includes(d.source)&&d.area==='cost').reduce((a,d)=>a+sum(d.values),0);
+   const tIng=proy.reduce((a,p)=>a+number(p[kI]),0),tCos=proy.reduce((a,p)=>a+number(p[kC]),0);
+   const wn=wb.addWorksheet('Notas');
+   wn.addRow(['Notas del reporte']).font={bold:true,size:13};
+   wn.addRow([forecastStatus(f)]);wn.addRow([]);
+   const hc=wn.addRow(['Cuadre','Hoja Proyectos','P&G consolidado','Diferencia']);xlEncabezado(hc);
+   const ft=hp.filaTotal,ref=c=>"'Proyectos en el cierre'!"+c+ft;
+   const r1=wn.addRow(['Ingreso de proyectos '+TXT_FC,{formula:ref(cI),result:tIng},ingP,null]),r2=wn.addRow(['Costo de proyectos '+TXT_FC,{formula:ref(cC),result:tCos},cosP,null]);
+   for(const r of [r1,r2]){r.getCell(4).value={formula:'B'+r.number+'-C'+r.number,result:0};[2,3,4].forEach(k=>r.getCell(k).numFmt=XL.money);}
+   wn.addRow([{formula:'IF(AND(ABS(D'+r1.number+')<0.05,ABS(D'+r2.number+')<0.05),"Cuadra ✓","NO CUADRA: revisar antes de presentar")',result:Math.abs(ingP-tIng)<0.05&&Math.abs(cosP-tCos)<0.05?'Cuadra ✓':'NO CUADRA: revisar antes de presentar'}]).font={bold:true};
+   wn.addRow([]);
+   wn.addRow(['Fuente Odoo = contabilidad real · Excel = presupuesto de gastos fijos · Simulación = forecast por avance · PPA = venta de energía · Provisión = ventas residenciales · Manual = otros ingresos/costos escritos en pantalla (no se guardan).']);
+   wn.getColumn(1).width=48;[2,3,4].forEach(k=>wn.getColumn(k).width=18);
   }
-  X.writeFile(wb,'PyG_'+(realMode?'real_odoo':'cierre_2026')+(filtro?'_'+(filtro.code||filtro.label).replace(/[^\w-]+/g,'_'):'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  await guardarLibro(wb,'PyG_'+(realMode?'real_odoo':'cierre_2026')+(filtro?'_'+(filtro.code||filtro.label).replace(/[^\w-]+/g,'_'):'')+'_'+new Date().toISOString().slice(0,10)+'.xlsx');
   toast('Excel del P&G descargado.');
+ }catch(e){toast('No se pudo generar el Excel: '+e.message);}
+ finally{btn.disabled=false;btn.textContent=txt;}
+}
+/* ========= EXCEL: VENTAS CRM (lo que se ve con los filtros, formulado) ========= */
+async function descargarCrm(){
+ const v=STATE.crmVista;
+ if(!v||!v.rows.length){toast('No hay ventas para descargar con estos filtros.');return;}
+ const btn=document.getElementById('btnCrmXls'),txt=btn.textContent;btn.disabled=true;btn.textContent='Generando…';
+ try{
+  const ExcelJS=await cargarExcelJS(),wb=new ExcelJS.Workbook();wb.creator='ENERGYCONTROL';wb.calcProperties={fullCalcOnLoad:true};
+  const ws=wb.addWorksheet('Ventas CRM'),gris={argb:'FF6D7A8E'};
+  ws.addRow(['ENERGYCONTROL · Ventas ganadas en el CRM']).font={bold:true,size:14,color:{argb:'FF08284A'}};
+  ws.addRow(['Filtros: '+v.filtros]).font={size:10,color:gris};
+  ws.addRow(['Generado: '+new Date().toLocaleString('es-EC')+' · Monto venta = orden de venta sin IVA; si no hay o es casi cero frente al CRM, el monto CRM.']).font={size:10,color:gris};
+  ws.addRow([]);
+  const cab=['PO','Fecha cierre','Tipo','Oportunidad','Cliente','Vendedor','Monto CRM','Orden de venta (sin IVA)','Monto venta (OV o CRM)','Contrato en el cierre','Dif. contrato vs OV','Ingreso 2026 en Odoo','Estado','Alerta'];
+  const hr=ws.addRow(cab),H=hr.number;xlEncabezado(hr,32);
+  const fecha=s=>{const m=String(s||'').match(/^(\d{4})-(\d{2})-(\d{2})/);return m?new Date(Date.UTC(+m[1],+m[2]-1,+m[3])):null;};
+  const r0=H+1;
+  v.rows.forEach((l,i)=>{
+   const r=r0+i,code=l.proyecto_codigo||null,esPpa=code&&ppaCodigos().has(code);
+   const crm=number(l.monto_esperado),ov=number(l.monto_ov);
+   const contrato=code&&!esPpa?number(projectInfo(code).monto_contrato):0;
+   const ing=code?projectRealAtCutoff(code).income:null;
+   const estado=esPpa?'PPA en el cierre':l.sim?'En el cierre':!code?'Sin PO en Odoo':'Sin simular';
+   const al=[];if(ov>0&&crm>0&&ov<crm*0.05)al.push('OV mal cargada');if(code&&!esPpa&&!contrato)al.push('Sin contrato');if(l.tipo==='Sin tipo')al.push('Sin Tipo de Oportunidad');
+   const row=ws.addRow([code,fecha(l.fecha_cierre),l.tipo,l.nombre||'',l.cliente||'',l.vendedor||'',crm,ov||null,
+    {formula:'IF(AND(N(H'+r+')>0,NOT(AND(N(G'+r+')>0,N(H'+r+')<N(G'+r+')*0.05))),H'+r+',N(G'+r+'))',result:montoVentaCrm(l)},
+    contrato||null,
+    {formula:'IF(AND(N(J'+r+')>0,N(H'+r+')>0),J'+r+'-H'+r+',"")',result:contrato&&ov?contrato-ov:''},
+    ing,estado,al.join(' · ')]);
+   row.getCell(2).numFmt='dd/mm/yyyy';[7,8,9,10,11,12].forEach(k=>row.getCell(k).numFmt=XL.money);
+   row.eachCell({includeEmpty:true},c=>{c.border=XL.linea;c.font={size:10};c.alignment={vertical:'middle'};});
+   if(al.length)row.getCell(14).font={size:10,color:{argb:'FFC83D4E'}};
+  });
+  const rN=r0+v.rows.length-1;
+  const tr=ws.addRow(['TOTAL ('+v.rows.length+')']);
+  [7,8,9,10,12].forEach(k=>{const L=colL(k);tr.getCell(k).value={formula:'SUM('+L+r0+':'+L+rN+')',result:0};tr.getCell(k).numFmt=XL.money;});
+  tr.font={bold:true};tr.fill=XL.fill('EEF1F5');
+  [10,12,14,46,40,22,15,17,17,17,15,17,17,30].forEach((w,i)=>ws.getColumn(i+1).width=w);
+  ws.getColumn(4).alignment={wrapText:true,vertical:'middle'};
+  ws.views=[{state:'frozen',ySplit:H}];
+  ws.autoFilter={from:'A'+H,to:colL(cab.length)+rN};
+  // Resumen por tipo, formulado contra la hoja de detalle
+  const rs=wb.addWorksheet('Resumen por tipo');
+  rs.addRow(['Resumen por tipo de oportunidad · '+v.filtros]).font={bold:true,size:12};rs.addRow([]);
+  const rh=rs.addRow(['Tipo','Ventas','Monto venta','% del monto','Ya en el cierre','Sin PO en Odoo']);xlEncabezado(rh);
+  const rng=c=>"'Ventas CRM'!$"+c+"$"+r0+":$"+c+"$"+rN;
+  const tipos=[...new Set(v.rows.map(l=>l.tipo))].sort((a,b)=>(a==='Sin tipo')-(b==='Sin tipo')||a.localeCompare(b));
+  const p0=rh.number+1,pN=p0+tipos.length-1;
+  tipos.forEach((t,i)=>{const r=p0+i,del=v.rows.filter(l=>l.tipo===t);
+   const row=rs.addRow([t,{formula:'COUNTIFS('+rng('C')+',A'+r+')',result:del.length},{formula:'SUMIFS('+rng('I')+','+rng('C')+',A'+r+')',result:del.reduce((a,l)=>a+montoVentaCrm(l),0)},{formula:'IF($C$'+(pN+1)+'=0,0,C'+r+'/$C$'+(pN+1)+')',result:0},
+    {formula:'COUNTIFS('+rng('C')+',A'+r+','+rng('M')+',"*en el cierre")',result:0},{formula:'COUNTIFS('+rng('C')+',A'+r+','+rng('M')+',"Sin PO en Odoo")',result:0}]);
+   row.getCell(3).numFmt=XL.money;row.getCell(4).numFmt='0.0%';});
+  const tt=rs.addRow(['TOTAL',{formula:'SUM(B'+p0+':B'+pN+')',result:v.rows.length},{formula:'SUM(C'+p0+':C'+pN+')',result:0},{formula:'SUM(D'+p0+':D'+pN+')',result:1},{formula:'SUM(E'+p0+':E'+pN+')',result:0},{formula:'SUM(F'+p0+':F'+pN+')',result:0}]);
+  tt.font={bold:true};tt.fill=XL.fill('EEF1F5');tt.getCell(3).numFmt=XL.money;tt.getCell(4).numFmt='0.0%';
+  [24,10,18,12,15,15].forEach((w,i)=>rs.getColumn(i+1).width=w);
+  await guardarLibro(wb,'Ventas_CRM_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  toast(v.rows.length+' ventas descargadas.');
  }catch(e){toast('No se pudo generar el Excel: '+e.message);}
  finally{btn.disabled=false;btn.textContent=txt;}
 }
